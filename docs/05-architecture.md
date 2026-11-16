@@ -1,6 +1,8 @@
 # 05 技术架构
 
-**版本**：v1.0（2026-11-16）
+**版本**：v1.1（2026-11-16）
+
+v1.1 变更：技术栈补 treebeard / import-export / cryptography / structlog / Radix Colors / SMTP；app 划分新增 `events`；认证流改为邮箱验证码，并写明发码失败不可静默返回成功。
 
 ---
 
@@ -10,7 +12,7 @@
 | --- | --- | --- | --- |
 | 前端框架 | Vue 3 + TypeScript | Vue 3.5 / TS 5.x | Composition API + `<script setup>` |
 | 构建 | Vite | 6.x | |
-| UI | Element Plus | 2.x | 管理后台组件库 |
+| UI | Element Plus + Radix Colors | 2.x / 1.x | 管理后台组件库；颜色全站取自 Radix 色阶经 CSS 令牌层引用（DEVELOPMENT.md §4.1），不沿用组件库默认配色 |
 | 状态 | Pinia | 2.x | 用户会话、grants、菜单 |
 | 路由 | Vue Router | 4.x | 动态权限路由 |
 | HTTP | Axios | 1.x | 统一拦截器（token 刷新、错误码） |
@@ -22,6 +24,11 @@
 | 异步 | Celery | 5.x | 邮件、证书 PDF、导入任务 |
 | 定时 | django-celery-beat | | 状态提醒、清理 |
 | 对象存储 | MinIO（开发/自建）/ S3 兼容 | | 报名材料、证书 PDF，私有桶 + 预签名 URL |
+| 组织树 | django-treebeard | 2.x | Materialized Path，`organizations` 继承 `MP_Node`（v1.1，取代裸 parent_id 递归查询） |
+| 导入导出 | django-import-export | 4.x | 获奖名单/人员 Excel；异步任务里直接调 `Resource` API，不走 admin 集成（v1.1） |
+| 邮件 | Django email backend + SMTP | | 注册与找回密码验证码、审核结果通知；发信域名需配 SPF/DKIM，否则验证码邮件进垃圾箱等于注册不可用（v1.1，上线前置条件） |
+| 字段加密 | cryptography（Fernet） | 42+ | 身份证号列加密，P0 交付；密钥 `FIELD_ENCRYPTION_KEY`，哈希 pepper 另用 `ID_HASH_PEPPER`（v1.1） |
+| 日志 | structlog | 24+ | JSON 输出 stdout，`request_id` 贯穿；SQL 耗时经 `connection.execute_wrapper` 采集（DEVELOPMENT.md §2） |
 | 反向代理 | Nginx | | 静态资源、路由到 gunicorn |
 | WSGI | gunicorn + uvicorn worker | | 部署 ASGI 亦可，第一版 WSGI 足够 |
 | 部署 | Docker Compose | | 单机起步，见 docker/README.md |
@@ -36,14 +43,15 @@
 compsphere-server/
 ├── config/                     # settings、urls、celery、asgi/wsgi
 ├── apps/
-│   ├── accounts/               # users、auth、JWT、验证码、账号状态
-│   ├── profiles/               # user_profiles、人员信息审核
-│   ├── orgs/                   # organizations、members、入驻申请
+│   ├── accounts/               # users、auth、JWT、邮箱验证码、账号状态
+│   ├── profiles/               # user_profiles、人员信息审核、身份证加解密
+│   ├── orgs/                   # organizations（treebeard 树）、members、入驻申请
 │   ├── rbac/                   # roles、permissions、user_roles、ScopedRolePermission 核心
-│   ├── teams/                  # teams、team_members
+│   ├── teams/                  # teams（含学段派生）、team_members
 │   ├── competitions/           # competitions、editions、competition_organizations、admins
-│   ├── groups/                 # competition_groups、材料要求校验器
-│   ├── registrations/          # 报名、快照、文件、状态机、审核
+│   ├── events/                 # competition_events（赛项）+ competition_offerings（开放组合）
+│   ├── groups/                 # competition_groups（组别/学段）+ 赛项材料要求校验器
+│   ├── registrations/          # 报名、快照、文件、状态机、审核、公示名单只读视图
 │   ├── awards/                 # awards、rosters、records、Excel 导入
 │   ├── certificates/           # 模板、PDF 生成、二维码、公开验证
 │   ├── notifications/          # notices、inbox、邮件发送
@@ -67,8 +75,10 @@ compsphere-server/
 
 ### 3.1 认证流
 
-- 注册：手机号/邮箱 + Redis 验证码（60s 限频）→ 创建 `users(status=pending)` → 首登强制完善档案。
+- 注册：邮箱 + 验证码（`verification_codes` 存哈希，10 分钟有效、60 秒限发 1 封、试错 5 次作废）→ 创建 `users(status=pending)` → 首登强制完善档案（含身份证号，加密后落库）→ 完善后置 `active`。短信通道本期不提供（P2），手机号只作必填联系方式，不作为身份凭证。
 - 登录：密码 → SimpleJWT 双 token；前端 401 时静默 refresh。
+- 找回密码：邮箱验证码重置，与注册复用同一发码链路（`purpose` 区分）。
+- 发码失败（SMTP 不可用）对用户可见并报 5xx，不静默返回成功：注册路径整体不可用比一个明确错误更糟。
 - `GET /api/v1/me/` 返回 user + profile + **grants 列表**（角色×作用域展开），前端据此渲染菜单与按钮。
 
 ### 3.2 文件流

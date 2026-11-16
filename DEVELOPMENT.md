@@ -1,8 +1,10 @@
 # 开发规范
 
-**版本**：v1.0（2026-11-16）
+**版本**：v1.1（2026-11-16）
 **适用范围**：`backend/`、`frontend/`、`docker/`、`docs/` 全部代码与文案。
-**分工**：提交、分支与 PR 评审流程见 [CONTRIBUTING.md](CONTRIBUTING.md)；本文规定代码怎么写、界面怎么做、日志怎么打。业务与架构以 `docs/01-07` 为准，界面与工程实践以本文为准；冲突时先改文档再改代码，不允许代码单方面偏离。
+**分工**：提交、分支与 PR 评审流程见 [CONTRIBUTING.md](CONTRIBUTING.md)；本文规定代码怎么写、界面怎么做、日志怎么打。业务与架构以 `docs/01-09` 为准，界面与工程实践以本文为准；冲突时先改文档再改代码，不允许代码单方面偏离。
+
+v1.1 变更：§2.5 补发链事件字段名对齐 03/04（`reissue_of` / `supersedes_serial`）；§11 拆为「已修复 / 仍开放」两段，记录本轮闭合的六项文档缺陷。
 
 > 标注 **强制** 的条目在评审时逐条对照，不满足即打回；标注 **建议** 的条目可协商。
 
@@ -141,7 +143,7 @@ PRD §5 已要求「日志与错误信息不落敏感明文」，落地规则：
 | `registration.approved` / `.rejected` / `.returned` | 审核动作（含 actor 与 review_mode） |
 | `roster.confirmed` / `.unlocked` | 名单锁定与解锁（解锁带 reason） |
 | `certificate.generate.started` / `.succeeded` / `.failed` | 证书流水线（含 `batch_size`、`duration_ms`） |
-| `certificate.revoked` / `.reissued` | 证书作废与补发（含 `chain_of`） |
+| `certificate.revoked` / `.reissued` | 证书作废与补发（含 `reissue_of`、`supersedes_serial`） |
 | `export.started` / `.finished` | 数据导出（含字段清单，对应 PRD §5 审计要求） |
 | `import.row.conflict` | Excel 导入进待人工确认（含冲突类型，不含姓名原文） |
 | `file.uploaded` / `file.url_signed` | 材料上传与预签名（记 key 与大小，不记内容） |
@@ -562,13 +564,28 @@ transition: background-color 250ms ease-out, border-color 250ms ease-out;
 
 ---
 
-## 11. 遗留修正项
+## 11. 文档待办
 
-按本文规范复查现有文档，中点分隔符已于 2026-11-16 全部清除（01-09、docs/README 与 docker/README）。仍需处理的：
+中点分隔符已于 2026-11-16 从全部文档清除。同日的 v1.1 修订中，以下缺陷已修复，此处只记录**仍然开放**的事项。
 
-| 位置 | 事项 |
+### 11.1 已修复（v1.1，2026-11-16）
+
+| 位置 | 原问题 |
 | --- | --- |
-| 05 文档 §1 | 技术栈表未列 Radix Colors 与 CSS 令牌层（本文 §4.1 已确立）；亦未列 `django-treebeard`、`django-import-export`（09 文档 §5 已指出） |
-| 02 文档 §5 | 引用的 `drf-access` 包不存在（09 文档 §5 已核实），应改为「自研 `ScopedRolePermission`」 |
-| 04 文档 | `organizations.parent_id` 裸邻接表与高频子树权限查询的矛盾（09 文档 §5） |
-| 07 文档 | 周任务清单需补「日志中间件与埋点」条目：当前 W1 只列了审计 middleware 骨架，未含本文 §2 的请求/SQL 日志，按 1-2 人 12 周的排期该项未计入 |
+| 05 文档 §1 | 技术栈缺 Radix Colors、`django-treebeard`、`django-import-export`、cryptography、structlog、SMTP |
+| 02 文档 §5 | 引用的 `drf-access` 包不存在，已改为「自研 `ScopedRolePermission`」 |
+| 04 文档 §2 | `organizations.parent_id` 裸邻接表无法支撑高频子树查询，已改 treebeard 物化路径 |
+| 04 文档 §6 | 证书编号依赖可变的自增主键，已引入 `certificate_sequences` 独立计数器 |
+| 07 文档 | 排期未计入日志埋点，已加入 W1 并重估工期（12 周 → 15 周） |
+| 03 文档 §6 | 补发后旧证验证页行为未定，已补 §6.1 |
+
+### 11.2 仍开放
+
+| 位置 | 事项 | 优先级 |
+| --- | --- | --- |
+| 工程 | `pre-commit`、ruff/mypy、ESLint/Prettier 配置与 CI 尚无实体文件：CONTRIBUTING.md 要求「CI 全绿」目前无处可绿，DEVELOPMENT 的强制项也无自动拦截 | 阻塞 W1 |
+| 仓库 | 根目录无 README，公开仓库落地页只有一份 CONTRIBUTING 与 docs 索引 | 建议尽快 |
+| 02 §1 | 若将来出现「同届次内按赛项分派审核人」需求，需扩 `scope_type='event'`（扩展点说明在 02 §1，不属于 01 §9） | 观察 |
+| 01 §9 | 数据主体删除请求与记录永久保留的冲突口径待法务确认 | 上线前 |
+| 05 §1 | 未列 `drf-spectacular` 版本基线，而前端类型由它导出的 `openapi.json` 生成（§3.1） | W1 |
+| 部署 | 生产 SMTP 的发信域名、SPF/DKIM 由谁配置未落实；邮箱验证码是注册唯一通道，此项不定则里程碑 1 无法对外上线 | 阻塞交付 |
