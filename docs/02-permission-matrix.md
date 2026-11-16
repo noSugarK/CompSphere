@@ -27,7 +27,7 @@ user_roles (
 | `competition` | `competitions.id` | 在该赛事的所有届次内生效 |
 | `edition` | `competition_editions.id` | 仅在该届次内生效 |
 
-**赛项不是第五种作用域（v1.1）**：`event:*` 与 `roster:publish` 一律在 `edition` 作用域判定，赛项只是届次下的配置对象。理由：作用域每加一层，`resolve_scope()` 的继承组合与测试矩阵都翻倍，而"同一届次内按赛项分派不同审核人"在当前需求中没有实例。若后续出现（例如 V5RC 与 VIQRC 由不同裁判组负责），扩展点是 `user_roles` 增加 `scope_type='event'`，届次级授予向下兼容，不影响已有数据。已记入 01 §9 待决。
+**赛项不是第五种作用域（v1.1）**：`event:*` 与 `roster:publish` 一律在 `edition` 作用域判定，赛项只是届次下的配置对象。理由：作用域每加一层，`resolve_scope()` 的继承组合与测试矩阵都翻倍，而"同一届次内按赛项分派不同审核人"在当前需求中没有实例。若后续出现（例如 V5RC 与 VIQRC 由不同裁判组负责），扩展点是 `user_roles` 增加 `scope_type='event'`，届次级授予向下兼容，不影响已有数据。
 
 **继承规则**（只向下继承，共三条，实现时集中在一个 `resolve_scope()` 函数里）：
 

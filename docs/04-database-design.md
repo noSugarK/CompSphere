@@ -212,7 +212,7 @@ CREATE INDEX idx_team_members_user ON team_members(user_id) WHERE left_at IS NUL
 
 学段派生规则（服务层，不属于状态机）：
 
-1. **计算**：取在队成员（`left_at IS NULL`）中最高的 `school_level`，顺序 `U > HS > MS > ES`（混合年龄队按高年级归类）。
+1. **计算**：取在队成员（`left_at IS NULL`）中最高的 `school_level`，顺序 `U > HS > MS > ES`（混合年龄队按最高学段归类，2026-11-16 产品确认）。
 2. **成员增减后重算并直接落库**。已提交的报名**不受影响**——报名在提交时冻结成员快照与其所属组别（全局规则 1「快照原则」），换人不回溯。因此这里不设"学段变了就拦截成员变更"的规则：那既无数据完整性收益，又把配置层的不一致转嫁成对用户操作的阻断。
 3. 重算导致队伍学段与其存量 `approved` 报名的组别不一致时，由每日一致性任务产出告警清单交主办方判断（多为跨学年正常升级，不需要处置），不阻断任何操作。
 4. `level_source='manual'` 时跳过重算，仅 `platform_admin` / `competition_admin` 可设，写审计日志。

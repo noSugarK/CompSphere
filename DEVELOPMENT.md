@@ -585,8 +585,7 @@ transition: background-color 250ms ease-out, border-color 250ms ease-out;
 | --- | --- | --- |
 | 工程 | `pre-commit`、ruff/mypy、ESLint/Prettier 配置与 CI 尚无实体文件：CONTRIBUTING.md 要求「CI 全绿」目前无处可绿，DEVELOPMENT 的强制项也无自动拦截 | 阻塞 W1 |
 | 仓库 | 根目录无 README，公开仓库落地页只有一份 CONTRIBUTING 与 docs 索引 | 建议尽快 |
-| 02 §1 | 若将来出现「同届次内按赛项分派审核人」需求，需扩 `scope_type='event'`（已记入 01 §9 待决） | 观察 |
+| 02 §1 | 若将来出现「同届次内按赛项分派审核人」需求，需扩 `scope_type='event'`（扩展点说明在 02 §1，不属于 01 §9） | 观察 |
 | 01 §9 | 数据主体删除请求与记录永久保留的冲突口径待法务确认 | 上线前 |
-| 01 §9 | 混合年龄队「取最高学段」需先用真实队伍数据复核 | 里程碑 1 内 |
 | 05 §1 | 未列 `drf-spectacular` 版本基线，而前端类型由它导出的 `openapi.json` 生成（§3.1） | W1 |
 | 部署 | 生产 SMTP 的发信域名、SPF/DKIM 由谁配置未落实；邮箱验证码是注册唯一通道，此项不定则里程碑 1 无法对外上线 | 阻塞交付 |
