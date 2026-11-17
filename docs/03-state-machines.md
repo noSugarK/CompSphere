@@ -1,6 +1,6 @@
 # 03 状态机设计
 
-**版本**：v1.3（2026-11-17）。所有状态迁移必须由服务层 `transition(obj, action, actor)` 统一校验，禁止直接 update 状态字段。状态值即数据库 `status` 列的取值，命名 snake_case。
+**版本**：v1.4（2026-11-17）。所有状态迁移必须由服务层 `transition(obj, action, actor)` 统一校验，禁止直接 update 状态字段。状态值即数据库 `status` 列的取值，命名 snake_case。
 
 v1.1 变更：报名提交前置条件加入赛项/组合/学段校验；§4 拆为赛项与组别两套并补组合级停用；§5 名单单位改为「届次×赛项×组别」；新增 §6.1 作废证书验证页语义、§9 名单公示。
 
@@ -8,7 +8,7 @@ v1.1 变更：报名提交前置条件加入赛项/组合/学段校验；§4 拆
 
 ## 1. 报名状态机（核心）
 
-审核模式为**届次级配置** `approval_mode ∈ {single, two_stage}`。两种模式共用一张状态表，`two_stage` 仅多经过初审态。里程碑 1 只启用 `single`，但状态枚举与迁移表一次定死，避免以后改数据字典。
+审核模式在届次配置为 single/two_stage，每次提交时冻结到 registration_submissions.approval_mode；本轮待审期间不受届次配置变化影响，重新提交才采用当时配置。submit/resubmit 的目标态按新轮次冻结的模式决定（single → pending_review，two_stage → submitted），下表按该模式阅读。两种模式共用一张状态表，`two_stage` 仅多经过初审态。里程碑 1 只启用 `single`，但状态枚举与迁移表一次定死，避免以后改数据字典。
 
 ### 1.1 状态枚举
 
@@ -30,15 +30,15 @@ v1.1 变更：报名提交前置条件加入赛项/组合/学段校验；§4 拆
 | 当前态 | 动作 | 目标态 | 执行角色 | 前置条件 |
 | --- | --- | --- | --- | --- |
 | `draft` | submit | `pending_review` | 提交人（本人/队长/代报教练） | 时间窗内、组合开放；团队报名校验单位/队伍已审核及当前准入模式、学段及材料全过；创建不可变提交版本 |
-| `draft` | delete | （软删） | 提交人 | — |
-| `pending_review` | approve | `approved` | `approval:review_single` | 审核意见可空 |
+| `draft` | delete | （软删） | 提交人 | 保留已有提交历史；清理任务仅处理从未提交的草稿 |
+| `pending_review` | cancel_review | `draft` | 本轮提交人 | 本轮尚无审核决定、届次未关闭（重提仍须在报名时间窗内）；保留并标记原提交已取消，回工作副本 |
+| `pending_review` | approve | `approved` | `approval:review_single` | 审核意见可空；禁止本轮学生成员/提交人自审；设置 approved_submission_no=current_submission_no |
 | `pending_review` | return | `returned` | 同上 | 意见必填 |
 | `pending_review` | reject | `rejected` | 同上 | 意见必填 |
 | `pending_review` | withdraw | `withdrawn` | 提交人 | 未出结果前 |
 | `returned` | resubmit | `pending_review` | 提交人 | 截止前；保留审核历史；重提次数不限但每次留痕 |
 | `returned` | withdraw | `withdrawn` | 提交人 | — |
 | `approved` | reject | `rejected` | approval:reject_approved（本届赛事审核权限） | 意见必填；名单未锁定且无非作废证书，保留原提交版本 |
-| `approved` | revoke_approval | `pending_review` | `competition_admin` | 仅限名单未锁定前，需理由，写日志 |
 | `rejected` | resubmit | `pending_review` | 原有编辑权人 | 修改同一报名，截止前且按当前资格/准入校验；新建提交轮次 |
 | 终态 `withdrawn` | — | — | — | 不可再迁移 |
 
@@ -49,19 +49,23 @@ draft ─submit→ submitted ─org_approve→ org_approved ─final_approve→ 
   ↑               │ org_return ↓↑ resubmit        │ final_return ↓ → returned（重走初审）
   └─ returned/org_returned ──┘                   │ final_reject ↓ → rejected
        submitted ─org_reject→ org_rejected           │
-       提交人在 submitted/org_approved 可 withdraw → withdrawn
+       submitted 尚无本轮审核决定可 cancel_review → draft（保留原提交）
+       org_approved 已经有人审核，不能主动取消修改
 ```
 
 要点：初审驳回进 org_rejected，复审驳回进 rejected；两者均允许修改后 resubmit → submitted。复审退回进 returned，修改后重提同样**从初审重新走**（`resubmit → submitted`）；审核记录 `approval_records` 完整保留每一轮每一步（含 step='org'|'final'、轮次 round_no）。
 
 ### 1.4 时间窗规则
 
+- 本场提交后（含 approved）资料/成员/学段/材料均冻结；队伍档案可经独立审核更新用于其他比赛，本场快照保持原样。
+- cancel_review 只允许当前 pending_review/submitted 且本轮无 approve/reject/return 决定，锁定同一报名与审核动作串行竞争；取消先提交则后到审核返回 40906。已审核或 approved 必须先由审核员驳回再改。取消后下一次 submit 新建轮次，不覆盖旧版。
+- 驳回时清空 approved_submission_no，并作废未锁定名单中该轮的待定获奖条目（保留历史），新轮次需重新评奖；有锁定名单/非作废证书时先按解锁作废流程处理。
 - 个人报名按现有资格规则执行；团队版本/准入规则在里程碑 2 启用。
 - 每次 submit/resubmit 新建 registration_submissions 并冻结本轮成员/文件；returned/rejected/org_returned/org_rejected 只编辑工作副本，不更新历史提交，审核必须指明当前 submission_no，过期操作返回 40906。
 - two_stage 同样允许 approved → reject → rejected（approval:reject_approved），重提回到 submitted，重走初审；rejected/org_rejected 均不是终态，仍使用原报名编号。驳回后不自动清除原提交记录或取消唯一性占用。
 - 已通过报名被驳回后立即退出通过名单；截止后允许驳回但不自动延长重提窗口，主办方如允许补正须先调整有效报名时间窗。
 - 提交/重提/撤回仅在 `enroll_start ≤ now ≤ enroll_end` 内允许；已 `pending_review` 的存量报名在截止后仍可被审核。
-- 截止时 `draft` 状态报名不自动作废（保留 30 天后定时清理，P1）。
+- 截止时 `draft` 状态报名不自动作废（仅从未提交的草稿可在 30 天后清理，已有提交历史永久保留，P1）。
 
 ## 2. 赛事状态机
 
@@ -81,7 +85,7 @@ draft ─submit→ submitted ─org_approve→ org_approved ─final_approve→ 
 | --- | --- | --- |
 | `draft` | 配置中 | create/edit |
 | `published` | 已发布（对外可见） | 时间窗推导子状态：未开始 / `enrolling` 报名中 / `enroll_ended` 报名结束 / 进行中 / `finished` 已结束 |
-| `closed` | 关闭（获奖名单锁定 + 证书发放完成后手动关闭） | 仅从 finished 进入；closed 后除证书补发/作废外全冻结 |
+| `closed` | 关闭（获奖名单锁定 + 证书发放完成后手动关闭） | 仅从 finished 进入；closed 后业务写入冻结，历史仅管理端按权限读取，普通门户/本人业务历史隐藏；证书补发/作废与必要公示下架仍可进行 |
 
 `enrolling` 等由 `now` 与时间窗计算得出（存储上只有 `draft/published/closed`，派生状态不入库，防止定时器忘推状态）。
 
@@ -108,14 +112,14 @@ confirmed/issued ─unlock(reason)→ editing   # 仅 competition_admin，留审
 ## 6. 证书状态机
 
 ```
-queued（Celery 任务已排） → generated（PDF 就绪） → issued（已发放，持有人可见）
+queued（生成请求已持久化，等待投递/执行） → generated（PDF 就绪） → issued（已发放，持有人可见）
 queued/generated/issued/failed → revoked（作废，issued 的验证页显示无效）
 issued → reissue 动作 → 旧证 revoked + 新证 queued（reissue_of 指向旧证）
 queued → failed（渲染或上传失败，重试耗尽）
 failed → queued（显式重试，复用原证书行与编号）
 ```
 
-约束：一个「award_record × recipient_member_id」同时最多 1 张非 revoked 证书；成员取报名冻结名单，队长/member 均发证，coach 不自动发证。重试复用证书行和编号，补发新建行；每张原证只允许一个直接后继。`revoke` 需理由；issued、queued、generated、failed 均可作废，生成任务锁定证书并复核状态，避免作废后回写生效。
+约束：一个「award_record × recipient_member_id」同时最多 1 张非 revoked 证书；获奖仅面向学生，成员取报名冻结学生名单，队长/member 均发证，coach 不获奖或发证。重试复用证书行和编号，补发新建行；每张原证只允许一个直接后继。`revoke` 需理由；issued、queued、generated、failed 均可作废，生成任务锁定证书并复核状态，避免作废后回写生效。
 
 ### 6.1 作废证书在公开验证页的表现（v1.1 补定）
 
@@ -137,9 +141,11 @@ failed → queued（显式重试，复用原证书行与编号）
 
 - 用户账号：`pending` → `active`（完成档案）；`active` ⇄ `disabled`（仅 platform_admin）。
 - 单位运行状态 active ⇄ suspended；新建申请与正式单位分开，只有审核通过才创建正式单位。
-- 单位/队伍申请共用流程：draft → submitted → approved / returned / rejected，submitted 可 withdraw → withdrawn。submitted 后提案锁定；returned/rejected/withdrawn 均保留，重提新建申请。审核意见在退回/驳回时必填，审核人不得为申请人。
-- 单位创建由平台审核；队伍申请由所属单位管理员审核，平台可代审。队伍创建批准时建正式队伍并绑定首个已审核申请；修改批准时比较 base_revision_id 与当前版本，一致才原子替换，否则 40906。一个正式队伍只允许一份 draft/submitted 变更申请。
-- 队伍运行状态 active ⇄ disbanded 独立于资料版本；解散按既有权限执行。成员 joined_at/left_at 仅在变更批准后更新，旧成员关系和旧提案不删除；修改待审不阻断按旧审核版本报名。
+- 单位/队伍/证件申请共用流程：draft → submitted → approved / returned / rejected，submitted 尚无审核决定时可 cancel-and-edit：原申请置 withdrawn，复制关联新 draft 返回新 ID。submitted 后提案锁定；returned/rejected/withdrawn 均保留，重提新建申请。审核意见在退回/驳回时必填，审核人不得为申请人。
+- 单位创建由平台审核；队伍由单位管理员统一管理，申请由另一名有权单位管理员或平台审核，禁止自审；教练不修改队伍资料或成员。队伍创建批准时建正式队伍并绑定首个已审核申请；修改批准时比较 base_revision_id 与当前版本，一致才原子替换，否则 40906。一个正式队伍只允许一份 draft/submitted 变更申请。
+- 证件更正：submitted → approved 时校验 base_identity_version、新证件唯一性及审核范围，禁止申请人/证件所属人自审；事务内切换当前绑定并释放旧号、递增会话版本。退回/驳回/取消不改变当前证件。
+- 队员换队按“原队退队审核生效→新队入队审核生效”执行；一个学生全平台仅一支当前队伍，退出不删除成员历史，不改变本场冻结阵容。并发入队冲突 40908，不允许新队批准顺带退出旧队。
+- 队伍运行状态 active ⇄ disbanded 独立于资料版本；解散按既有权限执行。成员 joined_at/left_at 在变更批准后更新；解散时同事务结束当前成员关系并审计，旧成员关系和旧提案不删除；修改待审不阻断按旧审核版本报名。
 - 准入名单 active ⇄ revoked，按届次管理；变更与提交/重提/批准使用同一届次行锁。名单移除不自动迁移报名状态，批准前重新确认准入。
 
 ## 8. 定时器与派生规则汇总
@@ -148,9 +154,9 @@ failed → queued（显式重试，复用原证书行与编号）
 | --- | --- | --- |
 | 每 5 分钟 | 届次报名窗开关（纯派生，无需写库） | 前端/API 动态计算 |
 | enroll_end 后 1h | 给未审完的报名的审核人发提醒 | Celery beat |
-| roster confirmed | 自动排队批量生成证书 | transaction.on_commit → Celery |
-| 每日 | 清理超期 draft 报名（30 天） | Celery beat（P1） |
-| 每日 | 队伍学段与存量 approved 报名组别不一致清单 | Celery beat，仅产出告警供主办方核对，不自动改数据、不阻断操作（04 §3 规则 3） |
+| roster confirmed | 自动排队批量生成证书 | 业务事务写 outbox → dispatcher → Celery |
+| 每日 | 清理从未提交的超期 draft 报名（30 天） | Celery beat（P1） |
+| 每分钟 | outbox 待投/租约超期记录补投，失败告警 | 持久化事件 + 幂等消费，不依赖 on_commit 成功 |
 
 ## 9. 名单公示（非状态机，v1.1）
 
@@ -158,5 +164,5 @@ failed → queued（显式重试，复用原证书行与编号）
 
 - `publish`：写 `roster_published_at=now()`，要求 `edition.status='published'` 且 `roster_publication != 'none'`；由 `roster:publish`（届次作用域）执行，写审计。
 - `unpublish`：由 `roster:unpublish` 执行，清空 `roster_published_at`，公开页立即返回 404（判定顺序见 02 §4.7），用于发现名单有误时快速下架。
-- 已公示内容随 `registrations.status` 实时变化：某报名被 `revoke_approval` 撤回后自动从公开页消失，不需重新发布——这是选"开关而非状态"的直接收益。
+- 已公示内容随 `registrations.status` 实时变化：某报名被驳回后自动从公开页消失，不需重新发布——这是选"开关而非状态"的直接收益。
 - 档位变更（`open`→`login`→`none`）不通知持证人；已流出的公示截图无法撤回，需在主办方说明中写明。

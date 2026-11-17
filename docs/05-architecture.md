@@ -1,8 +1,8 @@
 # 05 技术架构
 
-**版本**：v1.3（2026-11-17）
+**版本**：v1.4（2026-11-17）
 
-v1.1 变更：技术栈补 treebeard / import-export / cryptography / structlog / Radix Colors / SMTP；app 划分新增 `events`；认证流改为邮箱验证码，并写明发码失败不可静默返回成功。
+v1.4：补无邮箱代建、证件登录与更正、事务 outbox；验证码受理与实际送达分离。
 
 ---
 
@@ -24,13 +24,13 @@ v1.1 变更：技术栈补 treebeard / import-export / cryptography / structlog 
 | 认证 | djangorestframework-simplejwt | 最新 | Access 30min + Refresh 7d 轮转 |
 | 数据库 | PostgreSQL | 16 | |
 | 缓存/队列 | Redis | 7.x | 验证码、限流、Celery broker |
-| 异步 | Celery | 5.x | 业务通知邮件、证书 PDF、导入任务；验证码邮件同步发送 |
+| 异步 | Celery | 5.x | 业务通知邮件、证书 PDF、导入任务；验证码也通过持久化 outbox 投递 |
 | 定时 | django-celery-beat | | 状态提醒、清理 |
 | 对象存储 | MinIO（开发/自建）/ S3 兼容 | | 报名材料、证书 PDF，私有桶 + 预签名 URL |
 | 组织树 | django-treebeard | 2.x | Materialized Path，`organizations` 继承 `MP_Node`（v1.1，取代裸 parent_id 递归查询） |
 | 导入导出 | django-import-export | 4.x | 获奖名单/人员 Excel；异步任务里直接调 `Resource` API，不走 admin 集成（v1.1） |
 | 邮件 | Django email backend + SMTP | | 注册与找回密码验证码、审核结果通知；发信域名需配 SPF/DKIM，否则验证码邮件进垃圾箱等于注册不可用（v1.1，上线前置条件） |
-| 字段加密 | cryptography（Fernet） | 42+ | 身份证号列加密，P0 交付；密钥 `FIELD_ENCRYPTION_KEY`，哈希 pepper 另用 `ID_HASH_PEPPER`（v1.1） |
+| 字段加密 | cryptography（Fernet） | 42+ | 身份证/护照列加密，P0 交付；密钥 `FIELD_ENCRYPTION_KEY`，哈希 pepper 另用 `DOC_HASH_PEPPER`（v1.1） |
 | 日志 | structlog | 24+ | JSON 输出 stdout，`request_id` 贯穿；SQL 耗时经 `connection.execute_wrapper` 采集（DEVELOPMENT.md §2） |
 | 反向代理 | Nginx | | 静态资源、路由到 gunicorn |
 | WSGI | gunicorn | | 第一版 WSGI；确需 ASGI 时另行配置 worker |
@@ -47,7 +47,7 @@ compsphere-server/
 ├── config/                     # settings、urls、celery、asgi/wsgi
 ├── apps/
 │   ├── accounts/               # users、auth、JWT、邮箱验证码、账号状态
-│   ├── profiles/               # user_profiles、人员信息审核、身份证加解密
+│   ├── profiles/               # user_profiles、人员信息审核、证件加解密
 │   ├── orgs/                   # organizations（treebeard 树）、members、单位创建审核申请
 │   ├── rbac/                   # roles、permissions、user_roles、ScopedRolePermission 核心
 │   ├── teams/                  # 队伍正式资料、变更申请/已审核版本、成员历史
@@ -76,15 +76,16 @@ compsphere-server/
 
 ## 3. 关键横切设计
 
-### 3.1 认证流
+### 3.1 账号、证件与认证
 
-- 注册：邮箱 + 验证码（`verification_codes` 存哈希，10 分钟有效、60 秒限发 1 封、试错 5 次作废）→ 创建 `users(status=pending)` → 首登完善基本档案；作为参赛成员提交前补齐证件并加密落库→ 完善后置 `active`。短信通道本期不提供（P2），手机号只作必填联系方式，不作为身份凭证。
-- 登录：密码 → SimpleJWT 双 token。Access 仅存前端内存，Refresh 存 HttpOnly Cookie（生产 Secure、SameSite=Strict、Path=/api/v1/auth）；刷新/登出校验 Origin 与 CSRF token，GET 不改变会话。前端 401 只合并刷新一次，失败转登录，不在 localStorage 保存 token。
-- 找回密码：邮箱验证码重置，与注册复用同一发码链路（`purpose` 区分）。
-- 验证码邮件同步调用 SMTP，超时 5 秒；仅在 SMTP 接受后返回 200，失败返回 503 并使该码失效；200 不保证收件箱送达。普通业务通知仍走 Celery。对不符合目的条件的邮箱返回相同通用文案，避免以业务响应枚举账号。
-- 发码按邮箱/用途 60 秒一封，IP 每小时最多 20 次（含被抑制的请求）；Redis 原子限频。验证码用途隔离，数据库只存哈希，校验与 attempts/consumed_at 在行锁事务内完成，最多试错 5 次且只能成功消费一次；重发使旧码失效。
-- Refresh 7 天轮转并拉黑旧值；登出拉黑该 Refresh 和当前 Access jti（Redis 保留至过期），清除 Cookie。JWT 携带 users.token_version，密码重置/禁用递增版本，Access/Refresh 每次认证校验版本及账号状态，旧 token 立即失效。并发刷新由前端合并，重放旧 Refresh 返回 401。
-- `GET /api/v1/me/` 返回 user + profile + **grants 列表**（角色×作用域展开），前端据此渲染菜单与按钮。
+- 自助注册走邮箱验证码，所属单位管理员可代建无邮箱学生账户。username 使用随机系统标识；代建/重置的临时密码强随机、短期有效（7 天），仅交付一次，不出现在日志、导出或 outbox，首次登录只允许改密/补齐资料。
+- 登录显式选择 email/document；证件登录输入 type、country、number、password，以 HMAC 查当前绑定后验证 Argon2。身份证 CN 校验格式/校验位；护照按签发国校验，规范化去首尾空格、字母大写且保留前导零；不以格式正确代替实名核验。用户名/证件/密码错误统一 40105，按账号摘要+IP 限流。
+- 首次证件绑定与已绑定更正分开。更正须单位/平台管理员审核，禁止自审和审核自己的证件；单位只处理本单位普通成员，涉及管理账户/争议由平台。批准事务内检查 identity_version 与唯一性后切换并释放旧号、递增 token_version；旧会话立即失效，旧证件不能再登录旧账号，历史报名不更改。
+- 已验证邮箱可自助找回密码。无邮箱代建账户可由原代建单位管理员核验后重置（仍在本单位、无管理权限），平台可处理争议；不能借代建或重置接口接管已有账户。重置后 must_change_password=true 并撤销旧会话，通知与审计同事务写入 outbox。
+- Access 仅在前端内存，Refresh 为 HttpOnly/Secure/SameSite=Strict Cookie（Path=/api/v1/auth）；刷新/登出校验 Origin/CSRF。Refresh 7 天轮转拉黑旧值；登出拉黑 Refresh 和当前 Access jti，JWT 每次校验 token_version/账号状态；待改密会话严格限制为改密等必要端点。
+- 发码 HTTP 路径不查询账号存在性：合法格式和限频通过后，一律原子写验证码请求及 outbox，返回 202 通用文案，不返回账户状态或投递状态；受理存储不可用才统一 503。任务端判断 purpose/账户条件并发送，不符合条件也走同一受理结果。
+- 邮箱/用途 60 秒一次，IP 每小时 20 次；哈希用于验证，加密 code 仅供发送重试，发送完成/过期即清除。验证码 10 分钟、最多 5 次失败、行锁单次消费；重发使旧码失效。SMTP 超时 5 秒只影响任务重试/告警，不改变匿名请求响应。
+- GET /me 返回用户、档案、grants 与 locale/theme，证件只显示类型/签发国/末四位；无邮箱通知优先站内，邮件仅送已验证邮箱。
 
 ### 3.2 文件流
 
@@ -95,23 +96,28 @@ compsphere-server/
 
 ### 3.3 证书生成流
 
-名单确认（roster → confirmed）→ 按冻结报名成员（排除 coach）在事务内幂等创建 certificates(queued) → 事务提交后派发任务 → Celery chord 并发生成 PDF（WeasyPrint 渲染 HTML 模板，字体/版式在 `templates/certificate/`）→ 生成 `qr_token` 指向 `/verify/{qr_token}` 公开页（Nginx 直连 Django，AllowAny 限流）→ 每张 generated 后置 issued 并通知对应成员 → 本名单全部证书 issued 后名单才进入 issued。
-失败重试 3 次后置 failed 并告警，名单保留 confirmed；重试复用原行和编号，不重复建证。任务持有行锁复核状态，已 revoked 时停止；补发只允许相同获奖记录与成员，并使用新编号。
+名单确认（roster → confirmed）→ 按 award_records 固定的审核通过 submission_no 及其学生队员（不包含教练，奖项无组织/单位类别）在事务内幂等创建 certificates(queued) → 同事务写 async_outbox → dispatcher 至少一次投递 Celery chord 并发生成 PDF（WeasyPrint 渲染 HTML 模板，字体/版式在 `templates/certificate/`）→ 生成 `qr_token` 指向 `/verify/{qr_token}` 公开页（Nginx 直连 Django，AllowAny 限流）→ 每张 generated 后置 issued 并通知对应成员 → 本名单全部证书 issued 后名单才进入 issued。
+名单解锁递增 award_rosters.version，证书任务与回调必须匹配 roster_version，旧回调不能发放新版名单；旧获奖条目有证书引用时只退役并新建，不改写原条目。失败重试 3 次后置 failed 并告警，名单保留 confirmed；重试复用原行和编号，不重复建证。任务持有行锁复核状态，已 revoked 时停止；补发只允许相同获奖记录与成员，并使用新编号。
 
 ### 3.4 单位/队伍审核、准入与提交历史
 
 - 申请人/审核人、正式版本指针与 access_snapshot 由后端生成，不接受客户端指定；提案只接受业务字段白名单，复用原申请时再次校验同申请人及单位/队伍归属。
-- 单位创建先保存申请，平台批准事务内创建组织树节点；队伍创建/修改由所属单位管理员审核、平台可代审，禁止申请人自审。队伍申请包含完整提案，修改带 base_revision_id；仅批准时切换正式资料与成员，保留旧审核版本。
-- submit/resubmit 锁定届次、队伍、报名（所有入口统一此顺序），团队分支校验单位启用、队伍已审核版本、准入及资格，个人分支按个人资格校验后新建 registration_submissions 和本轮成员/文件，再切 current_submission_no。名单维护也先锁届次；队伍批准锁队伍再锁申请。历史快照按轮次读取，不从当前队员/档案重建。
+- 单位创建先保存申请，平台批准事务内创建组织树节点；队伍创建/修改申请由所属单位管理员统一发起，由另一名有权单位管理员或平台审核，禁止申请人自审。队伍申请包含完整提案，修改带 base_revision_id；仅批准时切换正式资料与成员，保留旧审核版本。
+- 队员全平台唯一当前归属，由 team_members 的部分唯一索引兜底；原队退队批准后才能加入新队，批准按队伍→学生账户（user_id 升序）加锁，记录成员时间段和审核审计，不覆盖旧行。队伍管理写入仅单位管理员（范围内全部队伍）或平台可用；教练查询必须额外校验本单位，代报限本人负责队伍，无队伍资料/成员写权限；管理员交接仅变更角色并失效授权缓存，不建离职档案。
+- submit/resubmit 锁定届次、队伍、报名（所有入口统一此顺序），团队分支校验单位启用、队伍已审核版本/赛项身份、准入及所选学段资格，个人分支按个人资格校验后新建 registration_submissions（含当时审核模式与提交人所选学段）和本轮成员/文件，再切 current_submission_no。名单维护也先锁届次；队伍批准锁队伍再锁申请。历史快照按轮次读取，不从当前队员/档案重建。
 - 报名驳回可修改重提（同一编号、新 submission_no），包括已通过报名经授权驳回；锁定名单或非作废证书存在时拒绝该动作。审核提交的 submission_no 与当前版本不符时返回 40906，防止旧页面审批新内容。
-- allowlist 按本届正式队伍编号映射 team_id；预览记录导入摘要与版本，确认时重查权限、匹配及 team_access_version，禁止导入身份/成员资料并自动放行。通过名单公示与准入名单是独立资源。
+- allowlist 按本届「队号 + 稳定赛项代码」映射 team_id；预览记录导入摘要与版本，确认时重查权限、匹配及 team_access_version，禁止导入身份/成员资料并自动放行。通过名单公示与准入名单是独立资源。
 - 当前报名是跨届历史只读摘要的授权入口；分页显式投影公开人员字段与历届结果，隔离历史附件/联系方式/证件/照片及内部意见，每次查询审计。团队相关基座/接口在里程碑 2 启用。
 
-### 3.5 高峰与削峰
+### 3.5 异步可靠性
+
+业务写入与 outbox 记录使用同一事务；on_commit 仅作唤醒优化，不承担可靠投递。dispatcher 用 SKIP LOCKED/租约领取，投递失败按退避保留重试，崩溃租约过期可重领；成功标 dispatched。确认丢失可能重复投递，任务按 business_key/业务状态幂等，不宣称恰好一次。超阈值告警并保留失败记录供重放，定时对账 queued 证书与 outbox。payload 只存 ID、版本、locale，不含敏感正文。
+
+### 3.6 高峰与削峰
 
 报名提交 = 单事务多表写（registrations + members 快照 + files + approval 初始记录），数据库唯一索引兜底防重复；截止前流量靠 Nginx + Redis 限流（用户级 10 req/min）。第一版不引入消息队列削峰提交，Celery 只承担异步任务。
 
-### 3.6 审计
+### 3.7 审计
 
 Django middleware 标记请求上下文（actor/ip/request_id），service 层显式写 audit_log（关键动作清单见 PRD §3.8）；`detail` 存变更 diff，敏感值脱敏后入日志。
 
@@ -145,4 +151,4 @@ compsphere-web/
 
 - 配置全部环境变量注入（`django-environ`），仓库只提交 `.env.example`。
 - 环境：dev（docker compose 全家桶）/ staging / prod；prod 至少：应用 2 worker、Postgres 独立、每日 `pg_dump` + 文件增量同步、30 天保留。
-- 密钥：JWT SIGNING、SECRET_KEY、MinIO key、FIELD_ENCRYPTION_KEY / ID_HASH_PEPPER 分环境独立，禁止入仓。
+- 密钥：JWT SIGNING、SECRET_KEY、MinIO key、FIELD_ENCRYPTION_KEY / DOC_HASH_PEPPER 分环境独立，禁止入仓。
