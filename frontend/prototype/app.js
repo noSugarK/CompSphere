@@ -45,6 +45,7 @@ const state = {
 };
 const tr = (zh, en) => state.lang === 'zh' ? zh : en;
 const labels = {
+  demo: ['演示导航', 'Demo explorer'],
   discover: ['全部赛事', 'All competitions'], 'public-event': ['赛事详情', 'Competition detail'],
   membership: ['队伍与参赛资格', 'Team & eligibility'], transfers: ['特批换队', 'Transfer approvals'],
   edition: ['届次与赛项', 'Edition setup'], history: ['历史档案', 'Historical records'],
@@ -325,7 +326,7 @@ function publicLayout(content) { return renderPublicLayout(content); }
 function portal() { return renderDiscovery(); }
 function login() {
   const documentMode = state.tab !== 'email';
-  return publicLayout(`<div class="login-grid"><section class="login-intro"><div class="eyebrow">WELCOME TO COMPSPHERE</div><h1 id="page-title" tabindex="-1">${tr('下一场挑战，<br>从这里开始。', 'Your next challenge<br>starts here.')}</h1><p class="muted" style="margin-top:22px">${tr('学生、教练与赛事组织者，共用一个清晰的竞赛空间。', 'One clear competition workspace for students, coaches and organizers.')}</p><div class="divider"></div><p class="muted small">${tr('单位代建账户可使用证件号和初始密码登录，无需绑定邮箱。', 'Organization-created student accounts can sign in with a document number and temporary password. No email required.')}</p></section><form id="login-form" class="panel login-card"><h2>${tr('欢迎回来', 'Welcome back')}</h2><p class="muted small">${tr('登录你的竞云账户', 'Sign in to your CompSphere account')}</p>${tabs([['document', tr('证件登录', 'Document')], ['email', tr('邮箱登录', 'Email')]], documentMode ? 'document' : 'email')}${documentMode ? `<div class="form-grid">${selectField('login-document', tr('证件类型', 'Document type'), [['id', tr('身份证', 'ID card')], ['passport', tr('护照', 'Passport')]])}${selectField('login-country', tr('签发国', 'Issuing country'), [['CN', 'CN · 中国'], ['US', 'US · United States'], ['GB', 'GB · United Kingdom']])}</div>${field('login-number', tr('证件号码', 'Document number'), '', 'text', 'required autocomplete="username"')}` : field('login-email', tr('邮箱', 'Email'), '', 'email', 'required autocomplete="username"')}${field('login-password', tr('密码', 'Password'), '', 'password', 'required autocomplete="current-password"')}<div class="actions" style="justify-content:space-between"><span class="muted small">${tr('当前为演示登录，不验证真实凭据', 'Preview only; no real authentication')}</span>${btn(tr('忘记密码', 'Forgot password'), 'forgot-password', 'text small')}</div><button type="submit" class="button primary">${tr('登录', 'Sign in')}${icon('arrow')}</button><p class="muted small" style="margin-top:18px">${tr('没有账户？可自助邮箱注册或联系单位管理员。', 'Register with email, or ask your organization administrator.')}</p>${btn(tr('自助注册', 'Create account'), 'register-account', 'text small')}</form></div>`);
+  return publicLayout(`<div class="login-grid"><section class="login-intro"><div class="eyebrow">WELCOME TO COMPSPHERE</div><h1 id="page-title" tabindex="-1">${tr('下一场挑战，<br>从这里开始。', 'Your next challenge<br>starts here.')}</h1><p class="muted" style="margin-top:22px">${tr('学生、教练与赛事组织者，共用一个清晰的竞赛空间。', 'One clear competition workspace for students, coaches and organizers.')}</p><div class="divider"></div><p class="muted small">${tr('单位代建账户可使用证件号和初始密码登录，无需绑定邮箱。', 'Organization-created student accounts can sign in with a document number and temporary password. No email required.')}</p></section><form id="login-form" class="panel login-card"><div class="demo-login-entry">${link(tr('免登录选择演示账号', 'Explore demo accounts without signing in'), 'demo', 'primary', 'arrow')}</div><h2>${tr('欢迎回来', 'Welcome back')}</h2><p class="muted small">${tr('登录你的竞云账户', 'Sign in to your CompSphere account')}</p>${tabs([['document', tr('证件登录', 'Document')], ['email', tr('邮箱登录', 'Email')]], documentMode ? 'document' : 'email')}${documentMode ? `<div class="form-grid">${selectField('login-document', tr('证件类型', 'Document type'), [['id', tr('身份证', 'ID card')], ['passport', tr('护照', 'Passport')]])}${selectField('login-country', tr('签发国', 'Issuing country'), [['CN', 'CN · 中国'], ['US', 'US · United States'], ['GB', 'GB · United Kingdom']])}</div>${field('login-number', tr('证件号码', 'Document number'), '', 'text', 'required autocomplete="username"')}` : field('login-email', tr('邮箱', 'Email'), '', 'email', 'required autocomplete="username"')}${field('login-password', tr('密码', 'Password'), '', 'password', 'required autocomplete="current-password"')}<div class="actions" style="justify-content:space-between"><span class="muted small">${tr('当前为演示登录，不验证真实凭据', 'Preview only; no real authentication')}</span>${btn(tr('忘记密码', 'Forgot password'), 'forgot-password', 'text small')}</div><button type="submit" class="button primary">${tr('登录', 'Sign in')}${icon('arrow')}</button><p class="muted small" style="margin-top:18px">${tr('没有账户？可自助邮箱注册或联系单位管理员。', 'Register with email, or ask your organization administrator.')}</p>${btn(tr('自助注册', 'Create account'), 'register-account', 'text small')}</form></div>`);
 }
 function verify() {
   return publicLayout(`${pageHead(tr('证书真伪验证', 'Verify a certificate'), tr('输入证书编号，查看最小有效性结果。', 'Enter a certificate number to check its validity.'))}<section class="panel" style="max-width:650px;margin:32px auto"><form id="verify-form" class="form-section"><h2>${tr('查询证书', 'Certificate lookup')}</h2>${field('verify-number', tr('证书编号', 'Certificate number'), '', 'text', 'required placeholder="CS-2026-00001"')}<button class="button primary" style="margin-top:18px" type="submit">${icon('shield')}${tr('验证证书', 'Verify')}</button></form><div id="verify-result"></div></section>`);
@@ -387,7 +388,7 @@ function importDialog(kind) {
 }
 
 function pageAllowed(page) {
-  const shared = ['competition', 'competitions', 'discover', 'public-event', 'portal', 'login', 'verify'];
+  const shared = ['demo', 'competition', 'competitions', 'discover', 'public-event', 'portal', 'login', 'verify'];
   if (shared.includes(page)) return true;
   if (['profile','settings','notices'].includes(page)) return state.role !== 'visitor';
   if (page === 'registration') return can('registration:write');
@@ -409,14 +410,14 @@ function render() {
   if (state.page === 'dashboard' && !can('admin:access')) state.page = 'portal';
   applyTheme(); syncUrl(); document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
   document.title = `${label(state.page)} · ${tr('竞云界面预览', 'CompSphere preview')}`;
-  const pages = { discover: competitions, 'public-event': competitionDetail, membership, transfers, edition, history: historicalRecords, dashboard, competitions, competition: competitionDetail, registrations, registration: registrationForm, reviews, teams, students, requests, awards, certificates, access, imports, organizations, roles: rolesPage, profile, settings, notices, audit, portal, login, verify };
+  const pages = { demo: renderDemoExplorer, discover: competitions, 'public-event': competitionDetail, membership, transfers, edition, history: historicalRecords, dashboard, competitions, competition: competitionDetail, registrations, registration: registrationForm, reviews, teams, students, requests, awards, certificates, access, imports, organizations, roles: rolesPage, profile, settings, notices, audit, portal, login, verify };
   if (!pageAllowed(state.page)) {
     const body = pageHead(tr('暂无访问权限', 'Access unavailable'), tr('如需访问，请联系管理员分配相应权限。', 'Contact your administrator if you need access.')) + empty(tr('页面不在当前权限范围内', 'Outside your access scope'), '', link(tr('返回赛事门户', 'Back to competitions'), 'portal'));
     $('#app').innerHTML = can('admin:access') ? shell(body) : renderPublicLayout(body, true);
     return;
   }
   const content = (pages[state.page] || dashboard)();
-  $('#app').innerHTML = ['portal', 'login', 'verify'].includes(state.page) ? content : can('admin:access') && !['discover','public-event'].includes(state.page) ? shell(content) : renderPublicLayout(content, true);
+  $('#app').innerHTML = ['portal', 'login', 'verify', 'demo'].includes(state.page) ? content : can('admin:access') && !['discover','public-event'].includes(state.page) ? shell(content) : renderPublicLayout(content, true);
 }
 function downloadSample() {
   const text = '\uFEFFteam_number,event,team_name,status\n' + state.registrations.map((r) => [r.code, r.event, r.team, r.status].join(',')).join('\n');
