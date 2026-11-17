@@ -6,7 +6,7 @@
 node frontend/prototype/server.mjs
 ```
 
-打开 <http://127.0.0.1:4173>，或直接打开 index.html。根入口为赛事门户；学生/教练的事务在门户与个人中心完成，管理员/审核员使用控制台。界面没有身份切换栏，菜单按演示账号的权限显示；顶栏可切换语言与主题。
+打开 <http://127.0.0.1:4173>，或直接打开 index.html。点击顶栏「演示导航」（`#demo`）可免登录进入六种模拟账号，并直达个人档案、学生账户、报名审核及系统后台。根入口为赛事门户；学生/教练的事务在门户与个人中心完成，管理员/审核员使用控制台。界面没有身份切换栏，菜单按演示账号的权限显示；顶栏可切换语言与主题。
 
 - 产品界面不提供设计切换条。独立预览账号由 URL 的 `role=student|coach|org|event|reviewer|platform` 指定；不带参数为访客。正式实现改由后端登录会话返回 grants，URL 不是实际授权机制。
 - 示例：`/?role=student#portal` 学生门户、`/?role=org#dashboard` 单位控制台、`/?role=reviewer#reviews` 审核台。
