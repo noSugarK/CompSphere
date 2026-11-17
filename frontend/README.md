@@ -1,12 +1,12 @@
 # compsphere-web（前端占位）
 
-**技术栈**：Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router + Axios。结构约定见 [`../docs/05-architecture.md`](../docs/05-architecture.md) §4。
+**技术栈**：Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router + Axios + vue-i18n。结构约定见 [`../docs/05-architecture.md`](../docs/05-architecture.md) §4。
 
-本目录当前为**占位**，尚未初始化代码。初始化：
+本目录当前为**占位**，尚未初始化代码。初始化前先将本说明临时移出目录，避免 Vite 对非空目录的覆盖提示；完成后恢复说明并保留生成的脚本信息。使用 npm，与现有 Dockerfile 保持一致：
 
 ```bash
 npm create vite@latest . -- --template vue-ts
-npm i element-plus pinia vue-router axios
+npm i element-plus pinia vue-router axios vue-i18n
 npm i -D unplugin-auto-import unplugin-vue-components   # Element Plus 按需引入
 ```
 
@@ -16,7 +16,8 @@ npm i -D unplugin-auto-import unplugin-vue-components   # Element Plus 按需引
 frontend/
 ├── src/
 │   ├── api/          # 各域 API 模块（禁止裸 axios 出 axios 实例文件）
-│   ├── stores/       # auth(token+grants) / app / notifications
+│   ├── stores/       # auth(token+grants) / app(locale+theme) / notifications
+│   ├── locales/      # zh-CN.ts / en-US.ts
 │   ├── router/       # 动态权限路由守卫
 │   ├── layouts/      # AdminLayout / BlankLayout
 │   ├── views/        # public / participant / admin
@@ -25,6 +26,8 @@ frontend/
 ├── .env.development  # VITE_API_BASE=http://localhost:8000/api/v1
 └── 构建入口见 ../docker/frontend.Dockerfile
 ```
+
+编码遵循 [CODING_STANDARDS.md](../CODING_STANDARDS.md)，界面遵循 [FRONTEND_DESIGN_GUIDELINES.md](../FRONTEND_DESIGN_GUIDELINES.md)。
 
 ## 开发约束提醒
 

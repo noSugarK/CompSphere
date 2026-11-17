@@ -30,6 +30,7 @@ frontend/dist/
 
 # 备份与临时
 backup_*.dump
+backups/
 *.log
 .DS_Store
 .idea/
