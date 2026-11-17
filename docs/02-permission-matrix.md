@@ -1,6 +1,6 @@
 # 02 权限矩阵与 RBAC 作用域模型
 
-**版本**：v1.4（2026-11-17）。本文档是后端 `permissions` / `roles` / `user_roles` 三表与 DRF Permission 类实现的唯一依据，开发前先对齐此表。
+**版本**：v1.6（2026-11-17）。本文档是后端 `permissions` / `roles` / `user_roles` 三表与 DRF Permission 类实现的唯一依据，开发前先对齐此表。
 
 v1.4：补代建与证件审核、未审取消、关闭历史权限；赛事管理角色仅平台分配。
 
@@ -52,10 +52,10 @@ has_perm(user, perm_code, scope_type, scope_id):
 
 | 资源 | actions |
 | --- | --- |
-| `user` | `create` `read` `update` `disable` `import` `export` `assign_role` `provision` `reset_provisioned_password` |
+| `user` | `create` `read` `update` `disable` `import` `export` `assign_role` `provision` `reset_student_password` |
 | `profile` | `read_own` `update_own` `read` `update` `review` `request_identity_change` `review_identity_change` |
-| `org` | `create` `read` `update` `disable` `manage_members` `approve_join` `apply_create` `review_create` |
-| `team` | `create` `read` `update` `dissolve` `manage_members` `review` `read_review_history` |
+| `org` | `create` `read` `update` `disable` `manage_members` `approve_join` `apply_create` `review_create` `request_transfer` `release_transfer` `accept_transfer` `mediate_transfer` |
+| `team` | `create` `read` `update` `dissolve` `manage_members` `review` `read_review_history` `leave_own` `request_transfer` `review_transfer` |
 | `competition` | `create` `read` `update` `publish` `archive` `manage_admins` `manage_units` |
 | `edition` | `create` `read` `update` `publish` `close` `manage_team_access` |
 | `group` | `create` `read` `update` `enable_disable` |
@@ -80,22 +80,32 @@ has_perm(user, perm_code, scope_type, scope_id):
 | `registration:create/read_own/update/withdraw/delete_draft` | ✅ | ✅(代本队) | — | — | — | ✅ |
 | `team:read` | — | ✅(本单位，非单位子树) | ✅(own org 树) | — | — | ✅ |
 | `team:create/update/manage_members` | — | — | ✅(own org 树，统一管理全部队伍) | — | — | ✅ |
+| `team:leave_own/request_transfer` | ✅(本人) | — | — | — | — | ✅(本人) |
+| `team:review_transfer` | — | — | — | — | — | ✅(非自审) |
 | `team:dissolve` | — | — | ✅(own org 树) | — | — | ✅ |
 | `profile:read/update/review` | — | ✅(read, 本人负责队伍成员) | ✅(own org 树) | — | — | ✅ |
 | `user:create/read` | — | — | ✅(own org 树) | — | — | ✅ |
 | `user:export`（全局人员明细） | — | — | — | — | — | ✅ |
 | `user:disable` / `user:assign_role` | — | — | — | — | — | ✅ |
-| `user:provision/reset_provisioned_password` | — | — | ✅(原代建单位普通成员) | — | — | ✅ |
+| `user:provision/reset_student_password` | — | — | ✅(当前有效主属单位的普通学生) | — | — | ✅ |
 | `profile:request_identity_change` | ✅(本人) | ✅(本人) | ✅(本人/单位普通成员) | ✅(本人) | ✅(本人) | ✅ |
 | `profile:review_identity_change` | — | — | ✅(本单位普通成员，非自审) | — | — | ✅(非自审) |
 | `registration:read_history` | — | — | ✅(本单位历史) | ✅(scoped) | ✅(scoped) | ✅ |
 | `registration:cancel_review` | ✅(本人提交) | ✅(本人代报) | — | — | — | ✅(本人提交) |
 | `user:import` / `profile 导入` | — | — | ✅(own org 树) | — | — | ✅ |
+| `org:request_transfer` | ✅(本人) | — | ✅(学生授权) | — | — | ✅ |
+| `org:release_transfer/accept_transfer` | — | — | ✅(分别限原/新单位，非自审) | — | — | ✅(接收须有效目标范围) |
+| `org:mediate_transfer` | — | — | — | — | — | ✅(核验代办转出) |
 | `org:apply_create` | ✅(本人申请) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `org:create`（后台发起申请）/ `org:review_create` | — | — | — | — | — | ✅ |
 | `team:review` | — | — | ✅(所属单位树，非自审) | — | — | ✅(非自审) |
 | `org:read` | — | ✅(own org 树) | ✅(own org 树) | ✅(赛事关联单位) | ✅(同左) | ✅ |
 | `org:update/disable/manage_members/approve_join` | — | — | ✅(own org 树) | — | — | ✅ |
+| `season:read`（公开非草稿） | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `team:review_create/review_season_registration` | — | — | — | — | — | ✅(非自审) |
+| `team:request_season_registration` | — | — | ✅(own org 树) | — | — | ✅ |
+| `season:set_current` | — | — | — | — | — | ✅ |
+| `season:create/update/activate/archive` | — | — | — | — | — | ✅ |
 | `competition:create` | — | — | — | — | — | ✅ |
 | `competition:read` | ✅(公开部分) | ✅ | ✅(本单位参与的) | ✅(scoped) | ✅(scoped) | ✅ |
 | `competition:manage_admins` | — | — | — | — | — | ✅ |
@@ -130,9 +140,9 @@ has_perm(user, perm_code, scope_type, scope_id):
 ## 4. 特殊规则（实现时必须处理）
 
 1. **管理角色分配仅平台管理员**：平台管理员可在有效目标作用域分配非平台角色；分配 `platform_admin` 仅现有超管可操作。创建账号时只自动分配受对象归属约束的 participant 基础角色，不开放客户端自选角色/作用域。
-2. **作用域内用户可见性**：`org_admin` 的"own org 树"成员范围 = `organization_members` 中 org ∈ 自身子树且 left_at IS NULL。教练只读其有效所属单位的队伍概要，不随单位树向下扩展，也不读其他单位；教练只可代报本单位内 teams.coach_id = self 的队伍，不可创建队伍或修改正式队伍资料/成员，普通查看不开放其他队伍报名、敏感人员或附件。单位管理员统一管理其单位范围内全部队伍，管理变更仍须按申请流程批准。
+2. **作用域内用户可见性**：`org_admin` 的"own org 树"成员范围 = `organization_members` 中 org ∈ 自身子树且 left_at IS NULL。教练只读其有效所属单位的队伍概要，不随单位树向下扩展，也不读其他单位；教练只可代报本单位内 teams.coach_id = self 的队伍，不可创建队伍或修改正式队伍资料/成员，普通查看不开放其他队伍报名、敏感人员或附件。单位管理员统一管理其单位范围内全部队伍，管理变更仍须按申请流程批准。本人自主退队是例外；单位管理员不可绕过同赛季同赛项学生绑定，跨队特批仅平台管理员。本人回上次退出队伍走普通入队审核，不需要特批但仍核对所有有效绑定。
 3. **驳回/退回后的编辑权**：报名被驳回或退回后，仅报名提交人本人（或团队报名的队长/教练，代报场景）可编辑重提，`org_admin` 只能查看不能代改。
-4. **审核回避**：单位创建与队伍资料申请强制禁止申请人自审；单位管理员自己提交的队伍申请由其他有权单位管理员或平台处理。参赛学生不配置审核职责；为防角色误配，报名审核仍禁止本轮参赛成员及提交人审核自己的报名。participant 基础角色人人可持有，不能用是否持有该角色判断真实队员身份；以本轮成员快照判定。
+4. **审核回避**：单位创建与队伍资料申请强制禁止申请人自审；队伍创建与赛季激活仅平台审核；资料/成员修改由其他有权单位管理员或平台处理。参赛学生不配置审核职责；为防角色误配，报名审核仍禁止本轮参赛成员及提交人审核自己的报名。participant 基础角色人人可持有，不能用是否持有该角色判断真实队员身份；以本轮成员快照判定。
 5. **公开接口无需登录**：赛事/届次/赛项/组别的展示字段、证书二维码验证页、通过名单公示页。以 `permission_classes=[AllowAny]` + serializer 白名单字段实现，禁止复用管理端 serializer。
    - v1.1 收紧：白名单必须是**代码里的常量集合**，不是"serializer 上不声明就是私有"的默认排除。证件绑定后该字段在 `user_profiles` / `registration_members.snapshot_enc` 中都存在，任何人复用一个管理类 serializer 对外就会带出证件号；因此公开字段只允许从 `registration_members.public_info` 与届次/赛项/组别三张配置表读取，**不得**触及 `snapshot_enc`、`user_profiles.document_*`、`users.phone`。
 6. **自定义角色**：`platform_admin` 可新建角色并勾选 permission 子集；内置 6 角色不可删除（`is_builtin` 标志），改权限需二次确认；平台级创建赛事、禁用账号、分配角色等权限只允许 platform_admin，全局本人角色不得扩为管理角色。
@@ -153,7 +163,7 @@ has_perm(user, perm_code, scope_type, scope_id):
 
 照片规则：本人可上传/替换/删除自己的证件照；其他人仅在具有 profile:read 且人员作用域匹配时读取，不能代改照片。read_own 的队友可见性不包含照片；公开名单和证书验证页不返回照片或对象 key。语言与主题偏好仅本人可改，不影响角色权限。
 
-队伍资料审核人可凭 team:review 在本单位树内读取申请提案、版本差异及该队最小历史摘要；平台可代审。赛事 reviewer 不因此获得队伍资料变更的审批权。
+team:review 仅处理资料/成员变更，不包含创建与赛季激活。队伍资料审核人可凭 team:review 在本单位树内读取申请提案、版本差异及该队最小历史摘要；平台可代审。赛事 reviewer 不因此获得队伍资料变更的审批权。
 
 赛事审核历史上下文：team:read_review_history 必须绑定本届已提交的 registration_id，再从该报名解析 team_id；还须具备该报名的 registration:read 与对应 approval:review_*。只返回该队其他届次的最小历史摘要（01 §3.6），不向上继承其他届次的读写权限，不接受任意 team_id 枚举、不导出全量历史。未授权或只有草稿的上下文返回 404，每次查询写审计。队号、赛项与归属不可通过普通资料修改迁移，历史按稳定 team_id 关联，队伍不能另建同名记录冒用历史。
 
@@ -161,7 +171,7 @@ has_perm(user, perm_code, scope_type, scope_id):
 
 关闭可见性：closed 届次仅管理历史入口可读，须 registration:read_history 并逐行按原届次/本单位范围过滤；read_own/公开 read 不能读取关闭后的业务历史。公开证书验证是独立最小结果接口，不继承赛事历史读取权。
 
-证件与代建：profile:update/update_own 不允许直接修改已绑定证件；必须 request_identity_change → review_identity_change。审核者不能为申请人或证件所属人，单位管理者仅审核本单位普通账户，管理账号及跨单位争议由平台处理。单位重置仅限原代建、仍属本单位且无自助找回渠道的普通账户，已有账号不能以代建接口重置或被加入新单位。赛事管理员分配/移除统一走平台授权接口，不能借 manage_admins 绕过 user:assign_role。
+证件与代建：profile:update/update_own 不允许直接修改已绑定证件；必须 request_identity_change → review_identity_change。审核者不能为申请人或证件所属人，单位管理者仅审核本单位普通账户，管理账号及跨单位争议由平台处理。单位重置限当前有效主属单位范围内的普通学生，不限制创建来源或邮箱绑定；次属单位、历史成员单位和原代建单位不能据旧关系重置。交接完成即切换权限，重置必须锁学生并核对 affiliation_version，防并发转移后的旧单位操作；已有账号加入新主属单位必须走授权交接，普通成员添加/导入不得绕过。赛事管理员分配/移除统一走平台授权接口，不能借 manage_admins 绕过 user:assign_role。
 
 ## 5. 前后端落地约定
 

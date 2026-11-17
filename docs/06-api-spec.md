@@ -1,6 +1,6 @@
 # 06 API 规范与端点草案
 
-**版本**：v1.4（2026-11-17）。基址 `/api/v1`，格式 JSON，认证 `Authorization: Bearer <access_token>`。
+**版本**：v1.6（2026-11-17）。基址 `/api/v1`，格式 JSON，认证 `Authorization: Bearer <access_token>`。
 
 v1.1 变更：错误码表补 42205-42208 与 40904、新增发码与公示接口、报名筛选加 `event` 参数、明确成员字段分级。
 
@@ -28,7 +28,7 @@ v1.1 变更：错误码表补 42205-42208 与 40904、新增发码与公示接�
 | 401xx | 认证 | 40101 token 过期、40102 验证码错误或已失效、40104 邮箱未验证（仅邮箱相关操作）、40105 登录凭证无效 |
 | 403xx | 权限 | 40301 作用域内无权限、40302 角色冲突、40303 不得自审、40304 须先修改初始/重置密码 |
 | 404xx | 资源 | 40401 不存在或无权查看（合并防枚举）；公示名单未发布也返回本码，不返回 403（02 §4.7） |
-| 409xx | 冲突/状态 | 40901 重复报名、40902 非法状态迁移、40903 名单已锁定、40904 所选证件已有当前绑定、40905 幂等键与请求不一致、40906 提交/队伍版本已过期、40907 单位标识或队号×赛项身份冲突、40908 队员已有当前队伍（须先退队） |
+| 409xx | 冲突/状态 | 40901 重复报名、40902 非法状态迁移、40903 名单已锁定、40904 所选证件已有当前绑定、40905 幂等键与请求不一致、40906 提交/队伍版本已过期、40907 单位标识或队号×赛项身份冲突、40908 队员已有当前队伍（须先退队）、40909 同赛季同赛项已绑定其他队伍（须平台特批）、40910 队伍未获对应赛季注册许可、40911 非当前赛季或当前赛季未开放 |
 | 422xx | 校验 | 42201 赛项人数不符、42202 材料缺失、42203 时间窗外、42204 年级或年龄不符、42205 所选学段与组别不符、42206 证件类型/签发国/号码格式错误、42207 赛项与组别组合未开放、42208 缺少指导教师、42209 不支持的语言或主题、42210 照片格式/内容无效、42211 队伍未通过资料审核、42212 不在本届队伍准入名单、42213 单位未通过创建审核 |
 | 429xx | 限流 | 42901 请求过频（含验证码频率限制；返回 Retry-After） |
 
@@ -73,7 +73,7 @@ v1.1 变更：错误码表补 42205-42208 与 40904、新增发码与公示接�
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | POST | /orgs/{id}/student-accounts | 必须有效单位、有效身份证或护照、学生/监护授权；邮箱可空；服务器生成 username/随机临时密码，必须首次改密 | user:provision + 单位范围 |
-| POST | /users/{id}/reset-provisioned-password | 核验凭据+理由；仅原代建单位且仍在该单位、无自助找回渠道的普通成员；管理账户由平台处理 | user:reset_provisioned_password |
+| POST | /users/{id}/reset-student-password | 核验凭据+理由+primary_membership_id+affiliation_version；当前有效主属单位普通学生，无创建来源/邮箱限制；管理账户由平台处理 | user:reset_student_password |
 | GET/POST | /identity-change-requests；GET/PATCH /identity-change-requests/{id} | 本人/单位代提；服务器冻结 base_identity_version、旧绑定及新证件密文，只有草稿能编辑 | profile:request_identity_change + 范围 |
 | POST | /identity-change-requests/{id}/submit / /cancel-and-edit | 未审可取消：保留 withdrawn 原申请，原子复制关联草稿；已审不能此路撤销 | 原申请人 |
 | POST | /identity-change-requests/{id}/review | 所属单位管理员或平台管理员审核（单位仅限本范围普通成员），禁止申请人/证件本人自审；approve 原子切换并释放旧号，冲突 40904/40906 | profile:review_identity_change + 范围 |
@@ -103,20 +103,45 @@ v1.1 变更：错误码表补 42205-42208 与 40904、新增发码与公示接�
 
 未审单位/队伍申请另提供 POST /{request-resource}/{id}/cancel-and-edit：锁申请，确认无审核决定，原记录置 withdrawn 并复制关联 draft 返回新 ID；审批先提交则取消返回 40906，不覆盖已审核申请。
 
+### 学生单位交接（P0）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET/POST | /org-transfer-requests | 本人/获授权管理员发起：目标单位、来源主属关系、base_affiliation_version、本人/监护授权引用和理由；各方只能读所属范围 |
+| POST | /org-transfer-requests/{id}/release | 原单位核验转出，org:release_transfer，禁止自审；通过后仍保留原归属 |
+| POST | /org-transfer-requests/{id}/accept | 目标单位接收，org:accept_transfer；锁学生及版本，无当前队伍才原子切换主属关系/权限，不继承历史管理角色 |
+| POST | /org-transfer-requests/{id}/reject / /cancel | 驳回或未完成时取消，保留申请和已发生处理记录 |
+| POST | /org-transfer-requests/{id}/mediate-release | 平台核验代办转出，org:mediate_transfer，核验凭据及理由必填；仍等待新单位接收 |
+| GET | /public/support | 运营配置的联系邮箱；无归属且无法自助找回时展示联系入口，不返回用户存在性或直接重置 |
+
 ### 队伍（里程碑 2）
 
-教练列表及详情仅返回有效所属单位的队伍概要，不包含其他单位或其子单位队伍；成员详情和报名仅本人负责队伍可按权限读取；不授予队伍提案的编辑或审核权。单位管理员统一管理本单位范围内全部队伍，创建/资料/成员变更仅单位管理员或平台发起申请。队员换队先经原队变更申请批准退出，再经新队申请批准加入；新队提交/批准复查唯一归属，冲突 40908。
+教练列表及详情仅返回有效所属单位的队伍概要，不包含其他单位或其子单位队伍；成员详情和报名仅本人负责队伍可按权限读取；不授予队伍提案的编辑或审核权。单位管理员统一管理本单位范围内全部队伍，创建/资料/成员变更仅单位管理员或平台发起申请。本人可自主退队，管理员发起的普通入退队仍走审核；回到上次退出队伍可普通入队审核，跨队需检查所有未归档赛季同赛项绑定，受限时必须平台特批。新队提交/批准复查唯一归属及绑定，分别返回 40908/40909。
 
 正式队伍只读接口为 GET /teams、/teams/{id}、/teams/{id}/members；GET /teams/{id}/registrations 返回权限内历史摘要。创建/编辑/改成员统一发起申请，不能 PATCH 正式资料立即生效。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET/POST | `/team-change-requests`；GET/PATCH `/team-change-requests/{id}` | 申请人查看本人提案，有 team:review 者查看权限内审核队列；kind=create/update，修改须带 base_revision_id；team:create/update/manage_members 与单位范围校验，仅单位管理员或平台；教练无写权限 |
+| GET/POST | `/team-change-requests`；GET/PATCH `/team-change-requests/{id}` | 申请人查看本人提案，创建队列仅 team:review_create；修改队列用 team:review；kind=create/update，创建必填 registration_season_id，修改须带 base_revision_id 和 base_membership_version；team:create/update/manage_members 与单位范围校验，仅单位管理员或平台；教练无写权限 |
 | POST | `/team-change-requests/{id}/submit|withdraw|resubmit` | 申请人操作；resubmit 复制被驳回/退回提案为新草稿，以 resubmission_of 关联原记录并返回新 ID，保持旧提案与审核记录 |
-| POST | `/team-change-requests/{id}/review` | approve/reject/return + comment；team:review，单位树内或平台代审，禁止自审，旧版本冲突 40906 |
-| GET | `/team-change-requests/{id}/review-context` | 申请提案、与生效版本的差异及分页历史摘要；team:review + 单位范围，不扩展赛事附件权限 |
+| POST | `/team-change-requests/{id}/review` | approve/reject/return + comment；创建仅 team:review_create（平台）；修改用 team:review，单位树内或平台代审，禁止自审，旧版本冲突 40906 |
+| GET | `/team-change-requests/{id}/review-context` | 申请提案、与生效版本的差异及分页历史摘要；创建仅 team:review_create，修改 team:review + 单位范围，不扩展赛事附件权限 |
 
-### 赛事 / 届次 / 赛项 / 组别
+### 自主退队与特批换队（里程碑 2）
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| POST | `/me/team-membership/leave` | body: membership_id、reason；结束本人当前关系、保留最近退队和全部历史；不解除赛季绑定，不改报名快照 | team:leave_own |
+| GET | `/me/team-eligibility?team_id=` | 是否已有当前队伍、最近退出队伍、全部有效赛季绑定与是否需特批；不泄露其他学生资料 | 本人 |
+| GET/POST/PATCH | `/team-transfer-requests` / `/{id}` | 本人查看/提交目标队伍、来源归属版本、涉及赛季和理由；只可编辑草稿，不接受客户端指定审批状态 | team:request_transfer |
+| POST | `/team-transfer-requests/{id}/submit` / `/cancel-and-edit` | 未审可取消并保留原记录；不能直接申请即生效 | 原申请人 |
+| POST | `/team-transfer-requests/{id}/review` | approve/reject + comment、base_version；平台批准并执行入队/绑定切换，禁止自审，校验全部关联报名和锁定态；多有效赛季按季关联申请一并批准，已归档绑定不改；旧快照保留 | team:review_transfer，仅平台 |
+
+### 赛季 / 赛事 / 场次 / 赛项 / 组别
+
+GET /seasons/current 返回当前赛季；POST /seasons/{id}/set-current 仅 season:set_current（平台），目标须 active，无当前则返回未开放状态。GET /public/competitions 只列当前赛季公开赛事，普通 season_id/season=all 参数拒绝，不修改全局当前值。管理历史接口独立按范围接收 season_id。POST/PATCH /seasons 与 activate/archive 仅平台权限；已有提交的场次不可改挂赛季，归档须无未完成赛事和待审报名。切换不复制队伍许可、不迁移历史或自动归档旧赛季。
+
+GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resubmit：team:request_season_registration + 本单位范围；resubmit 复制关联新申请。POST /{id}/review（approve/reject）与 /revoke 仅 team:review_season_registration（平台，非自审，理由必填）；首次创建审核原子创建队伍及许可。提交/重提校验当前 active 赛季，审批通过校验原报名赛季 active 和对应许可，均不以赛事 allowlist 替代许可。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |

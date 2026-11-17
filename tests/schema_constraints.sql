@@ -51,13 +51,14 @@ SELECT expect_error($s$INSERT INTO org_creation_requests(proposal_enc,status,sub
 INSERT INTO event_types(code,name) VALUES ('E','Event'),('F','Other event'),('G','Third event');
 INSERT INTO team_numbers(id,code,org_id) VALUES (1,'TEAM',1),(2,'TEAM-TWO',1);
 INSERT INTO teams(id,team_number_id,event_code,name,org_id) VALUES (1,1,'E','Team',1),(2,2,'E','Team two',1),(3,1,'F','Team',1);
-INSERT INTO team_change_requests(id,team_id,org_id,team_code,event_code,request_kind,proposal_enc,status,submitted_by,reviewer_id,reviewed_at) VALUES
-  (1,1,1,'TEAM','E','create',decode('00','hex'),'approved',1,2,now()),
-  (2,2,1,'TEAM-TWO','E','create',decode('00','hex'),'approved',1,2,now());
+INSERT INTO seasons(id,code,name,starts_on,ends_on,status,is_default) VALUES (1,'2026-2027','2026-2027 Season','2026-09-01','2027-08-31','active',true),(2,'2025-2026','2025-2026 Season','2025-09-01','2026-08-31','archived',false);
+INSERT INTO team_change_requests(id,team_id,org_id,team_code,event_code,request_kind,registration_season_id,proposal_enc,status,submitted_by,reviewer_id,reviewed_at) VALUES
+  (1,1,1,'TEAM','E','create',1,decode('00','hex'),'approved',1,2,now()),
+  (2,2,1,'TEAM-TWO','E','create',1,decode('00','hex'),'approved',1,2,now());
 UPDATE teams SET approved_revision_id=id WHERE id IN (1,2);
 SELECT expect_error($s$UPDATE teams SET approved_revision_id=2 WHERE id=1$s$,'23503');
-SELECT expect_error($s$INSERT INTO team_change_requests(team_id,org_id,team_code,event_code,request_kind,proposal_enc,status,submitted_by,reviewer_id,reviewed_at)
-  VALUES (1,1,'SELF','E','create',decode('00','hex'),'approved',1,1,now())$s$,'23514');
+SELECT expect_error($s$INSERT INTO team_change_requests(team_id,org_id,team_code,event_code,request_kind,registration_season_id,proposal_enc,status,submitted_by,reviewer_id,reviewed_at)
+  VALUES (1,1,'SELF','E','create',1,decode('00','hex'),'approved',1,1,now())$s$,'23514');
 SELECT expect_error($s$INSERT INTO team_change_requests(team_id,org_id,team_code,event_code,request_kind,base_revision_id,proposal_enc,submitted_by)
   VALUES (2,1,'WRONG-BASE','E','update',1,decode('00','hex'),1)$s$,'23503');
 INSERT INTO team_change_requests(id,team_id,org_id,team_code,event_code,request_kind,base_revision_id,proposal_enc,submitted_by)
@@ -65,8 +66,8 @@ INSERT INTO team_change_requests(id,team_id,org_id,team_code,event_code,request_
 SELECT expect_error($s$INSERT INTO team_change_requests(team_id,org_id,team_code,event_code,request_kind,base_revision_id,proposal_enc,submitted_by)
   VALUES (1,1,'DUP-PENDING','E','update',1,decode('00','hex'),1)$s$,'23505');
 INSERT INTO competitions(id,public_code,name) VALUES (1,'TEST','Test');
-INSERT INTO competition_editions(id,competition_id,edition_no,year,name) VALUES
-  (1,1,1,2026,'Edition one'),(2,1,2,2026,'Edition two');
+INSERT INTO competition_editions(id,season_id,competition_id,edition_no,year,name) VALUES
+  (1,1,1,1,2026,'Edition one'),(2,1,1,2,2026,'Edition two');
 SELECT expect_error($s$UPDATE competition_editions SET team_entry_mode='unknown' WHERE id=1$s$,'23514');
 SELECT expect_error($s$UPDATE competition_editions SET team_access_version=0 WHERE id=1$s$,'23514');
 INSERT INTO edition_team_allowlist(edition_id,team_id,source,created_by) VALUES (1,1,'import',1),(2,1,'manual',1);
@@ -230,4 +231,89 @@ BEGIN
 END;
 $$;
 
+-- Leaving current membership preserves competition binding; direct switches are blocked.
+INSERT INTO registration_members(registration_id,submission_no,user_id,snapshot_enc,public_info) VALUES (1,1,3,decode('00','hex'),'{}');
+INSERT INTO season_student_team_bindings(season_id,event_code,user_id,original_team_id,current_team_id,source_registration_id,source_submission_no)
+  VALUES (1,'E',3,1,1,1,1);
+SELECT expect_error($s$INSERT INTO season_student_team_bindings(season_id,event_code,user_id,original_team_id,current_team_id,source_registration_id,source_submission_no) VALUES (1,'E',3,1,1,1,1)$s$,'23505');
+SELECT expect_error($s$UPDATE season_student_team_bindings SET current_team_id=2 WHERE user_id=3$s$,'55000');
+SELECT expect_error($s$UPDATE season_student_team_bindings SET binding_version=99 WHERE user_id=3$s$,'55000');
+UPDATE team_members SET left_at='2026-01-05T00:00:00Z' WHERE user_id=3 AND left_at IS NULL;
+DO $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM season_student_team_bindings WHERE user_id=3 AND current_team_id=1) THEN RAISE EXCEPTION 'Leaving cleared competition binding'; END IF;
+END; $$;
+INSERT INTO team_members(team_id,user_id,joined_at) VALUES (1,3,'2026-01-06T00:00:00Z'); -- Rejoining original team is legal.
+SELECT expect_error($s$INSERT INTO team_transfer_requests(season_id,event_code,user_id,from_team_id,to_team_id,base_binding_version,reason,submitted_by) VALUES (1,'E',3,1,3,1,'Test reason',3)$s$,'23503');
+SELECT expect_error($s$INSERT INTO team_transfer_requests(season_id,event_code,user_id,from_team_id,to_team_id,base_binding_version,reason,submitted_by,status,reviewer_id,reviewed_at) VALUES (1,'E',3,1,2,1,'Test reason',3,'approved',3,now())$s$,'23514');
+INSERT INTO team_transfer_requests(id,season_id,event_code,user_id,from_team_id,to_team_id,base_binding_version,reason,submitted_by)
+  VALUES (1,1,'E',3,1,2,1,'Reviewed transfer',3);
+SELECT expect_error($s$UPDATE season_student_team_bindings SET current_team_id=2,last_transfer_request_id=1 WHERE user_id=3$s$,'55000');
+UPDATE team_transfer_requests SET status='approved',reviewer_id=2,reviewed_at=now() WHERE id=1;
+UPDATE season_student_team_bindings SET current_team_id=2,last_transfer_request_id=1 WHERE user_id=3;
+UPDATE team_members SET left_at='2026-01-07T00:00:00Z' WHERE user_id=3 AND left_at IS NULL;
+INSERT INTO team_members(team_id,user_id,joined_at) VALUES (2,3,'2026-01-08T00:00:00Z');
+DO $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM season_student_team_bindings WHERE user_id=3 AND current_team_id=2 AND original_team_id=1 AND binding_version=2) THEN RAISE EXCEPTION 'Approved transfer lost binding origin'; END IF;
+END; $$;
+SELECT expect_error($s$UPDATE season_student_team_bindings SET current_team_id=1 WHERE user_id=3$s$,'55000');
+
+SELECT expect_error($s$DELETE FROM season_student_team_bindings WHERE user_id=3$s$,'55000');
+
+-- Season boundaries and cross-competition participation share one binding.
+SELECT expect_error($s$INSERT INTO seasons(code,name,starts_on,ends_on) VALUES ('INVALID','Invalid','2027-08-31','2026-09-01')$s$,'23514');
+SELECT expect_error($s$INSERT INTO seasons(code,name,starts_on,ends_on,status,is_default) VALUES ('OTHER','Other','2026-07-01','2027-06-30','active',true)$s$,'23505');
+SELECT expect_error($s$UPDATE competition_editions SET season_id=999 WHERE id=1$s$,'23503');
+SELECT expect_error($s$INSERT INTO season_student_team_bindings(season_id,event_code,user_id,original_team_id,current_team_id,source_registration_id,source_submission_no) VALUES (2,'E',3,1,1,1,1)$s$,'23514');
+INSERT INTO competitions(id,public_code,name) VALUES (2,'SECOND','Second competition');
+INSERT INTO competition_editions(id,season_id,competition_id,edition_no,year,name) VALUES (3,1,2,1,2027,'Another competition in same season');
+INSERT INTO competition_events(id,edition_id,code,name) VALUES (3,3,'E','Event');
+INSERT INTO competition_groups(id,edition_id,code,name) VALUES (3,3,'HS','Group');
+INSERT INTO competition_offerings(id,edition_id,event_id,group_id) VALUES (3,3,3,3);
+INSERT INTO registrations(id,batch_no,edition_id,offering_id,enrollment_kind,team_id,submitted_by,contact_phone,status) VALUES (4,'CROSS-COMPETITION',3,3,'team',2,2,'fixture','pending_review');
+INSERT INTO registration_submissions(registration_id,submission_no,team_id,team_revision_id,snapshot_enc,submitted_by) VALUES (4,1,2,2,decode('00','hex'),2);
+INSERT INTO registration_members(registration_id,submission_no,user_id,snapshot_enc,public_info) VALUES (4,1,3,decode('00','hex'),'{}');
+UPDATE registrations SET status='approved',current_submission_no=1,approved_submission_no=1 WHERE id=4;
+SELECT expect_error($s$INSERT INTO season_student_team_bindings(season_id,event_code,user_id,original_team_id,current_team_id,source_registration_id,source_submission_no) VALUES (1,'E',3,2,2,4,1)$s$,'23505');
+
+-- Organization transfer preserves the account and old membership; only one current primary.
+INSERT INTO organization_members(id,org_id,user_id,member_role,is_primary,joined_at) VALUES (1,1,3,'student',true,'2026-01-01');
+UPDATE users SET affiliation_version=1 WHERE id=3;
+SELECT expect_error($s$INSERT INTO organization_members(org_id,user_id,is_primary) VALUES (2,3,true)$s$,'23505');
+SELECT expect_error($s$INSERT INTO org_transfer_requests(user_id,from_org_id,to_org_id,source_membership_id,base_affiliation_version,submitted_by,reason,status) VALUES (3,1,2,1,1,3,'School transfer','awaiting_source')$s$,'23514');
+SELECT expect_error($s$INSERT INTO org_transfer_requests(user_id,from_org_id,to_org_id,source_membership_id,base_affiliation_version,submitted_by,authorization_ref,consented_at,reason,status,source_reviewer_id,source_reviewed_at) VALUES (3,1,2,1,1,3,'fixture-consent',now(),'School transfer','awaiting_target',3,now())$s$,'23514');
+INSERT INTO org_transfer_requests(id,user_id,from_org_id,to_org_id,source_membership_id,base_affiliation_version,submitted_by,authorization_ref,consented_at,reason,status) VALUES (1,3,1,2,1,1,3,'fixture-consent',now(),'School transfer','awaiting_source');
+SELECT expect_error($s$INSERT INTO org_transfer_requests(user_id,from_org_id,to_org_id,source_membership_id,base_affiliation_version,submitted_by,reason) VALUES (3,1,2,1,1,3,'Duplicate request')$s$,'23505');
+SELECT expect_error($s$UPDATE org_transfer_requests SET status='awaiting_target' WHERE id=1$s$,'23514');
+UPDATE org_transfer_requests SET status='awaiting_target',source_reviewer_id=1,source_reviewed_at=now() WHERE id=1;
+SELECT expect_error($s$UPDATE org_transfer_requests SET status='completed',completed_at=now() WHERE id=1$s$,'23514');
+SELECT expect_error($s$UPDATE org_transfer_requests SET status='completed',completed_at=now(),target_reviewer_id=1,target_reviewed_at=now() WHERE id=1$s$,'23514');
+DO $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM organization_members WHERE user_id=3 AND org_id=1 AND is_primary AND left_at IS NULL) THEN RAISE EXCEPTION 'Source approval prematurely changed affiliation'; END IF;
+END; $$;
+UPDATE team_members SET left_at='2026-02-01' WHERE user_id=3 AND left_at IS NULL;
+UPDATE organization_members SET left_at='2026-11-17' WHERE id=1;
+INSERT INTO organization_members(id,org_id,user_id,member_role,is_primary,joined_at) VALUES (2,2,3,'student',true,'2026-11-17');
+UPDATE users SET affiliation_version=affiliation_version+1,token_version=token_version+1 WHERE id=3;
+UPDATE org_transfer_requests SET status='completed',target_reviewer_id=2,target_reviewed_at=now(),completed_at=now() WHERE id=1;
+DO $$ BEGIN
+  IF (SELECT count(*) FROM organization_members WHERE user_id=3) <> 2 OR NOT EXISTS(SELECT 1 FROM organization_members WHERE user_id=3 AND org_id=2 AND is_primary AND left_at IS NULL) OR (SELECT affiliation_version FROM users WHERE id=3) <> 2 THEN RAISE EXCEPTION 'Organization transfer lost account or membership history'; END IF;
+END; $$;
+
+SELECT expect_error($s$INSERT INTO team_change_requests(org_id,team_code,event_code,request_kind,proposal_enc,submitted_by) VALUES (1,'NO-SEASON','E','create',decode('00','hex'),1)$s$,'23514');
+-- Seasonal team licenses never carry into a different season.
+INSERT INTO team_season_registrations(id,team_id,season_id,proposal_enc,submitted_by,status) VALUES (1,1,1,decode('00','hex'),1,'submitted');
+SELECT expect_error($s$INSERT INTO team_season_registrations(team_id,season_id,proposal_enc,submitted_by) VALUES (1,1,decode('00','hex'),1)$s$,'23505');
+SELECT expect_error($s$UPDATE team_season_registrations SET status='approved' WHERE id=1$s$,'23514');
+SELECT expect_error($s$UPDATE team_season_registrations SET status='approved',reviewer_id=1,reviewed_at=now(),comment='Self' WHERE id=1$s$,'23514');
+UPDATE team_season_registrations SET status='rejected',reviewer_id=2,reviewed_at=now(),comment='Correct materials' WHERE id=1;
+INSERT INTO team_season_registrations(id,team_id,season_id,resubmission_of,proposal_enc,submitted_by,status,reviewer_id,reviewed_at,comment) VALUES (2,1,1,1,decode('00','hex'),1,'approved',2,now(),'Verified');
+SELECT expect_error($s$INSERT INTO team_season_registrations(team_id,season_id,proposal_enc,submitted_by) VALUES (1,1,decode('00','hex'),1)$s$,'23505');
+SELECT expect_error($s$UPDATE team_season_registrations SET status='revoked' WHERE id=2$s$,'23514');
+SELECT expect_error($s$INSERT INTO team_season_registrations(team_id,season_id,proposal_enc,submitted_by) VALUES (1,9999,decode('00','hex'),1)$s$,'23503');
+DO $$ BEGIN
+  IF EXISTS(SELECT 1 FROM team_season_registrations WHERE team_id=1 AND season_id=2 AND status='approved') THEN RAISE EXCEPTION 'License leaked into another season'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM team_season_registrations WHERE id=1 AND status='rejected') THEN RAISE EXCEPTION 'Resubmission overwrote history'; END IF;
+END; $$;
+UPDATE team_season_registrations SET status='revoked',revoked_by=2,revoked_at=now(),revoke_reason='Withdraw eligibility' WHERE id=2;
+INSERT INTO team_season_registrations(team_id,season_id,proposal_enc,submitted_by) VALUES (1,1,decode('00','hex'),1);
 SELECT 'schema constraints PASS' AS result;

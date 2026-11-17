@@ -39,9 +39,10 @@
 
 | 事件前缀 | 动作 |
 | --- | --- |
-| `role.grant` / `role.revoke` / `team.member` | 管理员交接授权撤销/授予，成员 joined/left；记录范围、旧/新队伍、申请 ID、操作者、时间与理由，不记录离职履历 |
+| `role.grant` / `role.revoke` / `team.member` | 管理员交接授权撤销/授予，成员 joined/left、自主退队、赛季绑定建立及平台特批换队申请/审核/执行；记录范围、旧/新队伍、申请 ID、操作者、时间与理由，不记录离职履历 |
 | `auth.login` / `rbac.denied` | 登录结果、权限拒绝 |
 | `registration` | submitted、cancelled、withdrawn、resubmitted、approved、rejected、returned（均带 submission_no） |
+| `org.transfer` / `season` | 交接 submitted/released/accepted/mediated/rejected/withdrawn/completed；记录双方单位、申请、归属版本；赛季创建/激活/归档及当前切换，队伍赛季注册申请/审核/撤销（带 team_id、season_id、申请 ID），绑定事件带 season_id |
 | `org.request` / `team.request` | submitted、cancelled、approved、rejected、returned；申请 ID、base_revision_id、审核人及理由摘要 |
 | `account.provision` / `account.reset` / `identity.change` | 代建、核验重置、证件申请/取消/审核/应用；仅记对象 ID、版本和理由，禁止临时密码/证件内容 |
 | `outbox` | 领取、投递、重试、失败、重放；business_key、版本、次数与结果，不记 payload 敏感内容 |

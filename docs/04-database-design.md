@@ -1,6 +1,6 @@
 # 04 数据库设计（字段级 DDL）
 
-**版本**：v1.4（2026-11-17）。目标库 PostgreSQL 16，Django 5 迁移生成前的目标 schema。
+**版本**：v1.6（2026-11-17）。目标库 PostgreSQL 16，Django 5 迁移生成前的目标 schema。
 
 v1.4：增加证件更正审批守卫、护照/代建账户、队号归属与赛项身份、提交轮次到证书的外键、事务 outbox。
 
@@ -23,7 +23,7 @@ users ── user_profiles
 teams ── team_members ── users
 competitions ── competition_organizations ── organizations
   ├─ competition_admins ── users
-  └─ competition_editions
+  └─ competition_editions ── seasons
         ├─ competition_events（赛项：VURC / V5RC / VIQRC / VAIMRC / VGORC）
         ├─ competition_groups（组别：ES / MS / HS / U）
         ├─ competition_offerings（届次开放组合：event × group）
@@ -53,6 +53,7 @@ CREATE TABLE users (
   initial_password_expires_at TIMESTAMPTZ,
   status VARCHAR(16) NOT NULL DEFAULT 'pending',
   token_version INTEGER NOT NULL DEFAULT 0,
+  affiliation_version INTEGER NOT NULL DEFAULT 0 CHECK (affiliation_version >= 0),
   locale VARCHAR(10) NOT NULL DEFAULT 'zh-CN' CHECK (locale IN ('zh-CN','en-US')),
   theme VARCHAR(10) NOT NULL DEFAULT 'system' CHECK (theme IN ('light','dark','system')),
   last_login_at TIMESTAMPTZ,
@@ -229,17 +230,56 @@ CREATE TABLE org_creation_requests (
 CREATE TABLE organization_members (
   id           BIGSERIAL PRIMARY KEY,
   org_id       BIGINT NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
-  user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   member_role  VARCHAR(16) NOT NULL DEFAULT 'member',   -- member|student|teacher|employee|external
   is_primary   BOOLEAN NOT NULL DEFAULT FALSE,          -- 主属单位（唯一部分索引）
   joined_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   left_at      TIMESTAMPTZ,                        -- 平台成员关系结束时间，不是离职信息
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (org_id, user_id)
+  UNIQUE (id, user_id, org_id),
+  CHECK (left_at IS NULL OR left_at >= joined_at)
 );
+CREATE UNIQUE INDEX uniq_current_org_member ON organization_members(org_id,user_id) WHERE left_at IS NULL;
 CREATE UNIQUE INDEX idx_org_member_primary
   ON organization_members(user_id) WHERE is_primary AND left_at IS NULL;
+
+CREATE TABLE org_transfer_requests (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  from_org_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
+  to_org_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
+  source_membership_id BIGINT NOT NULL,
+  base_affiliation_version INTEGER NOT NULL CHECK (base_affiliation_version >= 0),
+  submitted_by BIGINT NOT NULL REFERENCES users(id),
+  authorization_ref VARCHAR(512), -- 本人/监护授权凭据，私有引用，不记录证件正文
+  consented_at TIMESTAMPTZ,
+  reason TEXT NOT NULL CHECK (NULLIF(btrim(reason),'') IS NOT NULL),
+  status VARCHAR(24) NOT NULL DEFAULT 'draft'
+    CHECK (status IN ('draft','awaiting_source','awaiting_target','completed','rejected','withdrawn')),
+  source_reviewer_id BIGINT REFERENCES users(id),
+  source_reviewed_at TIMESTAMPTZ,
+  target_reviewer_id BIGINT REFERENCES users(id),
+  target_reviewed_at TIMESTAMPTZ,
+  platform_release_by BIGINT REFERENCES users(id),
+  platform_release_reason TEXT,
+  rejected_by BIGINT REFERENCES users(id),
+  comment TEXT,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (from_org_id <> to_org_id),
+  CHECK (status IN ('draft','withdrawn') OR (NULLIF(btrim(authorization_ref),'') IS NOT NULL AND consented_at IS NOT NULL)),
+  CHECK (source_reviewer_id IS NULL OR (source_reviewer_id <> submitted_by AND source_reviewer_id <> user_id)),
+  CHECK (target_reviewer_id IS NULL OR (target_reviewer_id <> submitted_by AND target_reviewer_id <> user_id)),
+  CHECK (source_reviewer_id IS NULL OR target_reviewer_id IS NULL OR source_reviewer_id <> target_reviewer_id),
+  CHECK (status NOT IN ('awaiting_target','completed') OR (source_reviewer_id IS NOT NULL AND source_reviewed_at IS NOT NULL)),
+  CHECK (status <> 'completed' OR (target_reviewer_id IS NOT NULL AND target_reviewed_at IS NOT NULL AND completed_at IS NOT NULL)),
+  CHECK (status <> 'rejected' OR (rejected_by IS NOT NULL AND NULLIF(btrim(comment),'') IS NOT NULL)),
+  CHECK (platform_release_by IS NULL OR (source_reviewer_id IS NOT NULL AND source_reviewer_id = platform_release_by AND NULLIF(btrim(platform_release_reason),'') IS NOT NULL)),
+  FOREIGN KEY (source_membership_id,user_id,from_org_id) REFERENCES organization_members(id,user_id,org_id) ON DELETE RESTRICT
+);
+CREATE UNIQUE INDEX uniq_pending_org_transfer ON org_transfer_requests(user_id)
+  WHERE status IN ('draft','awaiting_source','awaiting_target');
 
 CREATE TABLE roles (
   id          BIGSERIAL PRIMARY KEY,
@@ -304,6 +344,7 @@ CREATE TABLE teams (
   org_id      BIGINT NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
   coach_id    BIGINT REFERENCES users(id) ON DELETE SET NULL,
   captain_id  BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  membership_version INTEGER NOT NULL DEFAULT 1 CHECK (membership_version >= 1), -- 自主退队/成员变更递增
   approved_revision_id BIGINT,              -- 当前生效的已审核队伍申请；批准创建时填入
   status       VARCHAR(16) NOT NULL DEFAULT 'active',   -- active|disbanded
   remark      TEXT,
@@ -323,7 +364,10 @@ CREATE TABLE team_change_requests (
   team_code VARCHAR(32) NOT NULL,
   event_code VARCHAR(16) NOT NULL REFERENCES event_types(code) ON DELETE RESTRICT,
   request_kind VARCHAR(16) NOT NULL CHECK (request_kind IN ('create','update')),
+  registration_season_id BIGINT, -- 创建申请必须指定注册赛季，修改不改变许可
+  CHECK (request_kind <> 'create' OR registration_season_id IS NOT NULL),
   base_revision_id BIGINT,
+  base_membership_version INTEGER NOT NULL DEFAULT 1 CHECK (base_membership_version >= 1),
   proposal_enc BYTEA NOT NULL,
   status VARCHAR(16) NOT NULL DEFAULT 'draft'
     CHECK (status IN ('draft','submitted','approved','returned','rejected','withdrawn')),
@@ -371,6 +415,44 @@ CREATE UNIQUE INDEX uniq_current_team_member ON team_members(user_id) WHERE left
 ## 4. 赛事 / 届次 / 组别
 
 ```sql
+CREATE TABLE seasons (
+  id BIGSERIAL PRIMARY KEY,
+  code VARCHAR(32) UNIQUE NOT NULL,
+  name VARCHAR(64) NOT NULL,
+  starts_on DATE NOT NULL,
+  ends_on DATE NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','active','archived')),
+  is_default BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (starts_on <= ends_on),
+  CHECK (NOT is_default OR status = 'active')
+);
+CREATE UNIQUE INDEX uniq_default_season ON seasons(is_default) WHERE is_default;
+ALTER TABLE team_change_requests ADD FOREIGN KEY (registration_season_id) REFERENCES seasons(id) ON DELETE RESTRICT;
+
+-- 队伍稳定身份跨赛季保留；每次申请独立留档，拒绝后创建关联新申请。
+CREATE TABLE team_season_registrations (
+  id BIGSERIAL PRIMARY KEY,
+  team_id BIGINT NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
+  season_id BIGINT NOT NULL REFERENCES seasons(id) ON DELETE RESTRICT,
+  resubmission_of BIGINT REFERENCES team_season_registrations(id) ON DELETE RESTRICT,
+  status VARCHAR(16) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','submitted','approved','rejected','withdrawn','revoked')),
+  proposal_enc BYTEA NOT NULL,
+  submitted_by BIGINT NOT NULL REFERENCES users(id),
+  reviewer_id BIGINT REFERENCES users(id),
+  reviewed_at TIMESTAMPTZ,
+  comment TEXT,
+  revoked_by BIGINT REFERENCES users(id),
+  revoked_at TIMESTAMPTZ,
+  revoke_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (reviewer_id IS NULL OR reviewer_id <> submitted_by),
+  CHECK (status NOT IN ('approved','rejected','revoked') OR (reviewer_id IS NOT NULL AND reviewed_at IS NOT NULL AND NULLIF(btrim(comment),'') IS NOT NULL)),
+  CHECK (status <> 'revoked' OR (revoked_by IS NOT NULL AND revoked_at IS NOT NULL AND NULLIF(btrim(revoke_reason),'') IS NOT NULL))
+);
+CREATE UNIQUE INDEX uniq_live_team_season_registration ON team_season_registrations(team_id,season_id)
+  WHERE status IN ('draft','submitted','approved');
+
 CREATE TABLE competitions (
   id          BIGSERIAL PRIMARY KEY,
   public_code VARCHAR(32) UNIQUE NOT NULL,
@@ -410,6 +492,7 @@ CREATE TABLE competition_admins (
 
 CREATE TABLE competition_editions (
   id             BIGSERIAL PRIMARY KEY,
+  season_id      BIGINT NOT NULL REFERENCES seasons(id) ON DELETE RESTRICT,
   competition_id BIGINT NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
   edition_no     INT NOT NULL,                -- 第几届
   year           INT NOT NULL,
@@ -591,7 +674,7 @@ CREATE TABLE registration_submissions (
   approval_mode VARCHAR(16) NOT NULL DEFAULT 'single' CHECK (approval_mode IN ('single','two_stage')),
   selected_school_level VARCHAR(8),               -- 提交人选择并冻结，不按全队最高学段派生
   snapshot_enc BYTEA NOT NULL,              -- 本轮表单/队伍信息/同意项完整快照
-  access_snapshot JSONB NOT NULL DEFAULT '{}', -- 服务端记录当时准入判定
+  access_snapshot JSONB NOT NULL DEFAULT '{}', -- 服务端记录 season_id、赛季许可申请 ID/结论及单场准入判定
   submitted_by BIGINT NOT NULL REFERENCES users(id),
   submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   cancelled_at TIMESTAMPTZ,                        -- 主动取消保留原提交，仅添加取消元数据
@@ -663,6 +746,96 @@ CREATE INDEX idx_approval_reg ON approval_records(registration_id);
 ALTER TABLE approval_records ADD CONSTRAINT approval_submission_fk FOREIGN KEY (registration_id, submission_no)
   REFERENCES registration_submissions(registration_id, submission_no) ON DELETE RESTRICT;
 -- 审核记录与文件同样"永久保留"：无 is_deleted
+
+-- 同赛季同赛项学生绑定：跨组别唯一，退队/驳回不删除。
+ALTER TABLE teams ADD UNIQUE (id, event_code);
+CREATE TABLE season_student_team_bindings (
+  season_id BIGINT NOT NULL REFERENCES seasons(id) ON DELETE RESTRICT,
+  event_code VARCHAR(16) NOT NULL REFERENCES event_types(code) ON DELETE RESTRICT,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  original_team_id BIGINT NOT NULL,
+  current_team_id BIGINT NOT NULL,
+  source_registration_id BIGINT NOT NULL,
+  source_submission_no INTEGER NOT NULL,
+  binding_version INTEGER NOT NULL DEFAULT 1 CHECK (binding_version >= 1),
+  last_transfer_request_id BIGINT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (season_id, event_code, user_id),
+  FOREIGN KEY (original_team_id, event_code) REFERENCES teams(id, event_code) ON DELETE RESTRICT,
+  FOREIGN KEY (current_team_id, event_code) REFERENCES teams(id, event_code) ON DELETE RESTRICT,
+  FOREIGN KEY (source_registration_id, source_submission_no)
+    REFERENCES registration_submissions(registration_id, submission_no) ON DELETE RESTRICT
+);
+CREATE TABLE team_transfer_requests (
+  id BIGSERIAL PRIMARY KEY,
+  resubmission_of BIGINT REFERENCES team_transfer_requests(id) ON DELETE RESTRICT,
+  season_id BIGINT NOT NULL,
+  event_code VARCHAR(16) NOT NULL,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  from_team_id BIGINT NOT NULL,
+  to_team_id BIGINT NOT NULL,
+  base_binding_version INTEGER NOT NULL CHECK (base_binding_version >= 1),
+  base_membership_id BIGINT REFERENCES team_members(id) ON DELETE RESTRICT, -- 无当前关系时为空，由服务校验最近退队记录
+  status VARCHAR(16) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','submitted','approved','rejected','withdrawn')),
+  reason TEXT NOT NULL CHECK (NULLIF(btrim(reason),'') IS NOT NULL),
+  submitted_by BIGINT NOT NULL REFERENCES users(id),
+  reviewer_id BIGINT REFERENCES users(id),
+  comment TEXT,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (from_team_id <> to_team_id),
+  CHECK (reviewer_id IS NULL OR (reviewer_id <> submitted_by AND reviewer_id <> user_id)),
+  CHECK (status NOT IN ('approved','rejected') OR (reviewer_id IS NOT NULL AND reviewed_at IS NOT NULL)),
+  CHECK (status <> 'rejected' OR NULLIF(btrim(comment),'') IS NOT NULL),
+  FOREIGN KEY (season_id, event_code, user_id) REFERENCES season_student_team_bindings(season_id, event_code, user_id) ON DELETE RESTRICT,
+  FOREIGN KEY (from_team_id, event_code) REFERENCES teams(id, event_code) ON DELETE RESTRICT,
+  FOREIGN KEY (to_team_id, event_code) REFERENCES teams(id, event_code) ON DELETE RESTRICT
+);
+CREATE UNIQUE INDEX uniq_pending_team_transfer ON team_transfer_requests(season_id,event_code,user_id)
+  WHERE status IN ('draft','submitted');
+ALTER TABLE season_student_team_bindings ADD FOREIGN KEY (last_transfer_request_id) REFERENCES team_transfer_requests(id) ON DELETE RESTRICT;
+
+CREATE FUNCTION guard_season_team_binding() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN RAISE EXCEPTION 'Participation binding history cannot be deleted' USING ERRCODE = '55000'; END IF;
+  IF TG_OP = 'INSERT' THEN
+    IF NOT EXISTS (SELECT 1 FROM registrations r JOIN competition_editions e ON e.id=r.edition_id JOIN registration_members m ON m.registration_id=r.id AND m.submission_no=NEW.source_submission_no AND m.user_id=NEW.user_id AND m.role <> 'coach' WHERE r.id=NEW.source_registration_id AND r.team_id=NEW.current_team_id AND r.status='approved' AND r.approved_submission_no=NEW.source_submission_no AND e.season_id=NEW.season_id) THEN
+      RAISE EXCEPTION 'Source must be an approved student submission from the same season and team' USING ERRCODE='23514';
+    END IF;
+    IF NEW.original_team_id <> NEW.current_team_id OR NEW.last_transfer_request_id IS NOT NULL THEN
+      RAISE EXCEPTION 'Initial binding must use original team' USING ERRCODE = '55000';
+    END IF;
+    NEW.binding_version := 1;
+    RETURN NEW;
+  END IF;
+  IF ROW(NEW.season_id,NEW.event_code,NEW.user_id,NEW.original_team_id,NEW.source_registration_id,NEW.source_submission_no)
+     IS DISTINCT FROM ROW(OLD.season_id,OLD.event_code,OLD.user_id,OLD.original_team_id,OLD.source_registration_id,OLD.source_submission_no) THEN
+    RAISE EXCEPTION 'Original participation binding is immutable' USING ERRCODE = '55000';
+  END IF;
+  IF NEW.current_team_id = OLD.current_team_id THEN
+    IF NEW.binding_version <> OLD.binding_version OR NEW.last_transfer_request_id IS DISTINCT FROM OLD.last_transfer_request_id THEN
+      RAISE EXCEPTION 'Binding metadata requires approved transfer' USING ERRCODE = '55000';
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM team_transfer_requests r WHERE r.id = NEW.last_transfer_request_id
+    AND r.status = 'approved' AND r.season_id = OLD.season_id AND r.event_code = OLD.event_code AND r.user_id = OLD.user_id
+    AND r.base_binding_version = OLD.binding_version AND r.from_team_id = OLD.current_team_id AND r.to_team_id = NEW.current_team_id) THEN
+    RAISE EXCEPTION 'Team transfer requires matching approved request' USING ERRCODE = '55000';
+  END IF;
+  NEW.binding_version := OLD.binding_version + 1;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER season_team_binding_guard BEFORE INSERT OR UPDATE OR DELETE ON season_student_team_bindings
+  FOR EACH ROW EXECUTE FUNCTION guard_season_team_binding();
+
+-- 晋级准入可关联来源轮次，阵容取该轮学生快照，导入名单自身不自动授予新成员资格。
+ALTER TABLE edition_team_allowlist ADD COLUMN qualification_registration_id BIGINT;
+ALTER TABLE edition_team_allowlist ADD COLUMN qualification_submission_no INTEGER;
+ALTER TABLE edition_team_allowlist ADD CHECK ((qualification_registration_id IS NULL) = (qualification_submission_no IS NULL));
+ALTER TABLE edition_team_allowlist ADD FOREIGN KEY (qualification_registration_id,qualification_submission_no)
+  REFERENCES registration_submissions(registration_id,submission_no) ON DELETE RESTRICT;
 ```
 
 ## 6. 奖项 / 获奖名单 / 证书
@@ -884,9 +1057,11 @@ ALTER TABLE certificates
     REFERENCES certificates(id, award_record_id, recipient_member_id) ON DELETE RESTRICT;
 ```
 
-- 队员只允许学生，教练不写入 team_members；队员全平台同时只有一条 left_at IS NULL 的归属；换队先批准原队退队，再批准新队入队，不能靠另一赛项绕过。批准时锁相关队伍、按 user_id 升序锁学生账户，复查当前归属；唯一索引兜底并发入队，冲突返回 40908。入退队写 joined_at/left_at 并关联申请 ID、操作人和理由到审计，不覆盖旧关系；待审退队不释放归属。解散队伍时同事务结束当前成员关系并审计，历史快照保留。
-- 队伍修改批准时同一事务先锁正式队伍再锁申请，创建申请批准时锁申请，检查申请人/审核人分离、有效单位、成员与 base_revision_id；只有 approved 提案能成为正式版本。resubmission_of 只允许关联同申请人、同单位/队伍的原申请，服务层校验，不能借复制他人申请读取提案。创建批准前 team_id/result_org_id 为空，不建立可用主数据。
-- 每次报名提交在同一事务按届次→队伍→报名顺序加锁，创建新 submission_no、对应成员/文件行，再切换 current_submission_no；团队绑定该队当时已审核版本。历史成员/文件/审核记录不可覆盖或物理删除，工作副本变化不更新旧提交，证书始终引用旧成员行。
+- 队员只允许学生，教练不写入 team_members；队员全平台同时只有一条 left_at IS NULL 的归属；本人可自主退队，普通管理员入退队仍走批准流程；当前归属释放不删除同赛季同赛项绑定，回上次退出队伍可普通入队，跨队须平台特批。批准时锁相关队伍、按 user_id 升序锁学生账户，复查当前归属；唯一索引兜底并发入队，冲突返回 40908。入退队写 joined_at/left_at 并关联申请 ID、操作人和理由到审计，不覆盖旧关系；管理员发起的待审退队不释放归属。解散队伍时同事务结束当前成员关系并审计，历史快照保留。
+- 首次通过团队报名时为每位学生写同赛季同赛项绑定；来源提交必须是本队已通过版本且包含本人，其场次必须归属该赛季，服务层校验。关闭届次不删绑定，入队仅检查所有未归档赛季的相同赛项绑定；一人多证不自动合并。原队回归仍校验最近退出队伍及全部有效绑定，平台批准换队会改变允许返回的队伍，不能借反复退队回避。guard_season_team_binding 只守卫绑定写入，不代替平台权限、当前成员关系或报名更正校验。
+- 平台特批事务需同时校验并切换全部受影响的未归档赛季绑定；多赛季逐季生成关联申请并统一审核执行，缺少任一必要批准即整体拒绝，不改写已归档绑定；原队报名取消/驳回并在重提时排除该学生，目标队已提交报名须另行更正，旧快照保留。已有锁定名单/非作废证书按原规则阻断；全部绑定版本和成员关系校验失败整体回滚。学生自主退队时若为队长则清空 captain_id（由单位管理员另行配置），同步递增队伍成员版本、使旧队伍变更申请失效，提交服务取审核成员与当前有效成员交集，不得重新带回已退队学生。
+- 队伍修改批准时同一事务先锁正式队伍再锁申请，创建申请批准时锁申请，检查申请人/审核人分离、有效单位、成员、base_revision_id 与 base_membership_version；只有 approved 提案能成为正式版本。resubmission_of 只允许关联同申请人、同单位/队伍的原申请，服务层校验，不能借复制他人申请读取提案。创建批准前 team_id/result_org_id 为空，不建立可用主数据。
+- 每次报名提交在同一事务按赛季→届次→队伍→赛季许可→报名顺序加锁，创建新 submission_no、对应成员/文件行，再切换 current_submission_no；团队绑定该队当时已审核版本。历史成员/文件/审核记录不可覆盖或物理删除，工作副本变化不更新旧提交，证书始终引用旧成员行。
 - 队伍准入模式/名单变更均递增 team_access_version，导入预览及确认绑定该版本；确认过期返回 40906。
 - 队伍准入按 edition_id + team_id 读取 active 行；名单变更和报名提交/重提/批准共用届次行锁，避免并发撤销与检查竞态。open/allowlist 是服务层条件，外键不会自动校验准入状态。
 - 获奖写入 service 必须取 status=approved 且 approved_submission_no=current_submission_no 的明确轮次，冻结到 award_records.submission_no；公示、发奖、统计只取该通过轮次的成员，历史视图才读取全部轮次。
@@ -894,6 +1069,10 @@ ALTER TABLE certificates
 - 获奖写入 service 在同一事务锁定名单、奖项和报名，校验奖项与名单的 offering 相同（含同时为 NULL）；具体组合名单只接收该 offering 的 approved 报名，通用名单可接收本届任一组合。
 - 上述外键保证同届；组合匹配、审核状态与锁定态是额外业务校验，不能因外键存在而省略。已被引用的赛事配置和报名归属不再改挂，只能作废后重建；操作均走 service。
 - 带 is_deleted 的表同时维护 deleted_at；有过提交的报名软删除不影响管理历史查询，历史查询须显式包含软删除记录并按范围鉴权；历史表禁止应用层硬删除，DDL 的删除策略仅用于外键防护，不授权业务删除。
+
+- 学生单位交接仅在原/目标双方核验和学生授权完成后生效；普通成员 CRUD/导入不得直接改主属关系。完成事务锁 users 与当前主属关系，核对 base_affiliation_version、原单位、无当前队伍，结束旧关系并追加新关系，递增 affiliation_version/token_version；新旧关系更新和 completed 状态同一事务，失败回滚。原创建单位仅为来源审计，重置权按当前有效主属单位及其管理范围实时查询。重置和交接共用学生行锁，旧单位的过期重置请求 40906/40301。
+- 队伍创建仅平台审核并原子建立该赛季 approved 许可；team_season_registrations 审核/撤销仅平台，原提案与结论不覆盖，驳回/撤回后复制关联新行，关联须同队同赛季。提交/重提仅当前 active 赛季且存在该队 approved 许可；审批通过复核原赛季 active 与许可。创建/激活审核、许可撤销与报名共用锁序，撤销不改写历史但阻断新提交与存量通过。
+- 场次的 season_id 首次提交后不可改挂；提交、重提、批准和赛季归档统一按 season→场次顺序加锁并复核 active 状态，避免归档竞态。归档前校验无未完成赛事/待审报名；团队批准报名先建立 season_student_team_bindings，跨赛事跨组别共用唯一键。赛季归档仅停止未来入队限制，不删绑定。晋级来源轮次必须属于目标场次同一赛季，服务层复核。
 
 ## 8. 设计说明与遗留项
 
