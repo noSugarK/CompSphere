@@ -1,0 +1,28 @@
+# 竞云界面原型
+
+独立设计预览，不是正式 Vue 前端。所有操作使用内存中的演示数据，不连接 API、不创建真实账号，刷新即重置。请勿输入真实个人信息。
+
+```powershell
+node frontend/prototype/server.mjs
+```
+
+打开 <http://127.0.0.1:4173>，或直接打开 index.html。根入口为赛事门户；学生/教练的事务在门户与个人中心完成，管理员/审核员使用控制台。界面没有身份切换栏，菜单按演示账号的权限显示；顶栏可切换语言与主题。
+
+- 产品界面不提供设计切换条。独立预览账号由 URL 的 `role=student|coach|org|event|reviewer|platform` 指定；不带参数为访客。正式实现改由后端登录会话返回 grants，URL 不是实际授权机制。
+- 示例：`/?role=student#portal` 学生门户、`/?role=org#dashboard` 单位控制台、`/?role=reviewer#reviews` 审核台。
+- 视觉：墨绿/暖灰/荧光绿，IBM Plex Sans 正文与 Barlow Condensed 数字/标题。开源字体与许可证在 fonts/，从本地提供。
+- 页面：工作台、赛事列表/详情、报名表/列表、报名审核与历史抽屉、队伍/成员变更、学生账户、资料审核、单位、授权、准入名单、获奖名单、证书/验证、导入导出、消息、操作记录、档案、设置及登录/注册。
+- 可体验：搜索筛选、审核并更新状态、未审报名取消修改与重提、入队唯一归属/赛季绑定冲突、自主退队/原队回归、向平台申请换队及特批执行、自审限制、导入预览、本地证件照预览、CSV 演示导出。
+- 仅预览：照片裁切/安全重编码、真实邮件、账号/密码、PDF、服务端权限与异步任务。数量卡片和部分历史数据为固定示例。
+
+本原型长期保留，供设计讨论与公开体验；正式 Vue 前端在 `frontend/src/` 独立实现并连接后端，不复用此处的模拟授权或内存数据。
+
+## GitHub Pages
+
+无需搬到 docs。工作流 [demo-pages.yml](../../.github/workflows/demo-pages.yml) 从 main 发布本目录的 HTML、CSS、JS 和字体（含许可证），不上传本地服务器、设计文档、后端或环境配置。
+
+首次发布需在仓库 Settings → Pages → Build and deployment 将 Source 设为 GitHub Actions；工作流合并 main 后自动部署，也可在 main 手动运行。最终地址以工作流 github-pages 环境输出为准。
+
+在演示网址后添加 `?role=student#portal`、`?role=coach#teams`、`?role=org#dashboard`、`?role=event#reviews`、`?role=reviewer#reviews` 或 `?role=platform#dashboard` 可体验对应账号；这些只是公开模拟入口，所有数据均为示例，刷新重置。正式应用独立部署，按真实会话调用 API。
+
+平台当前赛季固定由演示配置初始化，普通 URL 参数不能切换；仅 platform 账号可在赛事中心“管理赛季”。队伍按赛季申请激活，org 只能提交/取消，platform 审核。全部操作仅在当前页内存中演示，不同步其他标签页，也不连接生产服务。

@@ -31,6 +31,6 @@ Prefer small PRs. Review correctness, security and specification conformance; le
 
 ## Tooling status
 
-This repository currently contains design documents and deployment scaffolding. There are **no installed commit hooks, linter configurations or CI workflows**; malformed commits are not automatically rejected.
+This repository currently contains design documents, an isolated static demo and deployment scaffolding. The Pages workflow checks and publishes only the demo. There are **no installed commit hooks, linter configurations or production application CI checks**; malformed commits are not automatically rejected.
 
 W1 must add the toolchain described in the coding standards and use the same checks locally and in CI. Run `pre-commit install` only after its configuration and dependencies exist. Until then, report available checks and any unverified behavior explicitly.
