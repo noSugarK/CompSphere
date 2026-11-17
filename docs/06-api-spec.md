@@ -1,6 +1,6 @@
 # 06 API 规范与端点草案
 
-**版本**：v1.3（2026-11-17）。基址 `/api/v1`，格式 JSON，认证 `Authorization: Bearer <access_token>`。
+**版本**：v1.4（2026-11-17）。基址 `/api/v1`，格式 JSON，认证 `Authorization: Bearer <access_token>`。
 
 v1.1 变更：错误码表补 42205-42208 与 40904、新增发码与公示接口、报名筛选加 `event` 参数、明确成员字段分级。
 
@@ -25,18 +25,18 @@ v1.1 变更：错误码表补 42205-42208 与 40904、新增发码与公示接�
 
 | 段 | 域 | 示例 |
 | --- | --- | --- |
-| 401xx | 认证 | 40101 token 过期、40102 验证码错误或已失效、40104 邮箱未验证 |
-| 403xx | 权限 | 40301 作用域内无权限、40302 角色冲突、40303 不得审核自己提交的申请 |
+| 401xx | 认证 | 40101 token 过期、40102 验证码错误或已失效、40104 邮箱未验证（仅邮箱相关操作）、40105 登录凭证无效 |
+| 403xx | 权限 | 40301 作用域内无权限、40302 角色冲突、40303 不得自审、40304 须先修改初始/重置密码 |
 | 404xx | 资源 | 40401 不存在或无权查看（合并防枚举）；公示名单未发布也返回本码，不返回 403（02 §4.7） |
-| 409xx | 冲突/状态 | 40901 重复报名、40902 非法状态迁移、40903 名单已锁定、40904 证件号已绑定其他账号、40905 幂等键与请求不一致、40906 提交/队伍版本已过期、40907 单位/队伍编号或名称冲突 |
-| 422xx | 校验 | 42201 赛项人数不符、42202 材料缺失、42203 时间窗外、42204 年级或年龄不符、42205 学段与组别不符、42206 身份证号校验位错误、42207 赛项与组别组合未开放、42208 缺少指导教师、42209 不支持的语言或主题、42210 照片格式/内容无效、42211 队伍未通过资料审核、42212 不在本届队伍准入名单、42213 单位未通过创建审核 |
+| 409xx | 冲突/状态 | 40901 重复报名、40902 非法状态迁移、40903 名单已锁定、40904 所选证件已有当前绑定、40905 幂等键与请求不一致、40906 提交/队伍版本已过期、40907 单位标识或队号×赛项身份冲突、40908 队员已有当前队伍（须先退队） |
+| 422xx | 校验 | 42201 赛项人数不符、42202 材料缺失、42203 时间窗外、42204 年级或年龄不符、42205 所选学段与组别不符、42206 证件类型/签发国/号码格式错误、42207 赛项与组别组合未开放、42208 缺少指导教师、42209 不支持的语言或主题、42210 照片格式/内容无效、42211 队伍未通过资料审核、42212 不在本届队伍准入名单、42213 单位未通过创建审核 |
 | 429xx | 限流 | 42901 请求过频（含验证码频率限制；返回 Retry-After） |
 
 错误码三处同步（07「文档即代码」）：本表 ↔ `core/constants.py` ↔ 前端 `utils/errors.ts` 文案映射。新增校验分支必须先在此登记，代码里出现未登记的码视为缺陷。v1.1 起 `42204` 由「对象/年级限制」改为「年级或年龄限制」——原 `target_audience`（参赛对象多选）随组别收敛为学段而删除。
 
 照片上传超过 5MB 返回 HTTP 413 / 41301，解码后像素超限或伪造图片返回 422 / 42210。照片读取和偏好响应使用 Cache-Control: no-store。
 
-SMTP 发送失败返回 HTTP 503 / 50301；Cookie 与 token 生命周期见 05 §3.1。历史 40103 不再用于限流，未实现前统一为 42901。
+验证码受理存储不可用返回 HTTP 503 / 50301；SMTP 失败只影响任务重试，不向匿名请求区分账号存在性。Cookie 与 token 生命周期见 05 §3.1。历史 40103 不再用于限流，未实现前统一为 42901。
 
 ### 1.3 其他
 
@@ -53,24 +53,39 @@ SMTP 发送失败返回 HTTP 503 / 50301；Cookie 与 token 生命周期见 05 �
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| POST | `/auth/register` | 注册（email + code，v1.1 起不含手机号验证） | 公开 |
-| POST | `/auth/verify-code/send` | 发邮箱验证码（body: `email`, `purpose`）；60s 限频 | 公开 |
-| POST | `/auth/login` / `/auth/refresh` / `/auth/logout` | 登录返回 access + 设置 refresh Cookie；刷新轮转；登出清除 Cookie | 公开/会话校验 |
-| POST | `/auth/password/reset/*` | 发码/重置（复用 verify-code 通道） | 公开 |
-| GET | `/me` | 当前用户 + profile + grants + locale/theme；不直接返回私有照片 key | 登录 |
-| PATCH | `/me/preferences` | body: locale / theme，允许部分更新；未知值 42209 | 登录，仅本人 |
-| PUT/DELETE | `/me/photo` | multipart 单个 file 上传/替换证件照；DELETE 清除引用与对象 | 登录，仅本人 |
-| GET | `/me/photo` / `/profiles/{id}/photo` | 鉴权后返回 photo_url（5 分钟有效）与 expires_at；无照片 404 | 本人 / profile:read + 人员作用域 |
-| PATCH | `/me/profile` | 完善/修改本人档案（含身份证号，服务端加密落库） | 登录 |
+| POST | /auth/register | 自助邮箱验证码注册 | 公开 |
+| POST | /auth/verify-code/send | 合法请求统一 202；DB/outbox 同事务受理，限流 429 | 公开 |
+| POST | /auth/login | login_type=email 或 document；后者含 document_type/country/number/password，错误统一 40105 | 公开 |
+| POST | /auth/refresh / /auth/logout | Cookie 轮转/清理，版本与 CSRF 校验 | 会话 |
+| POST | /auth/password/change | 临时密码登录后强制改密，更新 token_version 并换发会话 | 本人（含受限会话） |
+| POST | /auth/password/reset | 已验证邮箱验证码 + 新密码；受理不枚举账户 | 公开，验证凭据 |
+| GET | /me | user/profile/grants/locale/theme，证件仅类型/签发国/末四位 | 登录 |
+| PATCH | /me/preferences | locale/theme 部分更新 | 本人 |
+| PATCH | /me/profile | 普通资料更新，已绑定证件字段不能直接修改 | 本人 |
+| POST | /me/document | 仅首次绑定（当前未绑定），类型/签发国/号码二选一证件 | 本人 |
+| PUT/DELETE | /me/photo | 本人照片上传/替换/删除 | 本人 |
+| GET | /me/photo / /profiles/{id}/photo | 5 分钟签名，照片权限不因队友关系开放 | 本人 / profile:read + 范围 |
 
-发码正常响应统一为「若邮箱符合条件，验证码将发送，请检查收件箱」，不区分是否已注册。可发邮箱同步 SMTP 接受后返回 200（不保证投递），发送失败返回 503；限流返回 429 + Retry-After。`purpose` 绑定验证码，register 的码不能用于 reset；单次消费、重发失效与 IP/邮箱限频见 05 §3.1。
+验证码响应统一「如符合条件，验证码将发送，请检查收件箱」，不返回账户/投递状态；所有地址都经同一受理流程，任务端判断是否发送。邮箱找回仅适用于已验证邮箱，无邮箱代建账户走管理员核验重置。初始/重置密码只交付一次，重试创建请求不能返回原密码；遗失时走受控重置。
+
+### 代建与证件更正
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| POST | /orgs/{id}/student-accounts | 必须有效单位、有效身份证或护照、学生/监护授权；邮箱可空；服务器生成 username/随机临时密码，必须首次改密 | user:provision + 单位范围 |
+| POST | /users/{id}/reset-provisioned-password | 核验凭据+理由；仅原代建单位且仍在该单位、无自助找回渠道的普通成员；管理账户由平台处理 | user:reset_provisioned_password |
+| GET/POST | /identity-change-requests；GET/PATCH /identity-change-requests/{id} | 本人/单位代提；服务器冻结 base_identity_version、旧绑定及新证件密文，只有草稿能编辑 | profile:request_identity_change + 范围 |
+| POST | /identity-change-requests/{id}/submit / /cancel-and-edit | 未审可取消：保留 withdrawn 原申请，原子复制关联草稿；已审不能此路撤销 | 原申请人 |
+| POST | /identity-change-requests/{id}/review | 所属单位管理员或平台管理员审核（单位仅限本范围普通成员），禁止申请人/证件本人自审；approve 原子切换并释放旧号，冲突 40904/40906 | profile:review_identity_change + 范围 |
+
+登录示例：{ "login_type":"document", "document_type":"passport", "document_country":"US", "document_number":"…", "password":"…" }。护照号码含前导零时保留。所有密码/证件/验证码仅请求体传输并禁止日志；代建/重置响应 Cache-Control: no-store，已有证件不得静默接管账号或覆盖密码。
 
 ### 用户与人员（管理）
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| GET/POST | `/users`；GET/PATCH/POST(disable) `/users/{id}` | 账号管理 | `user:*` |
-| GET | `/users/{id}/roles` POST/DELETE 同 | 角色授予（body: role, scope_type, scope_id） | `user:assign_role` |
+| GET/POST | `/users`；GET/PATCH/POST(disable) `/users/{id}` | 账号管理；不增加离职档案 | `user:*` |
+| GET | `/users/{id}/roles` POST/DELETE 同 | 角色授予/撤销（body: role, scope_type, scope_id）；单位管理员交接由平台执行并使旧权限缓存失效，记录审计 | `user:assign_role` |
 | GET/PATCH | `/profiles/{id}`；POST `/profiles/{id}/review` | 人员档案与审核 | `profile:*` |
 | POST | `/profiles/import`（异步）/ GET `/exports/{id}` | Excel 导入导出 | `user:import/export` |
 
@@ -86,13 +101,17 @@ SMTP 发送失败返回 HTTP 503 / 50301；Cookie 与 token 生命周期见 05 �
 | POST | `/orgs/join-requests`；POST `/orgs/join-requests/{id}/approve|reject` | 已存在单位的成员加入申请，不替代单位创建审核 |
 | GET | `/orgs/{id}/stats` | 参赛/获奖统计 |
 
+未审单位/队伍申请另提供 POST /{request-resource}/{id}/cancel-and-edit：锁申请，确认无审核决定，原记录置 withdrawn 并复制关联 draft 返回新 ID；审批先提交则取消返回 40906，不覆盖已审核申请。
+
 ### 队伍（里程碑 2）
+
+教练列表及详情仅返回有效所属单位的队伍概要，不包含其他单位或其子单位队伍；成员详情和报名仅本人负责队伍可按权限读取；不授予队伍提案的编辑或审核权。单位管理员统一管理本单位范围内全部队伍，创建/资料/成员变更仅单位管理员或平台发起申请。队员换队先经原队变更申请批准退出，再经新队申请批准加入；新队提交/批准复查唯一归属，冲突 40908。
 
 正式队伍只读接口为 GET /teams、/teams/{id}、/teams/{id}/members；GET /teams/{id}/registrations 返回权限内历史摘要。创建/编辑/改成员统一发起申请，不能 PATCH 正式资料立即生效。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET/POST | `/team-change-requests`；GET/PATCH `/team-change-requests/{id}` | 申请人查看本人提案，有 team:review 者查看权限内审核队列；kind=create/update，修改须带 base_revision_id；team:create/update/manage_members 与单位范围校验 |
+| GET/POST | `/team-change-requests`；GET/PATCH `/team-change-requests/{id}` | 申请人查看本人提案，有 team:review 者查看权限内审核队列；kind=create/update，修改须带 base_revision_id；team:create/update/manage_members 与单位范围校验，仅单位管理员或平台；教练无写权限 |
 | POST | `/team-change-requests/{id}/submit|withdraw|resubmit` | 申请人操作；resubmit 复制被驳回/退回提案为新草稿，以 resubmission_of 关联原记录并返回新 ID，保持旧提案与审核记录 |
 | POST | `/team-change-requests/{id}/review` | approve/reject/return + comment；team:review，单位树内或平台代审，禁止自审，旧版本冲突 40906 |
 | GET | `/team-change-requests/{id}/review-context` | 申请提案、与生效版本的差异及分页历史摘要；team:review + 单位范围，不扩展赛事附件权限 |
@@ -104,7 +123,7 @@ SMTP 发送失败返回 HTTP 503 / 50301；Cookie 与 token 生命周期见 05 �
 | GET/POST | `/competitions`；GET/PATCH `/competitions/{id}` | `competition:*` |
 | POST | `/competitions/{id}/publish` `/archive` | 状态动作 |
 | PUT | `/competitions/{id}/units` | 主办/承办/协办设置（`competition:manage_units`） |
-| GET/POST | `/competitions/{id}/admins`；DELETE `/admins/{user_id}` | `competition:manage_admins` |
+| GET/POST | `/competitions/{id}/admins`；DELETE `/admins/{user_id}` | `competition:manage_admins` + user:assign_role；仅平台，查询以外操作不得由赛事管理员直接授权 |
 | GET/POST | `/competitions/{id}/editions`；GET/PATCH `/editions/{id}` | `edition:*` |
 | POST | `/editions/{id}/publish` `/close`；PUT `/editions/{id}/approval-mode` | 状态与审核模式配置 |
 | GET/POST | `/editions/{id}/events`；PATCH/DELETE `/events/{id}`；POST `/events/{id}/enable|disable` | 赛项（`event:*`，v1.1） |
@@ -112,8 +131,8 @@ SMTP 发送失败返回 HTTP 503 / 50301；Cookie 与 token 生命周期见 05 �
 | GET/POST | `/editions/{id}/offerings`；PATCH/DELETE `/offerings/{id}` | 开放组合（v1.1）。已有报名的组合不可删除，服务层按 offering_id 的 RESTRICT 返回冲突，只能停用 |
 | GET/PUT | `/editions/{id}/team-access` | 查看/设置 team_entry_mode 与 team_access_version；写入须带当前版本，权限 edition:manage_team_access（里程碑 2） |
 | GET/POST | `/editions/{id}/team-allowlist`；DELETE `/editions/{id}/team-allowlist/{team_id}` | 名单查询/增补/撤销（标 revoked）；edition:manage_team_access，不公开全量 |
-| POST | `/editions/{id}/team-allowlist/import-preview` / `/import-confirm` | 按队伍编号预览匹配与错误，返回预览令牌及 team_access_version；确认校验版本并事务写入，只导入已明确匹配的队伍，不自动创建队伍；权限同上 |
-| GET | `/editions/{id}/eligible-groups?team_id=` | 该队伍或本人有资格的组别，报名页据此渲染选项，不给自选（v1.1） |
+| POST | `/editions/{id}/team-allowlist/import-preview` / `/import-confirm` | 按队号+稳定赛项代码预览匹配与错误，返回预览令牌及 team_access_version；确认校验版本并事务写入，只导入已明确匹配的队伍，不自动创建队伍；权限同上 |
+| GET | `/editions/{id}/available-offerings?team_id=` | 按赛项/开放组合返回可选学段组别，用户选择；不按全队最高学段自动筛选，提交仍须校验组别已配置条件 |
 | GET | `/public/competitions` `/public/editions/{id}` | 门户公开列表/详情 |
 | GET | `/public/editions/{id}/roster?event=&group=` | 通过名单公示页（`AllowAny`；判定顺序见 02 §4.7） |
 | POST | `/editions/{id}/roster/publish` `/unpublish` | 发布/下架公示名单（发布用 `roster:publish`，下架用 `roster:unpublish`，v1.1） |
@@ -126,11 +145,11 @@ SMTP 发送失败返回 HTTP 503 / 50301；Cookie 与 token 生命周期见 05 �
 | GET/POST | `/editions/{edition_id}/registrations` | 我的报名列表 / 新建（draft 或直接 submit） | `registration:create` |
 | GET | `/registrations/{id}` | 详情（成员、文件、审核记录）；成员字段按查看者身份分级，见下方说明 | read_own / read scoped |
 | PATCH | `/registrations/{id}` | 编辑工作副本（draft / returned / org_returned / rejected / org_rejected），不覆盖已提交版本 | 提交人 |
-| POST | `/registrations/{id}/submit` `/resubmit` `/withdraw` | 状态动作（03 §1） | 提交人 |
-| DELETE | `/registrations/{id}` | 删除草稿 | `delete_draft` |
+| POST | `/registrations/{id}/submit` `/resubmit` `/withdraw` `/cancel-review` | 状态动作（03 §1）；cancel-review 仅本轮未审，保留并标记取消旧提交，回同一报名的可编辑草稿 | 提交人 |
+| DELETE | `/registrations/{id}` | 软删除草稿，不删除已有提交/成员/材料历史 | `delete_draft` |
 | POST | `/registrations/{id}/files` | 上传暂存材料（multipart → upload_id），归属/过期校验后在 submit/resubmit 建本轮文件引用 | 提交人 |
 | GET | `/registrations?edition=&group=&org=&status=` | 管理列表 | `registration:read` |
-| POST | `/registrations/{id}/approval` | body: `{action: approve|reject|return, comment, submission_no}`；已 approved 执行 reject 额外需 approval:reject_approved，并受名单锁定/证书限制 | `approval:review_*` |
+| POST | `/registrations/{id}/approval` | body: `{action: approve|reject|return, comment, submission_no}`；已 approved 执行 reject 额外需 approval:reject_approved，并受名单锁定/证书限制；所有审核动作禁止本轮学生成员及提交人自审 | `approval:review_*` |
 | POST | `/registrations/batch-approval` | body: `{items:[{id,submission_no}], action, comment}`；逐项检查版本与权限，已通过报名的批量驳回也需 reject_approved | `approval:batch_review` |
 | GET | `/registrations/{id}/team-review-context` | 本场快照、关联队伍资料版本、分页历届各提交轮次摘要与历史队员；仅团队报名，按 02 历史上下文规则鉴权并审计 | registration:read + approval:review_* + team:read_review_history |
 | GET | `/registrations/{id}/submissions` / `/submissions/{no}` | 分页提交历史/单版快照，按当前报名同等归属与字段权限裁剪，不返回其他队员敏感字段 | read_own / read scoped |
@@ -153,13 +172,15 @@ SMTP 发送失败返回 HTTP 503 / 50301；Cookie 与 token 生命周期见 05 �
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET/POST | `/editions/{id}/awards`；PATCH/DELETE `/awards/{id}` | `award:config` |
+| GET/POST | `/editions/{id}/awards`；PATCH/DELETE `/awards/{id}` | `award:config`，仅学生参赛奖项，不提供单位/组织/教练获奖通道 |
 | GET | `/editions/{id}/rosters?offering_id=`；PUT 条目增删 `/roster/records` | 按开放组合查询；不传 offering_id 时为届次通用名单，条目仅从 approved 报名挑选 |
 | POST | `/roster/import`（异步，batch_no 主匹配）→ GET `/roster/import-pending` → POST `/import-pending/{id}/resolve` | 导入与人工确认 |
 | POST | `/roster/submit` `/approve` `/reject` `/unlock` | 名单状态机动作 |
 | POST | `/certificates/generate` | 批量生成（幂等键）；GET `/certificates?...` 列表；POST `/certificates/{id}/revoke|reissue` |
-| GET | `/me/certificates` | 仅 recipient_member_id 对应本人且已 issued 的证书，返回短期预签名 PDF；完整证件号不输出 |
+| GET | `/me/certificates` | 仅 recipient_member_id 对应本人、届次未 closed 且已 issued 的证书，返回短期预签名 PDF；完整证件号不输出 |
 | GET | `/verify/{qr_token}` | 公开验证（Nginx 独立限流路径；脱敏最小字段 + 有效性） |
+
+关闭可见性：closed 的门户、公示、read_own/普通队伍历史入口均 404；GET /admin/editions/{id}/registrations 与对应 submissions 历史仅 registration:read_history，仍逐行检查原届次/单位范围。公开证书验证仍仅返回有效性等最小字段，不开放完整历史。
 
 ### 通知 / 统计 / 审计 / 系统
 
@@ -182,7 +203,8 @@ POST /api/v1/editions/12/registrations   // Idempotency-Key: uuid
   "coach_user_id": 45,
   "contact": { "name": "李四", "phone": "138...", "email": "..." },
   "form_data": { "project_title": "…" },
-  "consents": { "id_number_usage": true },
+  "selected_school_level": "HS",
+  "consents": { "document_usage": true },
   "submit": true
 }
 → 201 { "code": 0, "message": "ok", "data": { "id": 900, "batch_no": "REG-12-3F9A21C7", "status": "pending_review" }, "request_id": "..." }

@@ -29,7 +29,7 @@
 ### 2.3 敏感数据
 
 - 不记录请求/响应正文、认证头、密码、验证码、token、预签名 URL 或绑定 SQL 参数；SQL 模板也须移除字面量。
-- 身份证最多末四位，手机号保留前 3 后 4，邮箱仅域名；哈希、密文也不向前端或日志输出。
+- 证件最多末四位，手机号保留前 3 后 4，邮箱仅域名；哈希、密文也不向前端或日志输出。
 - 错误消息面向用户，技术细节留在日志。开发环境同样遵守脱敏要求。
 - 审计记录操作人、对象、范围、动作、理由和导出字段清单；变更 diff 按字段白名单过滤。
 
@@ -39,9 +39,12 @@
 
 | 事件前缀 | 动作 |
 | --- | --- |
+| `role.grant` / `role.revoke` / `team.member` | 管理员交接授权撤销/授予，成员 joined/left；记录范围、旧/新队伍、申请 ID、操作者、时间与理由，不记录离职履历 |
 | `auth.login` / `rbac.denied` | 登录结果、权限拒绝 |
-| `registration` | submitted、withdrawn、resubmitted、approved、rejected、returned（均带 submission_no） |
-| `org.request` / `team.request` | submitted、approved、rejected、returned；申请 ID、base_revision_id、审核人及理由摘要 |
+| `registration` | submitted、cancelled、withdrawn、resubmitted、approved、rejected、returned（均带 submission_no） |
+| `org.request` / `team.request` | submitted、cancelled、approved、rejected、returned；申请 ID、base_revision_id、审核人及理由摘要 |
+| `account.provision` / `account.reset` / `identity.change` | 代建、核验重置、证件申请/取消/审核/应用；仅记对象 ID、版本和理由，禁止临时密码/证件内容 |
+| `outbox` | 领取、投递、重试、失败、重放；business_key、版本、次数与结果，不记 payload 敏感内容 |
 | `roster` | confirmed、unlocked、published、unpublished |
 | `edition.team_access` / `team.history` | 准入模式与名单导入/变更、审核历史上下文读取（actor、当前报名、team_id） |
 | `certificate` | generate.started/succeeded/failed、revoked、reissued |

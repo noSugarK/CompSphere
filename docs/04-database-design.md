@@ -1,8 +1,8 @@
 # 04 数据库设计（字段级 DDL）
 
-**版本**：v1.3（2026-11-17）。目标库 PostgreSQL 16，Django 5 迁移生成前的目标 schema。
+**版本**：v1.4（2026-11-17）。目标库 PostgreSQL 16，Django 5 迁移生成前的目标 schema。
 
-v1.1 变更（对齐产品确认）：新增赛项维度 `competition_events` 与开放组合 `competition_offerings`，赛项与组别并列，报名/奖项/名单以「届次×赛项×组别」为单位；组别改为学段（ES/MS/HS/U）并移除专业限制；身份证号由「按需收集」改为参赛者必填且 P0 列加密；注册主键改邮箱验证码，新增 `verification_codes`；新增届次级名单公示开关；组织树改 treebeard 物化路径；证书编号引入独立计数器。
+v1.4：增加证件更正审批守卫、护照/代建账户、队号归属与赛项身份、提交轮次到证书的外键、事务 outbox。
 
 > 2026-11-17 审阅：本 schema 尚无迁移实现；同届外键、逐人证书与个人信息规则已按产品确认修订，见 [审阅待办](10-review-notes.md)。文中的服务层不变式不能替代数据库约束。
 
@@ -40,22 +40,28 @@ audit_logs（独立）
 
 ```sql
 CREATE TABLE users (
-  id            BIGSERIAL PRIMARY KEY,
-  username      VARCHAR(64) UNIQUE NOT NULL,
-  email         VARCHAR(255) UNIQUE NOT NULL,        -- 注册主键，必须已验证
-  email_verified_at TIMESTAMPTZ,                     -- 未验证不得提交报名（服务层校验）
-  phone         VARCHAR(20),                         -- 完善档案时必填，可共用，不作为身份凭证
-  phone_verified_at TIMESTAMPTZ,                     -- 第一版恒为 NULL，预留
-  password_hash VARCHAR(255) NOT NULL,               -- Argon2
-  status        VARCHAR(16) NOT NULL DEFAULT 'pending',  -- active|disabled|pending
-  token_version INTEGER NOT NULL DEFAULT 0,         -- 重置密码/禁用时递增，使旧 JWT 失效
-  locale        VARCHAR(10) NOT NULL DEFAULT 'zh-CN' CHECK (locale IN ('zh-CN', 'en-US')),
-  theme         VARCHAR(10) NOT NULL DEFAULT 'system' CHECK (theme IN ('light', 'dark', 'system')),
+  id BIGSERIAL PRIMARY KEY,
+  username VARCHAR(64) UNIQUE NOT NULL,             -- 系统生成账号标识，不使用证件明文
+  email VARCHAR(255) UNIQUE,                        -- 代建账户可空，绑定/变更须验证
+  email_verified_at TIMESTAMPTZ,
+  phone VARCHAR(20),                               -- 可共用，仅联系方式
+  password_hash VARCHAR(255) NOT NULL,
+  account_source VARCHAR(16) NOT NULL DEFAULT 'self' CHECK (account_source IN ('self','org')),
+  created_by BIGINT REFERENCES users(id),
+  created_by_org_id BIGINT,
+  must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+  initial_password_expires_at TIMESTAMPTZ,
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  token_version INTEGER NOT NULL DEFAULT 0,
+  locale VARCHAR(10) NOT NULL DEFAULT 'zh-CN' CHECK (locale IN ('zh-CN','en-US')),
+  theme VARCHAR(10) NOT NULL DEFAULT 'system' CHECK (theme IN ('light','dark','system')),
   last_login_at TIMESTAMPTZ,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at TIMESTAMPTZ,
-  is_deleted    BOOLEAN NOT NULL DEFAULT FALSE
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  CHECK (account_source <> 'org' OR (created_by IS NOT NULL AND created_by_org_id IS NOT NULL)),
+  CHECK (email IS NOT NULL OR email_verified_at IS NULL)
 );
 
 -- 邮箱验证码：一次性、限频、试错次数受限。手机号通道预留但第一版不启用。
@@ -63,6 +69,7 @@ CREATE TABLE verification_codes (
   id          BIGSERIAL PRIMARY KEY,
   channel     VARCHAR(16) NOT NULL,                  -- email（第一版仅此值）| sms（预留）
   target      VARCHAR(255) NOT NULL,                 -- 邮箱或手机号
+  delivery_secret_enc BYTEA,                     -- 仅投递重试期间保留的加密验证码，成功/过期后清除
   code_hash   VARCHAR(255) NOT NULL,                 -- 不存明文验证码
   purpose     VARCHAR(24) NOT NULL,                  -- register|reset_password|change_email
   expires_at  TIMESTAMPTZ NOT NULL,                  -- 默认 10 分钟
@@ -74,33 +81,100 @@ CREATE TABLE verification_codes (
 CREATE INDEX idx_vcode_lookup ON verification_codes(channel, target, purpose, consumed_at);
 
 CREATE TABLE user_profiles (
-  id            BIGSERIAL PRIMARY KEY,
-  user_id       BIGINT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  real_name     VARCHAR(64) NOT NULL,
-  gender        VARCHAR(10),                         -- male|female|other|unknown
-  photo_storage_key VARCHAR(512),                  -- 私有证件照 key，不存永久/预签名 URL；空表示未上传
-  birth_date    DATE,
-  id_number_enc BYTEA,                               -- 仅参赛成员必填，Fernet 密文
-  id_number_hash VARCHAR(64),                        -- 参赛成员必填；注销后仍保留唯一占用
-  id_number_last4 VARCHAR(4),                        -- 冗余末四位，供人工核对与界面显示，不含完整号码
-  student_no    VARCHAR(64),                         -- 学号
-  staff_no      VARCHAR(64),                         -- 工号
-  person_type   VARCHAR(16) NOT NULL DEFAULT 'participant',  -- participant|coach|staff
-  school_level  VARCHAR(8),                          -- ES|MS|HS|U（组别资格校验依据，见 §4）
-  grade         VARCHAR(32),                         -- 年级标签，如 '高一' / '大一'
-  title         VARCHAR(64),                         -- 职务/职称
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  real_name VARCHAR(64) NOT NULL,
+  gender VARCHAR(10),
+  photo_storage_key VARCHAR(512),
+  birth_date DATE,
+  document_type VARCHAR(16),                       -- id_card / passport，二选一
+  document_country CHAR(2),                        -- 身份证 CN；护照为签发国 ISO 两位码
+  document_number_enc BYTEA,
+  document_hash VARCHAR(64),                       -- HMAC(type|country|规范化号码)，当前绑定唯一
+  document_last4 VARCHAR(4),
+  identity_version INTEGER NOT NULL DEFAULT 0,
+  identity_change_request_id BIGINT,
+  student_no VARCHAR(64),
+  staff_no VARCHAR(64),
+  person_type VARCHAR(16) NOT NULL DEFAULT 'participant',
+  school_level VARCHAR(8),                         -- 资料记录，不自动决定本场组别
+  grade VARCHAR(32),
+  title VARCHAR(64),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at TIMESTAMPTZ,
-  is_deleted    BOOLEAN NOT NULL DEFAULT FALSE
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  CHECK (
+    (document_type IS NULL AND document_country IS NULL AND document_number_enc IS NULL AND document_hash IS NULL AND document_last4 IS NULL) OR
+    (document_type IS NOT NULL AND document_country IS NOT NULL AND document_number_enc IS NOT NULL AND document_hash IS NOT NULL AND document_last4 IS NOT NULL
+      AND document_type IN ('id_card','passport') AND document_country ~ '^[A-Z]{2}$'
+      AND (document_type <> 'id_card' OR document_country = 'CN'))
+  )
 );
--- 同一身份证只对应一个账号，杜绝一人多号重复报名。
--- 不排除软删除行；NULL 仅供未参赛者，恢复身份必须走原账号。
-CREATE UNIQUE INDEX uniq_profile_id_number ON user_profiles(id_number_hash);
-ALTER TABLE user_profiles ADD CONSTRAINT profile_id_parts_check CHECK (
-  (id_number_enc IS NULL AND id_number_hash IS NULL AND id_number_last4 IS NULL) OR
-  (id_number_enc IS NOT NULL AND id_number_hash IS NOT NULL AND id_number_last4 IS NOT NULL)
+CREATE UNIQUE INDEX uniq_profile_document ON user_profiles(document_hash);
+-- 注销不自动释放当前绑定；已批准更正会原子释放旧绑定，历史快照不变。
+CREATE TABLE identity_change_requests (
+  id BIGSERIAL PRIMARY KEY,
+  resubmission_of BIGINT REFERENCES identity_change_requests(id) ON DELETE RESTRICT,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  base_identity_version INTEGER NOT NULL,
+  old_document_hash VARCHAR(64),
+  new_document_type VARCHAR(16) NOT NULL CHECK (new_document_type IN ('id_card','passport')),
+  new_document_country CHAR(2) NOT NULL CHECK (new_document_country ~ '^[A-Z]{2}$'),
+  new_document_number_enc BYTEA NOT NULL,
+  new_document_hash VARCHAR(64) NOT NULL,
+  new_document_last4 VARCHAR(4) NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','submitted','approved','returned','rejected','withdrawn')),
+  submitted_by BIGINT NOT NULL REFERENCES users(id),
+  reviewer_id BIGINT REFERENCES users(id),
+  comment TEXT,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (new_document_type <> 'id_card' OR new_document_country = 'CN'),
+  CHECK (reviewer_id IS NULL OR (reviewer_id <> submitted_by AND reviewer_id <> user_id)),
+  CHECK (status NOT IN ('approved','returned','rejected') OR (reviewer_id IS NOT NULL AND reviewed_at IS NOT NULL)),
+  CHECK (status NOT IN ('returned','rejected') OR NULLIF(btrim(comment),'') IS NOT NULL)
 );
+CREATE UNIQUE INDEX uniq_pending_identity_change ON identity_change_requests(user_id) WHERE status IN ('draft','submitted');
+ALTER TABLE user_profiles ADD FOREIGN KEY (identity_change_request_id) REFERENCES identity_change_requests(id) ON DELETE RESTRICT;
+
+CREATE FUNCTION guard_profile_identity() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    NEW.identity_version := CASE WHEN NEW.document_hash IS NULL THEN 0 ELSE 1 END;
+    NEW.identity_change_request_id := NULL;
+    RETURN NEW;
+  END IF;
+  IF NEW.user_id <> OLD.user_id THEN
+    RAISE EXCEPTION 'Profile owner is immutable' USING ERRCODE = '55000';
+  END IF;
+  IF ROW(NEW.document_type,NEW.document_country,NEW.document_hash,NEW.document_last4)
+     IS NOT DISTINCT FROM ROW(OLD.document_type,OLD.document_country,OLD.document_hash,OLD.document_last4) THEN
+    IF NEW.identity_version <> OLD.identity_version OR NEW.identity_change_request_id IS DISTINCT FROM OLD.identity_change_request_id THEN
+      RAISE EXCEPTION 'Identity metadata requires an approved change' USING ERRCODE = '55000';
+    END IF;
+    RETURN NEW; -- 相同身份的密文可随密钥轮换重加密
+  END IF;
+  IF OLD.document_hash IS NULL AND NEW.document_hash IS NOT NULL THEN
+    NEW.identity_version := OLD.identity_version + 1;
+    NEW.identity_change_request_id := NULL;
+    RETURN NEW;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM identity_change_requests r WHERE r.id = NEW.identity_change_request_id
+      AND r.user_id = OLD.user_id AND r.status = 'approved' AND r.base_identity_version = OLD.identity_version
+      AND r.old_document_hash IS NOT DISTINCT FROM OLD.document_hash
+      AND ROW(r.new_document_type,r.new_document_country,r.new_document_hash,r.new_document_last4,r.new_document_number_enc)
+          IS NOT DISTINCT FROM ROW(NEW.document_type,NEW.document_country,NEW.document_hash,NEW.document_last4,NEW.document_number_enc)
+  ) THEN
+    RAISE EXCEPTION 'Identity change requires matching approved request' USING ERRCODE = '55000';
+  END IF;
+  NEW.identity_version := OLD.identity_version + 1;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER profile_identity_guard BEFORE INSERT OR UPDATE ON user_profiles
+  FOR EACH ROW EXECUTE FUNCTION guard_profile_identity();
 
 CREATE TABLE organizations (
   id          BIGSERIAL PRIMARY KEY,
@@ -130,6 +204,8 @@ CREATE INDEX idx_org_path_prefix ON organizations(path varchar_pattern_ops);
 ALTER TABLE organizations ADD CONSTRAINT org_depth_nonneg CHECK (depth >= 0);
 ALTER TABLE organizations ADD CONSTRAINT org_numchild_nonneg CHECK (numchild >= 0);
 
+ALTER TABLE users ADD FOREIGN KEY (created_by_org_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
 CREATE TABLE org_creation_requests (
   id BIGSERIAL PRIMARY KEY,
   resubmission_of BIGINT REFERENCES org_creation_requests(id) ON DELETE RESTRICT,
@@ -157,7 +233,7 @@ CREATE TABLE organization_members (
   member_role  VARCHAR(16) NOT NULL DEFAULT 'member',   -- member|student|teacher|employee|external
   is_primary   BOOLEAN NOT NULL DEFAULT FALSE,          -- 主属单位（唯一部分索引）
   joined_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  left_at      TIMESTAMPTZ,
+  left_at      TIMESTAMPTZ,                        -- 平台成员关系结束时间，不是离职信息
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (org_id, user_id)
@@ -209,19 +285,26 @@ CREATE INDEX idx_user_roles_user ON user_roles(user_id);
 ## 3. 队伍
 
 ```sql
+CREATE TABLE event_types (
+  code VARCHAR(16) PRIMARY KEY,                     -- 跨届稳定赛项代码，平台维护
+  name VARCHAR(64) NOT NULL
+);
+CREATE TABLE team_numbers (
+  id BIGSERIAL PRIMARY KEY,
+  code VARCHAR(32) UNIQUE NOT NULL,
+  org_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
+  UNIQUE (id, org_id)
+);
+
 CREATE TABLE teams (
   id          BIGSERIAL PRIMARY KEY,
-  code        VARCHAR(32) UNIQUE NOT NULL,
+  team_number_id BIGINT NOT NULL,
+  event_code VARCHAR(16) NOT NULL REFERENCES event_types(code) ON DELETE RESTRICT,
   name        VARCHAR(128) NOT NULL,
   org_id      BIGINT NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
   coach_id    BIGINT REFERENCES users(id) ON DELETE SET NULL,
   captain_id  BIGINT REFERENCES users(id) ON DELETE SET NULL,
-  -- 学段：决定该队可报名哪个组别（一队只属一个组别）。
-  -- 由已审核成员档案派生，在队伍变更批准时落库，不让用户自选：报名校验、组别归属、
-  -- 公示名单分组三处都要用它，每次查询重算成员代价过高。
-  school_level VARCHAR(8),                   -- ES|MS|HS|U；空队尚未派生时为 NULL
   approved_revision_id BIGINT,              -- 当前生效的已审核队伍申请；批准创建时填入
-  level_source VARCHAR(16) NOT NULL DEFAULT 'derived',  -- derived|manual（管理员纠正混合年龄队）
   status       VARCHAR(16) NOT NULL DEFAULT 'active',   -- active|disbanded
   remark      TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -229,8 +312,8 @@ CREATE TABLE teams (
   deleted_at TIMESTAMPTZ,
   is_deleted  BOOLEAN NOT NULL DEFAULT FALSE
 );
--- 同单位队伍名唯一（软删除后名称可复用，故用部分唯一索引代替表级 UNIQUE）
-CREATE UNIQUE INDEX uniq_team_name_per_org ON teams(org_id, name) WHERE NOT is_deleted;
+ALTER TABLE teams ADD UNIQUE (team_number_id, event_code);
+ALTER TABLE teams ADD FOREIGN KEY (team_number_id, org_id) REFERENCES team_numbers(id, org_id) ON DELETE RESTRICT;
 
 CREATE TABLE team_change_requests (
   id BIGSERIAL PRIMARY KEY,
@@ -238,6 +321,7 @@ CREATE TABLE team_change_requests (
   team_id BIGINT REFERENCES teams(id) ON DELETE RESTRICT, -- 创建批准时回填
   org_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
   team_code VARCHAR(32) NOT NULL,
+  event_code VARCHAR(16) NOT NULL REFERENCES event_types(code) ON DELETE RESTRICT,
   request_kind VARCHAR(16) NOT NULL CHECK (request_kind IN ('create','update')),
   base_revision_id BIGINT,
   proposal_enc BYTEA NOT NULL,
@@ -259,33 +343,30 @@ CREATE TABLE team_change_requests (
 );
 CREATE UNIQUE INDEX uniq_team_pending_change ON team_change_requests(team_id)
   WHERE request_kind = 'update' AND status IN ('draft','submitted');
-CREATE UNIQUE INDEX uniq_team_pending_code ON team_change_requests(team_code)
+CREATE UNIQUE INDEX uniq_team_pending_code ON team_change_requests(team_code, event_code)
   WHERE status IN ('draft','submitted');
-ALTER TABLE teams ADD UNIQUE (id, org_id);
+ALTER TABLE teams ADD UNIQUE (id, org_id, event_code);
 ALTER TABLE team_change_requests ADD CONSTRAINT team_request_org_fk
-  FOREIGN KEY (team_id, org_id) REFERENCES teams(id, org_id) ON DELETE RESTRICT;
+  FOREIGN KEY (team_id, org_id, event_code) REFERENCES teams(id, org_id, event_code) ON DELETE RESTRICT;
 ALTER TABLE teams ADD CONSTRAINT team_current_revision_fk
   FOREIGN KEY (approved_revision_id, id) REFERENCES team_change_requests(id, team_id) ON DELETE RESTRICT;
 
 CREATE TABLE team_members (
   id         BIGSERIAL PRIMARY KEY,
-  team_id    BIGINT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-  user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  role       VARCHAR(16) NOT NULL DEFAULT 'member',     -- captain|member
+  team_id    BIGINT NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
+  user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  role       VARCHAR(16) NOT NULL DEFAULT 'member' CHECK (role IN ('captain','member')), -- 学生队员
   joined_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   left_at    TIMESTAMPTZ,                               -- 成员变动留痕，不删行
-  UNIQUE (team_id, user_id, joined_at)
+  UNIQUE (team_id, user_id, joined_at),
+  CHECK (left_at IS NULL OR left_at >= joined_at)
 );
-CREATE INDEX idx_team_members_user ON team_members(user_id) WHERE left_at IS NULL;
+CREATE UNIQUE INDEX uniq_current_team_member ON team_members(user_id) WHERE left_at IS NULL;
 ```
 
-学段派生规则（服务层，不属于状态机）：
+队伍身份与版本：队号由 team_numbers 唯一归属一个单位；teams 以 team_number_id × event_code 唯一。赛项类型由 event_types 跨届稳定维护，普通资料修改不能更换该身份。报名校验团队赛项与本届赛项一致。
 
-1. **计算**：取在队成员（`left_at IS NULL`）中最高的 `school_level`，顺序 `U > HS > MS > ES`（混合年龄队按最高学段归类，2026-11-16 产品确认）。
-2. 成员变动先进入 team_change_requests；批准时锁定队伍，确认 base_revision_id 未过期，再更新正式成员、重算学段并切换 approved_revision_id。待审/退回/驳回不更新正式队伍；已审核申请不可修改。成员档案变化仅产生资格风险提示，不静默覆盖队伍版本，报名时重新校验资格。
-3. 重算导致队伍学段与其存量 `approved` 报名的组别不一致时，由每日一致性任务产出告警清单交主办方判断（多为跨学年正常升级，不需要处置），不阻断任何操作。
-4. 人工纠正学段写入变更提案并说明原因，由 team:review 审核后生效；赛事管理员仅有赛事权限时不能修改队伍正式资料。
-5. 队伍无在队成员时学段不可确定，禁止空队提交报名（须先加成员）；此校验发生在报名提交，不发生在成员维护。
+提交人自行选择本场学段/组别，selected_school_level 和所选 offering 冻结在提交轮次；不按队伍成员最高学段自动派生。队伍档案更新仅在资料审核批准后生效，可用于其他比赛，任何本场已提交快照都不跟随更新。空队不能提交团队报名。
 
 ## 4. 赛事 / 届次 / 组别
 
@@ -360,7 +441,7 @@ CREATE TABLE competition_editions (
 CREATE TABLE competition_events (
   id           BIGSERIAL PRIMARY KEY,
   edition_id   BIGINT NOT NULL REFERENCES competition_editions(id) ON DELETE CASCADE,
-  code         VARCHAR(16) NOT NULL,          -- VURC|V5RC|VIQRC|VAIMRC|VGORC|custom
+  code         VARCHAR(16) NOT NULL REFERENCES event_types(code) ON DELETE RESTRICT, -- 稳定赛项类型
   name         VARCHAR(64) NOT NULL,          -- 显示名，如 'VEX V5 机器人竞赛'
   short_name   VARCHAR(32),
   description  TEXT,
@@ -439,11 +520,8 @@ CREATE TABLE edition_team_allowlist (
 -- 服务层不变式（无法用外键表达，由报名校验与每日一致性任务共同保证）：
 --   防重复以 offering 为单位（01 §3.6），不等价于 team × event 唯一。
 --   同学段可配置多个组别，队伍学段也可变化；资格校验与重复报名约束分别处理。
---   校验：registration.offering_id 所属 group 的 school_level 必须等于 team.school_level
---   （比 school_level 而非 group.code：code 允许 custom 值，school_level 才是资格字段）。
---   不一致时拒绝提交（错误码 42205）。报名界面不提供"自选组别"，组别由队伍决定
---   （个人报名则由本人档案 school_level 决定），见 01 §3.5a。
---   group.school_level 为 NULL 表示该组别不限学段，此时跳过本条校验（供非 VEX 类赛事使用）。
+--   用户选择所选 offering 的学段/组别并冻结到本轮；校验声明与组别配置一致。
+--   profile.school_level 只作参考，不用于全队最高学段自动筛选。
 --   同届关系由 §7.1 复合外键兜底；服务层仍校验状态、软删除与资格。
 ```
 
@@ -468,12 +546,13 @@ CREATE TABLE registrations (
   coach_user_id        BIGINT REFERENCES users(id),           -- 指导教师（快照 + 引用）
   contact_name         VARCHAR(64),
   contact_phone        VARCHAR(20) NOT NULL,
-  contact_email        VARCHAR(255) NOT NULL,
+  contact_email        VARCHAR(255),               -- 可空；通知邮件只发送到已验证账户邮箱
   form_data            JSONB NOT NULL DEFAULT '{}',  -- 固定字段集（决策：动态表单 P1 后此列扩展）
   consent_snapshot     JSONB NOT NULL DEFAULT '{}',  -- 政策版本、同意时间、操作人、覆盖成员、监护授权凭据引用
   status               VARCHAR(20) NOT NULL DEFAULT 'draft',
     -- draft|submitted|org_approved|org_returned|org_rejected|
     -- pending_review|returned|rejected|approved|withdrawn（03 文档 §1）
+  approved_submission_no INTEGER,                -- 当前审核通过的轮次，驳回时清空
   current_submission_no INTEGER,                  -- 最近一次不可变提交；首次提交前 NULL
   return_round         INT NOT NULL DEFAULT 0,       -- 退回轮次
   submitted_at         TIMESTAMPTZ,
@@ -509,10 +588,13 @@ CREATE TABLE registration_submissions (
   submission_no INTEGER NOT NULL CHECK (submission_no >= 1),
   team_id BIGINT REFERENCES teams(id) ON DELETE RESTRICT,
   team_revision_id BIGINT,
+  approval_mode VARCHAR(16) NOT NULL DEFAULT 'single' CHECK (approval_mode IN ('single','two_stage')),
+  selected_school_level VARCHAR(8),               -- 提交人选择并冻结，不按全队最高学段派生
   snapshot_enc BYTEA NOT NULL,              -- 本轮表单/队伍信息/同意项完整快照
   access_snapshot JSONB NOT NULL DEFAULT '{}', -- 服务端记录当时准入判定
   submitted_by BIGINT NOT NULL REFERENCES users(id),
   submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  cancelled_at TIMESTAMPTZ,                        -- 主动取消保留原提交，仅添加取消元数据
   PRIMARY KEY (registration_id, submission_no),
   CHECK ((team_id IS NULL) = (team_revision_id IS NULL)),
   FOREIGN KEY (team_revision_id, team_id) REFERENCES team_change_requests(id, team_id) ON DELETE RESTRICT
@@ -522,6 +604,11 @@ ALTER TABLE registration_submissions ADD CONSTRAINT submission_registration_team
   FOREIGN KEY (registration_id, team_id) REFERENCES registrations(id, team_id) ON DELETE RESTRICT;
 ALTER TABLE registrations ADD CONSTRAINT registration_current_submission_fk
   FOREIGN KEY (id, current_submission_no) REFERENCES registration_submissions(registration_id, submission_no) ON DELETE RESTRICT;
+ALTER TABLE registrations ADD CONSTRAINT registration_approved_submission_fk
+  FOREIGN KEY (id, approved_submission_no) REFERENCES registration_submissions(registration_id, submission_no) ON DELETE RESTRICT;
+ALTER TABLE registrations ADD CONSTRAINT approved_submission_check CHECK (
+  status <> 'approved' OR (approved_submission_no IS NOT NULL AND current_submission_no IS NOT NULL AND approved_submission_no = current_submission_no)
+);
 
 CREATE TABLE registration_members (
   id              BIGSERIAL PRIMARY KEY,
@@ -531,7 +618,7 @@ CREATE TABLE registration_members (
   submission_no INTEGER NOT NULL DEFAULT 1, -- 对应不可变报名轮次，历史成员行不覆盖
   snapshot_enc    BYTEA NOT NULL,        -- 完整快照整体 Fernet 加密，含联系方式与必要证件信息
   public_info     JSONB NOT NULL,        -- 白名单子集 {real_name, role, school_level, grade}，公示名单只读此列
-  id_number_hash  VARCHAR(64),           -- 参赛成员必填，教练可空；不可对外输出
+  document_hash  VARCHAR(64),           -- 参赛成员必填，教练可空；不可对外输出
   role            VARCHAR(16) NOT NULL DEFAULT 'member',            -- captain|member|coach
   sort_order      INT NOT NULL DEFAULT 0,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -540,7 +627,7 @@ CREATE INDEX idx_reg_members_reg ON registration_members(registration_id);
 ALTER TABLE registration_members ADD CONSTRAINT member_submission_fk FOREIGN KEY (registration_id, submission_no)
   REFERENCES registration_submissions(registration_id, submission_no) ON DELETE RESTRICT;
 CREATE UNIQUE INDEX uniq_registration_member_user ON registration_members(registration_id, submission_no, user_id) WHERE user_id IS NOT NULL;
-CREATE UNIQUE INDEX uniq_registration_member_identity ON registration_members(registration_id, submission_no, id_number_hash) WHERE id_number_hash IS NOT NULL;
+CREATE UNIQUE INDEX uniq_registration_member_identity ON registration_members(registration_id, submission_no, document_hash) WHERE document_hash IS NOT NULL;
 
 CREATE TABLE registration_files (
   id              BIGSERIAL PRIMARY KEY,
@@ -565,7 +652,7 @@ CREATE TABLE approval_records (
   submission_no INTEGER NOT NULL DEFAULT 1, -- 操作针对的具体提交版本
   step            VARCHAR(16) NOT NULL,    -- org|final|revoke（对应模式）
   round_no        INT NOT NULL DEFAULT 1,
-  action          VARCHAR(16) NOT NULL,    -- approve|reject|return|withdraw|revoke_approval（reject 也可作用于 approved）
+  action          VARCHAR(16) NOT NULL,    -- approve|reject|return|withdraw|cancel_review（reject 也可作用于 approved）
   from_status     VARCHAR(20) NOT NULL,
   to_status       VARCHAR(20) NOT NULL,
   comment         TEXT,                    -- reject/return 必填（服务层校验）
@@ -585,7 +672,7 @@ CREATE TABLE awards (
   id          BIGSERIAL PRIMARY KEY,
   edition_id  BIGINT NOT NULL REFERENCES competition_editions(id) ON DELETE CASCADE,
   offering_id BIGINT REFERENCES competition_offerings(id) ON DELETE CASCADE,
-    -- NULL = 届次通用奖项（最佳组织奖、优秀教练奖等，不落到具体赛项×组别）
+    -- NULL = 届次通用奖项（面向参赛学生的届次通用奖等，无单位/组织/教练奖，不落到具体赛项×组别）
   rank_level  VARCHAR(16) NOT NULL,          -- first|second|third|excellence|custom
   name        VARCHAR(64) NOT NULL,          -- '一等奖'
   quota       INT,                           -- 名额（软限制，服务层校验）
@@ -609,6 +696,7 @@ CREATE TABLE award_rosters (
   submitted_by BIGINT REFERENCES users(id),
   approved_by  BIGINT REFERENCES users(id),
   approved_at  TIMESTAMPTZ,
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1), -- 解锁编辑递增，异步回调必须匹配
   lock_note    TEXT,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -620,15 +708,18 @@ CREATE TABLE award_records (
   edition_id      BIGINT NOT NULL REFERENCES competition_editions(id) ON DELETE RESTRICT,
   roster_id       BIGINT NOT NULL REFERENCES award_rosters(id) ON DELETE CASCADE,
   award_id        BIGINT NOT NULL REFERENCES awards(id) ON DELETE RESTRICT,
-  registration_id BIGINT NOT NULL REFERENCES registrations(id) ON DELETE RESTRICT,  -- 必须 approved
+  registration_id BIGINT NOT NULL REFERENCES registrations(id) ON DELETE RESTRICT,  -- 必须 approved，获奖对象仅学生参赛成果
+  submission_no INTEGER NOT NULL DEFAULT 1,        -- 固定获奖所依据的审核通过轮次
   recipient_kind  VARCHAR(16) NOT NULL,      -- individual|team（冗余自报名）
   batch_no        VARCHAR(40) NOT NULL,      -- 冗余自报名，导入对账用
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at TIMESTAMPTZ,
   is_deleted      BOOLEAN NOT NULL DEFAULT FALSE,
-  UNIQUE (roster_id, registration_id)       -- 同名单内一条报名只得一个奖
+  FOREIGN KEY (registration_id, submission_no) REFERENCES registration_submissions(registration_id, submission_no) ON DELETE RESTRICT
 );
+
+CREATE UNIQUE INDEX uniq_current_award_registration ON award_records(roster_id, registration_id) WHERE NOT is_deleted;
 
 CREATE TABLE award_import_pending (
   id           BIGSERIAL PRIMARY KEY,
@@ -663,6 +754,8 @@ CREATE TABLE certificates (
   edition_id     BIGINT NOT NULL REFERENCES competition_editions(id) ON DELETE RESTRICT,
   registration_id BIGINT NOT NULL REFERENCES registrations(id) ON DELETE RESTRICT,
   recipient_member_id BIGINT NOT NULL REFERENCES registration_members(id) ON DELETE RESTRICT,
+  submission_no INTEGER NOT NULL DEFAULT 1,
+  roster_version INTEGER NOT NULL DEFAULT 1,       -- 排队时冻结名单版本，旧回调不得发放新版名单
   display_name   VARCHAR(64) NOT NULL,          -- 报名成员姓名快照，团队也逐人发证
   template_id    VARCHAR(32) NOT NULL DEFAULT 'default',
   pdf_storage_key VARCHAR(512),
@@ -714,6 +807,20 @@ CREATE TABLE notice_reads (
   PRIMARY KEY (notice_id, user_id)
 );
 
+CREATE TABLE async_outbox (
+  id BIGSERIAL PRIMARY KEY,
+  topic VARCHAR(64) NOT NULL,                       -- 由后端允许清单生成
+  business_key VARCHAR(128) UNIQUE NOT NULL,
+  payload JSONB NOT NULL,                          -- 仅业务 ID/版本/locale，不放密码、验证码或证件
+  status VARCHAR(16) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','dispatched','failed')),
+  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+  next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  lease_until TIMESTAMPTZ,
+  dispatched_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_outbox_pending ON async_outbox(next_attempt_at) WHERE status = 'pending';
+
 CREATE TABLE audit_logs (
   id          BIGSERIAL PRIMARY KEY,
   actor_id    BIGINT REFERENCES users(id),
@@ -741,8 +848,8 @@ ALTER TABLE registrations ADD UNIQUE (id, edition_id);
 ALTER TABLE awards ADD UNIQUE (id, edition_id);
 ALTER TABLE award_rosters ADD UNIQUE (id, edition_id);
 ALTER TABLE award_records ADD UNIQUE (id, edition_id);
-ALTER TABLE award_records ADD UNIQUE (id, registration_id);
-ALTER TABLE registration_members ADD UNIQUE (id, registration_id);
+ALTER TABLE award_records ADD UNIQUE (id, registration_id, submission_no);
+ALTER TABLE registration_members ADD UNIQUE (id, registration_id, submission_no);
 ALTER TABLE certificates ADD UNIQUE (id, award_record_id, recipient_member_id);
 
 ALTER TABLE competition_offerings
@@ -769,31 +876,34 @@ ALTER TABLE award_records
 ALTER TABLE certificates
   ADD CONSTRAINT certificate_record_edition_fk FOREIGN KEY (award_record_id, edition_id)
     REFERENCES award_records(id, edition_id) ON DELETE RESTRICT,
-  ADD CONSTRAINT certificate_registration_fk FOREIGN KEY (award_record_id, registration_id)
-    REFERENCES award_records(id, registration_id) ON DELETE RESTRICT,
-  ADD CONSTRAINT certificate_member_registration_fk FOREIGN KEY (recipient_member_id, registration_id)
-    REFERENCES registration_members(id, registration_id) ON DELETE RESTRICT,
+  ADD CONSTRAINT certificate_registration_fk FOREIGN KEY (award_record_id, registration_id, submission_no)
+    REFERENCES award_records(id, registration_id, submission_no) ON DELETE RESTRICT,
+  ADD CONSTRAINT certificate_member_registration_fk FOREIGN KEY (recipient_member_id, registration_id, submission_no)
+    REFERENCES registration_members(id, registration_id, submission_no) ON DELETE RESTRICT,
   ADD CONSTRAINT certificate_reissue_recipient_fk FOREIGN KEY (reissue_of, award_record_id, recipient_member_id)
     REFERENCES certificates(id, award_record_id, recipient_member_id) ON DELETE RESTRICT;
 ```
 
+- 队员只允许学生，教练不写入 team_members；队员全平台同时只有一条 left_at IS NULL 的归属；换队先批准原队退队，再批准新队入队，不能靠另一赛项绕过。批准时锁相关队伍、按 user_id 升序锁学生账户，复查当前归属；唯一索引兜底并发入队，冲突返回 40908。入退队写 joined_at/left_at 并关联申请 ID、操作人和理由到审计，不覆盖旧关系；待审退队不释放归属。解散队伍时同事务结束当前成员关系并审计，历史快照保留。
 - 队伍修改批准时同一事务先锁正式队伍再锁申请，创建申请批准时锁申请，检查申请人/审核人分离、有效单位、成员与 base_revision_id；只有 approved 提案能成为正式版本。resubmission_of 只允许关联同申请人、同单位/队伍的原申请，服务层校验，不能借复制他人申请读取提案。创建批准前 team_id/result_org_id 为空，不建立可用主数据。
-- 每次报名提交在同一事务锁报名及队伍，创建新 submission_no、对应成员/文件行，再切换 current_submission_no；团队绑定该队当时已审核版本。历史成员/文件/审核记录不可覆盖或物理删除，工作副本变化不更新旧提交，证书始终引用旧成员行。
+- 每次报名提交在同一事务按届次→队伍→报名顺序加锁，创建新 submission_no、对应成员/文件行，再切换 current_submission_no；团队绑定该队当时已审核版本。历史成员/文件/审核记录不可覆盖或物理删除，工作副本变化不更新旧提交，证书始终引用旧成员行。
 - 队伍准入模式/名单变更均递增 team_access_version，导入预览及确认绑定该版本；确认过期返回 40906。
 - 队伍准入按 edition_id + team_id 读取 active 行；名单变更和报名提交/重提/批准共用届次行锁，避免并发撤销与检查竞态。open/allowlist 是服务层条件，外键不会自动校验准入状态。
+- 获奖写入 service 必须取 status=approved 且 approved_submission_no=current_submission_no 的明确轮次，冻结到 award_records.submission_no；公示、发奖、统计只取该通过轮次的成员，历史视图才读取全部轮次。
+- 证件更正批准事务内锁申请与档案，校验审核权限/非自审、base_identity_version、唯一性，再将请求置 approved 并更新档案，旧绑定在事务提交时释放；同事务递增 users.token_version。guard_profile_identity 阻止绕开批准申请的号码/类型/国家变更；仅相同身份的密文重加密不触发更正。
 - 获奖写入 service 在同一事务锁定名单、奖项和报名，校验奖项与名单的 offering 相同（含同时为 NULL）；具体组合名单只接收该 offering 的 approved 报名，通用名单可接收本届任一组合。
 - 上述外键保证同届；组合匹配、审核状态与锁定态是额外业务校验，不能因外键存在而省略。已被引用的赛事配置和报名归属不再改挂，只能作废后重建；操作均走 service。
-- 带 is_deleted 的表同时维护 deleted_at；历史表禁止应用层硬删除，DDL 的删除策略仅用于外键防护，不授权业务删除。
+- 带 is_deleted 的表同时维护 deleted_at；有过提交的报名软删除不影响管理历史查询，历史查询须显式包含软删除记录并按范围鉴权；历史表禁止应用层硬删除，DDL 的删除策略仅用于外键防护，不授权业务删除。
 
 ## 8. 设计说明与遗留项
 
 1. **多态 scope_id**（user_roles / notices.audience_id）未做数据库外键，完整性依赖服务层与每日一致性检查任务——这是灵活性换保证成本，明确接受。
 2. **敏感副本**：报名提交快照、成员快照、单位/队伍申请提案及 raw_row_enc 都使用 Fernet；快照仅在授权 service 内解密再按白名单输出。导入原始文件同样加密后存私有桶，和待确认密文一起在处置完成或最长 30 天后清除；按日任务保留脱敏冲突摘要，删除文件/密文也记审计。密钥轮换覆盖所有密文字段，备份恢复同时恢复对应版本密钥。
 
-   **身份证号** 存 `id_number_enc`（密文）+ `id_number_hash`（加 pepper 的 SHA-256，用于匹配与查重，不可逆）。加密在 P0 落地（v1.1 决策，原 P1 提级），因为本系统对参赛成员采集证件号，明文入库的风险与「按需收集」时不是一个量级：
+   **证件** 存 document_type/country + document_number_enc + document_hash；类型/签发国与规范化号码共同参与 HMAC-SHA256，不把护照号码当身份证。当前绑定唯一，批准更正后旧号释放；历史申请及报名中的旧证件摘要不再占用唯一索引。
    - 方案取应用层 Fernet（`cryptography` 库），不选 pgcrypto。理由：数据库密文随 `pg_dump` 一起备份恢复，不依赖扩展存在；密钥轮换可在应用层做重加密任务，不需停机执行 SQL 迁移。
-   - 密钥走 `FIELD_ENCRYPTION_KEY` 环境变量，禁止入仓；hash 的 pepper 单独一个变量（`ID_HASH_PEPPER`），轮换 pepper 需重算全表 hash，属破坏性变更。
-   - 任何 API 不回传明文，日志只记末四位（DEVELOPMENT.md §2.3）；公示名单物理上读不到该列（`registration_members.public_info` 白名单）。
+   - 密钥走 `FIELD_ENCRYPTION_KEY` 环境变量，禁止入仓；hash 的 pepper 单独一个变量（`DOC_HASH_PEPPER`），轮换 pepper 需重算全表 hash，属破坏性变更。
+   - 任何 API 不回传证件明文，日志只记末四位（DEVELOPMENT.md §2.3）；公示名单物理上读不到该列（`registration_members.public_info` 白名单）。
 3. **赛项与组别正交**（v1.1）：不合并成「组别」一列的复合值，因为评奖、公示、名额、时间窗都按二者之一独立聚合（「大学组全部赛项通过率」与「V5RC 各组别通过率」是两个真实报表需求）。合并会让每类统计都要拆字符串。
 4. **`competition_offerings` 的删除策略**：赛项或组别被删则其组合行级联删除，但 registrations 引用 offering 为 `RESTRICT`——已有报名的组合无法被删除，只能停用（`status=disabled`）。这是有意的：不允许因为清理配置而连带影响报名数据。
 5. `competition_admins` 冗余表问题见 §4 注释，P1 合并。
