@@ -1,0 +1,52 @@
+name: Publish interface demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - frontend/prototype/**
+      - .github/workflows/demo-pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-pages
+  cancel-in-progress: true
+
+jobs:
+  package:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check demo scripts
+        run: |
+          node --check frontend/prototype/app.js
+          node --check frontend/prototype/layouts.js
+      - name: Package static demo only
+        run: |
+          mkdir -p _site
+          cp frontend/prototype/{index.html,styles.css,design.css,app.js,layouts.js} _site/
+          cp -R frontend/prototype/fonts _site/fonts
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
