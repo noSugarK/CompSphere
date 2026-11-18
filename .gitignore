@@ -26,6 +26,7 @@ htmlcov/
 # Node / Vue
 node_modules/
 frontend/dist/
+frontend/prototype/generated/
 *.local
 .vite/
 

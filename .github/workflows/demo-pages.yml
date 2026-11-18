@@ -26,16 +26,21 @@ jobs:
           node-version: '22'
       - name: Check demo scripts
         run: |
+          npm ci --prefix frontend/prototype
+          npm run build --prefix frontend/prototype
           node --check frontend/prototype/app.js
           node --check frontend/prototype/layouts.js
           node --check frontend/prototype/operations.js
           node --check frontend/prototype/assistant.js
+          node --check frontend/prototype/motion.mjs
           node frontend/prototype/operations.check.mjs
       - name: Package static demo only
         run: |
           mkdir -p _site
           cp frontend/prototype/{index.html,styles.css,design.css,operations.css,app.js,layouts.js,operations.js,assistant.js} _site/
           cp -R frontend/prototype/fonts _site/fonts
+          cp -R frontend/prototype/generated _site/generated
+          cp frontend/prototype/THIRD_PARTY_NOTICES.md _site/
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -2,7 +2,7 @@
 
 **技术栈**：Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router + Axios + vue-i18n。结构约定见 [`../docs/05-architecture.md`](../docs/05-architecture.md) §4。
 
-正式前端当前为**占位**，尚未初始化。独立界面设计预览见 [prototype/README.md](prototype/README.md)，运行 `node frontend/prototype/server.mjs` 后打开 <http://127.0.0.1:4173>；原型不连接真实业务，可单独发布 GitHub Pages。后续 `src/` 构建正式 Vue 应用并接入 Django API，部署方式见 [部署指南](../docker/README.md)，演示继续保留且不参与正式构建。
+正式前端当前为**占位**，尚未初始化。独立界面设计预览见 [prototype/README.md](prototype/README.md)，运行 `npm ci --prefix frontend/prototype`、`npm run preview --prefix frontend/prototype` 后打开 <http://127.0.0.1:4173>；原型不连接真实业务，可单独发布 GitHub Pages。后续 `src/` 构建正式 Vue 应用并接入 Django API，部署方式见 [部署指南](../docker/README.md)，演示继续保留且不参与正式构建。
 
 初始化正式工程时保留 prototype 目录。初始化前先将本说明临时移出目录，避免 Vite 对非空目录的覆盖提示；完成后恢复说明并保留生成的脚本信息。使用 npm，与现有 Dockerfile 保持一致：
 

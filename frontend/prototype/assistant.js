@@ -1,5 +1,12 @@
 /* One tab's in-memory preview session. No model, browser storage or business writes. */
-const assistantSession = { messages: [], draft: '', isOpen: false, actor: '', lang: '' };
+const assistantSession = {
+  messages: [],
+  draft: '',
+  isOpen: false,
+  actor: '',
+  lang: '',
+  hasUnread: false,
+};
 
 function syncAssistant() {
   const actor = JSON.stringify([state.role, state.permissions || permissionsByRole[state.role]]);
@@ -15,52 +22,105 @@ function syncAssistant() {
   if (root.dataset.mounted && assistantSession.lang === state.lang && !hasActorChanged) return;
   assistantSession.lang = state.lang;
   root.dataset.mounted = 'true';
-  root.innerHTML = `<button type="button" id="assistant-ball" class="assistant-ball" data-action="assistant" aria-label="${tr('打开 AI 助手', 'Open AI assistant')}" aria-controls="assistant-panel" aria-expanded="${assistantSession.isOpen}"><span aria-hidden="true">AI</span></button><dialog id="assistant-panel" class="assistant-panel" aria-labelledby="assistant-title" closedby="closerequest"><header class="assistant-header"><span class="assistant-avatar" aria-hidden="true">AI</span><div><h2 id="assistant-title">${tr('竞云助手', 'CompSphere assistant')}</h2><span>${tr('与你一起完成赛事事务', 'Your competition companion')}</span></div><button type="button" class="button text small" data-action="assistant-clear">${tr('清空', 'Clear')}</button><button type="button" class="icon-button" data-action="assistant-minimize" aria-label="${tr('收起助手', 'Minimize assistant')}">${icon('close')}</button></header><div id="assistant-messages" class="assistant-messages" role="log" aria-label="${tr('对话记录', 'Conversation')}" aria-live="polite" aria-relevant="additions text"></div><div class="assistant-suggestions">${btn(tr('赛事信息', 'Competition info'), 'assistant-example:details', 'small')}${can('registration:write') ? btn(tr('帮我报名', 'Help me register'), 'assistant-example:register', 'small') : ''}${canReview() ? btn(tr('辅助审核', 'Help me review'), 'assistant-example:review', 'small') : ''}</div><form id="assistant-form" class="assistant-composer"><label class="sr-only" for="assistant-question">${tr('发送消息', 'Send a message')}</label><textarea id="assistant-question" rows="2" maxlength="2000" required placeholder="${tr('问赛事，或告诉我你想做什么…', 'Ask about a competition or a task…')}" autofocus></textarea><button type="submit" class="icon-button" aria-label="${tr('发送消息', 'Send message')}">${icon('arrow')}</button></form><footer class="assistant-footnote">${tr('交互预览 · 对话仅在本页保留，刷新即清空', 'Interaction preview · Refresh clears this conversation')}</footer></dialog>`;
+  root.innerHTML = `<button type="button" id="assistant-ball" class="assistant-ball" data-action="assistant" aria-label="${tr('打开 AI 助手', 'Open AI assistant')}" aria-controls="assistant-panel" aria-expanded="${assistantSession.isOpen}"><span aria-hidden="true">AI</span></button><dialog id="assistant-panel" class="assistant-panel" aria-labelledby="assistant-title" closedby="closerequest"><header class="assistant-header"><span class="assistant-avatar" aria-hidden="true">AI</span><div><h2 id="assistant-title">${tr('竞云助手', 'CompSphere assistant')}</h2><span>${tr('与你一起完成赛事事务', 'Your competition companion')}</span></div><button type="button" class="icon-button" data-action="assistant-reset" aria-label="${tr('复位位置', 'Reset position')}" title="${tr('复位位置', 'Reset position')}">${icon('left')}</button><button type="button" class="button text small" data-action="assistant-clear">${tr('清空', 'Clear')}</button><button type="button" class="icon-button" data-action="assistant-minimize" aria-label="${tr('收起助手', 'Minimize assistant')}">${icon('close')}</button></header><div id="assistant-messages" class="assistant-messages" role="log" aria-label="${tr('对话记录', 'Conversation')}" aria-live="polite" aria-relevant="additions text"></div><button type="button" class="button small assistant-latest" id="assistant-latest" data-action="assistant-latest" hidden>${tr('回到最新消息', 'Latest messages')}</button><div class="assistant-suggestions">${btn(tr('赛事信息', 'Competition info'), 'assistant-example:details', 'small')}${can('registration:write') ? btn(tr('帮我报名', 'Help me register'), 'assistant-example:register', 'small') : ''}${canReview() ? btn(tr('辅助审核', 'Help me review'), 'assistant-example:review', 'small') : ''}</div><form id="assistant-form" class="assistant-composer"><label class="sr-only" for="assistant-question">${tr('发送消息', 'Send a message')}</label><textarea id="assistant-question" rows="2" maxlength="2000" required placeholder="${tr('问赛事，或告诉我你想做什么…', 'Ask about a competition or a task…')}" autofocus></textarea><button type="submit" id="assistant-send" class="icon-button" disabled aria-label="${tr('发送消息', 'Send message')}">${icon('arrow')}</button></form><footer class="assistant-footnote">${tr('交互预览 · 对话仅在本页保留，刷新即清空', 'Interaction preview · Refresh clears this conversation')}</footer></dialog>`;
   $('#assistant-question').value = assistantSession.draft;
+  $('#assistant-send').disabled = !assistantSession.draft.trim();
+  $('#assistant-messages').addEventListener('scroll', updateAssistantScroll);
+  window.demoMotion?.mountAssistant();
   renderAssistantConversation();
   if (assistantSession.isOpen) $('#assistant-panel').show();
-  $('#assistant-panel').addEventListener('close', () => {
+  $('#assistant-panel').addEventListener('close', (event) => {
+    // A queued close event can arrive after the same dialog has already reopened.
+    if (event.currentTarget.open) return;
     assistantSession.isOpen = false;
     $('#assistant-ball').setAttribute('aria-expanded', 'false');
   });
 }
 
-function renderAssistantConversation() {
+function isAssistantAtLatest(log) {
+  return log.scrollHeight - log.scrollTop - log.clientHeight <= 48;
+}
+
+function updateAssistantScroll() {
+  const log = $('#assistant-messages');
+  const button = $('#assistant-latest');
+  if (!log || !button) return;
+  const atLatest = isAssistantAtLatest(log);
+  if (atLatest) assistantSession.hasUnread = false;
+  button.hidden = atLatest || !assistantSession.messages.length;
+  button.textContent = assistantSession.hasUnread
+    ? tr('有新消息 · 回到最新', 'New messages · Latest')
+    : tr('回到最新消息', 'Latest messages');
+}
+
+function scrollAssistantToLatest() {
+  const log = $('#assistant-messages');
+  log.scrollTop = log.scrollHeight;
+  updateAssistantScroll();
+}
+
+function renderAssistantConversation(isNewMessage = false, forceLatest = false) {
   const log = $('#assistant-messages');
   if (!log) return;
-  log.innerHTML = assistantSession.messages.length
-    ? assistantSession.messages
+  const follow = forceLatest || isAssistantAtLatest(log);
+  const count = Number(log.dataset.count || 0);
+  if (!assistantSession.messages.length) {
+    log.innerHTML = `<div class="assistant-empty"><span class="assistant-avatar" aria-hidden="true">AI</span><h3>${tr('有什么可以帮你？', 'How can I help?')}</h3><p>${tr('查询赛事信息，或让我带你完成报名与审核。', 'Ask about a competition, or let me guide you through registration and review.')}</p></div>`;
+    log.dataset.count = '0';
+    assistantSession.hasUnread = false;
+  } else if (assistantSession.messages.length > count) {
+    if (!count) log.innerHTML = '';
+    const added = assistantSession.messages.slice(count);
+    log.insertAdjacentHTML(
+      'beforeend',
+      added
         .map(
           (message) =>
-            `<article class="assistant-message ${message.role === 'user' ? 'from-user' : 'from-assistant'}"><span>${message.role === 'user' ? tr('你', 'You') : tr('竞云助手', 'Assistant')}</span><p>${esc(message.text)}</p></article>`,
+            `<article class="assistant-message ${message.role === 'user' ? 'from-user' : 'from-assistant'}"><span>${message.role === 'user' ? tr('你', 'You') : tr('竞云助手', 'Assistant')}</span><p>${esc(message.text)}</p>${message.action ? `<details class="assistant-action" data-status="${message.action.status}"><summary>${icon(message.action.status === 'done' ? 'check' : 'lock')}<span>${esc(message.action.label)}</span><small>${message.action.status === 'done' ? tr('已定位', 'Opened') : tr('未执行', 'Not executed')}</small></summary><p>${tr('复用原页面和表单校验；没有提交报名或作出审核决定。', 'Uses the existing page and form validation. No registration or review decision was submitted.')}</p></details>` : ''}</article>`,
         )
-        .join('')
-    : `<div class="assistant-empty"><span class="assistant-avatar" aria-hidden="true">AI</span><h3>${tr('有什么可以帮你？', 'How can I help?')}</h3><p>${tr('查询赛事信息，或让我带你完成报名与审核。', 'Ask about a competition, or let me guide you through registration and review.')}</p></div>`;
-  log.scrollTop = log.scrollHeight;
+        .join(''),
+    );
+    log.dataset.count = String(assistantSession.messages.length);
+    if (isNewMessage) {
+      window.demoMotion?.enter([...log.querySelectorAll('.assistant-message')].slice(count));
+      if (!follow) assistantSession.hasUnread = true;
+    }
+  }
+  if (follow) log.scrollTop = log.scrollHeight;
+  updateAssistantScroll();
 }
 
 function openAssistant() {
   syncAssistant();
   const panel = $('#assistant-panel');
-  if (panel.open) return minimizeAssistant();
+  if (assistantSession.isOpen) return minimizeAssistant();
   assistantSession.isOpen = true;
   // Intentionally outside the top layer: business modals must take priority.
-  panel.show();
+  if (!panel.open) panel.show();
+  window.demoMotion?.show(panel);
   $('#assistant-ball').setAttribute('aria-expanded', 'true');
   $('#assistant-question').focus();
 }
 
 function minimizeAssistant() {
   assistantSession.isOpen = false;
-  $('#assistant-panel').close();
+  const panel = $('#assistant-panel');
+  const finish = () => {
+    if (!assistantSession.isOpen) {
+      panel.close();
+      $('#assistant-ball').focus();
+    }
+  };
+  if (window.demoMotion) window.demoMotion.hide(panel, finish);
+  else finish();
   $('#assistant-ball').setAttribute('aria-expanded', 'false');
-  $('#assistant-ball').focus();
 }
 
 function clearAssistantConversation() {
   assistantSession.messages = [];
   assistantSession.draft = '';
   $('#assistant-question').value = '';
+  $('#assistant-send').disabled = true;
   renderAssistantConversation();
   $('#assistant-question').focus();
 }
@@ -197,20 +257,38 @@ function sendAssistantMessage() {
   if (!question) return;
   assistantSession.messages.push({ role: 'user', text: question });
   const plan = assistantPlan(question);
-  if (plan.command && !executeAssistantCommand(plan))
+  const didExecute = plan.command ? executeAssistantCommand(plan) : false;
+  if (plan.command && !didExecute)
     plan.text = tr(
       '当前权限或报名组合已变化，未执行操作。请核对后重试。',
       'Permissions or offerings changed. No action was performed; check and retry.',
     );
-  assistantSession.messages.push({ role: 'assistant', text: plan.text });
+  const actionLabels = {
+    register: tr('打开报名表', 'Open registration'),
+    review: tr('打开审核队列', 'Open reviews'),
+    registrations: tr('查看报名记录', 'View registrations'),
+    details: tr('打开赛事详情', 'Open competition'),
+    login: tr('打开登录页', 'Open sign-in'),
+  };
+  assistantSession.messages.push({
+    role: 'assistant',
+    text: plan.text,
+    action: plan.command
+      ? { label: actionLabels[plan.command], status: didExecute ? 'done' : 'blocked' }
+      : undefined,
+  });
   assistantSession.draft = '';
   input.value = '';
-  renderAssistantConversation();
+  $('#assistant-send').disabled = true;
+  renderAssistantConversation(true, true);
   input.focus();
 }
 
 document.addEventListener('input', (event) => {
-  if (event.target.id === 'assistant-question') assistantSession.draft = event.target.value;
+  if (event.target.id === 'assistant-question') {
+    assistantSession.draft = event.target.value;
+    $('#assistant-send').disabled = !event.target.value.trim();
+  }
 });
 document.addEventListener('keydown', (event) => {
   if (event.target.id !== 'assistant-question') return;

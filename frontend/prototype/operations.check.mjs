@@ -12,8 +12,14 @@ const node = (selector) => {
       textContent: '',
       innerHTML: '',
       dataset: {},
+      scrollTop: 0,
+      scrollHeight: 0,
+      clientHeight: 0,
       classList: { add() {}, remove() {} },
-      addEventListener() {},
+      handlers: {},
+      addEventListener(type, handler) {
+        this.handlers[type] = handler;
+      },
       focus() {},
       close() {
         this.open = false;
@@ -26,6 +32,9 @@ const node = (selector) => {
       },
       setAttribute(name, value) {
         this[name] = value;
+      },
+      insertAdjacentHTML(_position, html) {
+        this.innerHTML += html;
       },
       scrollIntoView() {},
       querySelector() {
@@ -214,12 +223,27 @@ vm.runInContext(
   assert.equal(assistantSession.messages.length, 1);
   assert.equal(assistantSession.draft, 'unfinished question');
   minimizeAssistant(); openAssistant();
+  $('#assistant-panel').handlers.close({currentTarget: $('#assistant-panel')});
+  assert.equal(assistantSession.isOpen, true);
+  assert.equal($('#assistant-ball')['aria-expanded'], 'true');
   assert.equal(assistantSession.messages.length, 1);
   renderAssistantConversation();
   assert(!$('#assistant-messages').innerHTML.includes('<script>'));
   clearAssistantConversation();
   assert.equal(assistantSession.messages.length, 0);
   assert.equal(assistantSession.draft, '');
+  assert.equal($('#assistant-send').disabled, true);
+  const readingLog = $('#assistant-messages');
+  readingLog.scrollHeight = 1000; readingLog.clientHeight = 200; readingLog.scrollTop = 100;
+  assistantSession.messages.push({role: 'assistant', text: 'new message'});
+  renderAssistantConversation(true);
+  assert.equal(readingLog.scrollTop, 100);
+  assert.equal(assistantSession.hasUnread, true);
+  assert.equal($('#assistant-latest').hidden, false);
+  scrollAssistantToLatest();
+  assert.equal($('#assistant-latest').hidden, true);
+  assert.equal(assistantSession.hasUnread, false);
+  clearAssistantConversation();
   state.form['reg-group'] = 'HS';
   state.registrations[0].status = 'pending';
   executeAssistantCommand({command: 'register', group: 'MS'});

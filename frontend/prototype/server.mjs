@@ -6,6 +6,7 @@ files['/design.css'] = ['design.css', 'text/css'];
 files['/layouts.js'] = ['layouts.js', 'text/javascript'];
 files['/operations.js'] = ['operations.js', 'text/javascript'];
 files['/assistant.js'] = ['assistant.js', 'text/javascript'];
+files['/generated/motion.js'] = ['generated/motion.js', 'text/javascript'];
 files['/operations.css'] = ['operations.css', 'text/css'];
 for (const name of ['barlow-condensed-latin-600-normal.woff2', 'ibm-plex-sans-latin-400-normal.woff2', 'ibm-plex-sans-latin-500-normal.woff2']) {
   files[`/fonts/${name}`] = [`fonts/${name}`, 'font/woff2'];
