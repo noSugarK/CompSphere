@@ -1,0 +1,71 @@
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('../../prototype/fonts/ibm-plex-sans-latin-400-normal.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('../../prototype/fonts/ibm-plex-sans-latin-500-normal.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  src: url('../../prototype/fonts/barlow-condensed-latin-600-normal.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+:root {
+  color-scheme: light;
+  --color-bg: #f3f4ee;
+  --color-surface: #fff;
+  --color-soft: #eaeee7;
+  --color-text: #20372b;
+  --color-muted: #58665d;
+  --color-border: #c7cfc5;
+  --color-ink: #142b22;
+  --color-on-ink: #eef3e6;
+  --color-lime: #d7ef8b;
+  --color-accent: #2453bf;
+  --color-danger: #b53036;
+  --color-focus: #2453bf;
+  --color-selection: #d7ef8b;
+  --color-on-selection: #142b22;
+  --el-color-primary: var(--color-accent);
+  --el-text-color-primary: var(--color-text);
+  --el-text-color-regular: var(--color-text);
+  --el-text-color-secondary: var(--color-muted);
+  --el-bg-color: var(--color-surface);
+  --el-bg-color-page: var(--color-bg);
+  --el-fill-color-blank: var(--color-surface);
+  --el-fill-color-light: var(--color-soft);
+  --el-border-color: var(--color-border);
+  --el-border-radius-base: 4px;
+  --el-font-family: 'IBM Plex Sans', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --el-font-size-base: 14px;
+}
+html.dark {
+  color-scheme: dark;
+  --color-bg: #121c17;
+  --color-surface: #1b2b22;
+  --color-soft: #26372c;
+  --color-text: #edf0e8;
+  --color-muted: #b6c2b4;
+  --color-border: #526153;
+  --color-ink: #10221a;
+  --color-on-ink: #eef3e6;
+  --color-lime: #d7ef8b;
+  --color-accent: #9fbafc;
+  --color-danger: #ff9c9f;
+  --color-focus: #c8ddff;
+  --el-color-primary: #91b0ff;
+  --el-color-primary-light-3: #adc4ff;
+  --el-color-primary-light-5: #355592;
+  --el-color-primary-light-7: #2b4069;
+  --el-color-primary-light-9: #23334d;
+  --el-color-primary-dark-2: #b1c7ff;
+}

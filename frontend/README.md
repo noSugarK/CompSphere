@@ -1,38 +1,38 @@
-# compsphere-web（前端占位）
+# compsphere-web
 
-**技术栈**：Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router + Axios + vue-i18n。结构约定见 [`../docs/05-architecture.md`](../docs/05-architecture.md) §4。
+正式Vue 3 + TypeScript工程，复用Element Plus业务组件，使用Pinia、Vue Router、Axios、vue-i18n及Zod。锁定版本与可用命令见package.json/package-lock.json，接口见[开发契约](../docs/12-development-contract.md)。独立[静态演示](prototype/README.md)继续保留，不连接正式API，也不参与正式构建。
 
-正式前端当前为**占位**，尚未初始化。独立界面设计预览见 [prototype/README.md](prototype/README.md)，运行 `npm ci --prefix frontend/prototype`、`npm run preview --prefix frontend/prototype` 后打开 <http://127.0.0.1:4173>；原型不连接真实业务，可单独发布 GitHub Pages。后续 `src/` 构建正式 Vue 应用并接入 Django API，部署方式见 [部署指南](../docker/README.md)，演示继续保留且不参与正式构建。
+## 开发与检查
 
-初始化正式工程时保留 prototype 目录。初始化前先将本说明临时移出目录，避免 Vite 对非空目录的覆盖提示；完成后恢复说明并保留生成的脚本信息。使用 npm，与现有 Dockerfile 保持一致：
+在仓库根目录执行：
 
-```bash
-npm create vite@latest . -- --template vue-ts
-npm i element-plus pinia vue-router axios vue-i18n
-npm i -D unplugin-auto-import unplugin-vue-components   # Element Plus 按需引入
+```powershell
+npm ci --prefix frontend
+npm run api:generate --prefix frontend
+npm run dev --prefix frontend -- --port 5174 --strictPort
 ```
 
-目标结构：
+后端先在127.0.0.1:8000运行，SITE_BASE_URL设置为实际前端origin（上例http://127.0.0.1:5174），开发服务将/api与/healthz代理至后端。使用后端显式创建的账号登录，无默认密码或前端假登录。生产由同源Nginx代理；开发服务只绑定本机。
 
-```
-frontend/
-├── src/
-│   ├── api/          # 各域 API 模块（禁止裸 axios 出 axios 实例文件）
-│   ├── stores/       # auth(token+grants) / app(locale+theme) / notifications
-│   ├── locales/      # zh-CN.ts / en-US.ts
-│   ├── router/       # 动态权限路由守卫
-│   ├── layouts/      # PortalLayout / AdminLayout / BlankLayout
-│   ├── views/        # public / participant / admin
-│   ├── components/   # ProTable、上传、审批时间线…
-│   └── utils/        # perm.ts(hasPerm)、download.ts、format.ts
-├── .env.development  # VITE_API_BASE=http://localhost:8000/api/v1
-└── 构建入口见 ../docker/frontend.Dockerfile
+```powershell
+npm run lint --prefix frontend
+npm run format:check --prefix frontend
+npm run typecheck --prefix frontend
+npm test --prefix frontend
+npm run build --prefix frontend
 ```
 
-编码遵循 [CODING_STANDARDS.md](../CODING_STANDARDS.md)，界面遵循 [FRONTEND_DESIGN_GUIDELINES.md](../FRONTEND_DESIGN_GUIDELINES.md)。
+api:generate从后端导出的docs/openapi.json生成src/api/generated.d.ts，不手工编辑；Zod运行时schema与生成类型交叉校验。HTTP响应以unknown进入结构校验，非法包裹/字段/枚举/ID/日期不会进入store。请求及AI提案也有独立严格schema；schema通过不代替服务端逐次授权。
 
-## 开发约束提醒
+## 当前实现
 
-- 按钮/菜单权限仅是 UX；一切以接口返回为准，安全边界在后端（docs/02 §5）。
-- `v-perm="'approval:review_single'"` 指令统一控制，不散写 if。
-- 错误码提示文案集中在 `utils/errors.ts` 映射（docs/06 §1.2 段位）。
+- 邮箱/证件登录、内存Access、Refresh Cookie/CSRF、单飞刷新、过期清理、账号切换旧请求隔离；无localStorage/sessionStorage token。
+- 中英及浅/深/system主题，门户赛事/详情、队伍概要、队伍提案/审核、赛季许可、报名草稿/提交/冻结/取消修改与单级审核页面，前端权限路由和按钮控制。
+- Element Plus表单/表格/确认和状态反馈；加载/空/失败可重试，日期固定Asia/Shanghai；窄屏可操作，复杂批量仍以桌面为主。
+- 路由外AI悬浮入口仅显示未接入状态及最小页面标识，不调用模型、采集DOM/图片/附件或伪造业务成功。
+
+本轮是核心链路，不代表完整首期已交付。注册/找回/代建、组织入驻、正式赛事配置、固定模板导入、材料安全上传、获奖/公示、消息投递和自动备份等尚待后续实现；证书、复杂跨队特批和两级审核为后续范围。必交材料仍受后端校验，不能用当前无材料联调场次替代真实赛事验收。
+
+## 验证与依赖边界
+
+已运行typecheck、ESLint、Prettier、Vitest及生产构建，最终数量以运行记录为准；session竞态测试覆盖旧请求401不以新账号重放、旧刷新失败不清新会话、失败登出清理。生产依赖npm audit --omit=dev无已知告警；开发工具链仍有picomatch传递依赖ReDoS告警，当次官方注册表无修复版本，不使用虚假override掩盖，开发服务不得开放公网。Docker、生产TLS、真实材料上传和完整首期仍需独立验收。
