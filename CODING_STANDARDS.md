@@ -13,7 +13,7 @@
 ## 2. 后端
 
 - 分层：views 处理 HTTP 与权限声明，serializers 校验输入/塑形，services 承载业务与事务，models 承载存储约束；跨 app 写操作调用对方 service。
-- 权限统一走 `ScopedRolePermission`，同时校验对象归属与查询范围；状态变更走 `transition()`。这些组件在初始化阶段实现，当前尚不存在。
+- 权限统一走 `ScopedRolePermission`，同时校验对象归属与查询范围；状态变更走 `transition()`。已有核心实现，新增业务复用对应入口，不绕过服务层校验。
 - 状态、权限码、错误码集中在 `core/constants.py`；分别与 `docs/02`、`03`、`06` 同步，角色为数据库配置。
 - 一次业务动作一个短事务；并发唯一性由数据库约束兜底。证件更正只走审核 service，禁止通用资料接口直接改绑定。可靠异步任务与业务同事务写 outbox，提交后投递并定时补投；任务按业务键及版本幂等。
 - 列表分页（每页最多 100 条）；关联查询使用 `select_related`/`prefetch_related`，避免循环查询。
@@ -31,7 +31,7 @@
 
 ## 4. 验证与交付
 
-- 初始化时落地 Ruff、mypy、pytest/pytest-django、ESLint、Prettier、vue-tsc，以及对应 pre-commit/CI 配置；当前仓库尚无这些配置。
+- Ruff、mypy、pytest/pytest-django、ESLint、Prettier、vue-tsc及对应pre-commit/CI配置已落地；可运行命令分别见backend/README和frontend/README，新增功能使用同一套检查。Git hooks需按贡献指南在本机安装，不能据配置文件存在声称已安装。
 - 修改业务逻辑补有意义的测试，优先覆盖越权、状态迁移、并发重复提交、敏感字段与任务重试；核心 service 层覆盖率目标 ≥ 80%。
 - 按改动运行格式、静态检查、测试与构建；记录实际结果及未验证项。文档改动检查链接与跨文档一致性即可。
 - 环境变量只提交 `.env.example`；密钥、个人信息样本与生成物不入仓。接口、依赖、业务规则变化同步相应文档。

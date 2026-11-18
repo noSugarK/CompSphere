@@ -6,12 +6,13 @@
 
 首期集中部署，交付队伍基础、赛季许可、个人/团队报名、单级审核与公示，包含固定模板导入、自动备份和可验证的人工恢复；证书后续交付，无固定上线日期。完整范围与门槛见 [PRD](docs/01-PRD.md) 和 [任务拆解](docs/07-task-breakdown.md)。
 
-**当前状态：设计阶段。** 正式前后端尚未初始化，Docker 配置为部署草案，尚不能启动完整应用；已有独立静态演示和数据库设计约束回归。Pages 工作流仅发布演示，尚无正式应用的 CI 或业务集成测试。
+**当前状态：首批正式核心链路可运行。** 已建立Django/DRF与Vue/Element Plus工程，打通认证、作用域权限、队伍提案/许可、报名草稿/提交和单级审核，包含严格JSON校验、迁移和测试。完整首期仍有未完成项，见前后端README；Docker、邮件/文件、自动备份及生产TLS尚待验收。独立静态演示与Pages发布继续保留，正式应用有单独CI配置。
 
 规划技术栈：Django + DRF、PostgreSQL、Redis/Celery、MinIO；Vue 3 + TypeScript + Element Plus。
 
 | 入口 | 内容 |
 | --- | --- |
+| [后端运行与检查](backend/README.md) / [前端运行与检查](frontend/README.md) | 本地启动、真实核心能力、验证命令及未完成任务 |
 | [界面演示](frontend/prototype/README.md) | 本地体验、模拟账号与 GitHub Pages 发布方式；独立于正式前后端 |
 | [文档索引](docs/README.md) | 需求、权限、状态机、数据库、架构、API 与任务拆解 |
 | [编码规范](CODING_STANDARDS.md) | 格式、命名、分层与验证 |

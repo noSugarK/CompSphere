@@ -24,7 +24,7 @@
 | [12-开发联调契约](12-development-contract.md) | 首批请求/响应字段、JSON运行时校验、AI回传结构与并行开发边界 | 开发契约 |
 | [贡献指南](../CONTRIBUTING.md) | 提交、分支与 PR 流程（英文） | 当前 |
 
-> 当前为设计文档与部署草案，前后端尚未实现；本轮修复状态与运行验证边界见 [审阅记录](10-review-notes.md)。
+> 首批正式前后端核心链路已实现；完整首期仍未交付，当前能力与命令见各工程README，运行验证边界见 [审阅记录](10-review-notes.md)。
 
 ## 仓库结构
 
@@ -39,8 +39,8 @@ CompSphere/
 ├── docs/             # 本目录，设计与规范文档
 │   ├── 01-PRD.md … 10-review-notes.md
 │   └── README.md
-├── backend/          # compsphere-server：Django 5 + DRF（占位，待初始化）
-├── frontend/         # compsphere-web：Vue 3 + TS + Vite + Element Plus（占位，待初始化）
+├── backend/          # Django + DRF核心链路、迁移、安全与状态测试
+├── frontend/         # Vue + TS + Element Plus正式工程及独立prototype
 ├── docker/
 │   ├── nginx/
 │   ├── backend.Dockerfile

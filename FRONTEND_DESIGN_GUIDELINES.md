@@ -17,7 +17,7 @@
 
 - 色板与原始色值集中在 `src/styles/tokens.css`，组件只使用 `--color-*` 语义令牌，如 `--color-bg`、`--color-text`、`--color-accent`、`--color-danger`。
 - Element Plus 变量映射集中在主题文件；避免逐组件覆盖颜色。实底按钮使用专用对比文字色，不套用同色阶 12 号。
-- 标准控件优先采用 Element Plus：表单/校验用 ElForm，输入/选择/日期用 ElInput、ElSelect、ElDatePicker，数据列表用 ElTable/ElPagination，编辑与审核用 ElDialog/ElDrawer，确认与反馈用 ElMessageBox/ElMessage。只封装真实复用的业务内容，不另造通用按钮、表单、表格或弹层库。正式前端尚未初始化；静态原型复用现有 field/selectField/table/dialog 等入口，不作为正式组件实现。
+- 标准控件优先采用 Element Plus：表单/校验用 ElForm，输入/选择/日期用 ElInput、ElSelect、ElDatePicker，数据列表用 ElTable/ElPagination，编辑与审核用 ElDialog/ElDrawer，确认与反馈用 ElMessageBox/ElMessage。只封装真实复用的业务内容，不另造通用按钮、表单、表格或弹层库。正式Vue工程按此复用；独立静态原型继续使用field/selectField/table/dialog入口，其模拟权限与数据不复制为正式实现。
 - 实际文字/背景组合须满足 WCAG AA（普通文字 ≥ 4.5:1，控件边界与焦点 ≥ 3:1），不能仅凭色阶推断达标。浅色与深色主题分别验收。
 
 ## 2. 布局与响应式

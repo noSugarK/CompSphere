@@ -13,7 +13,7 @@ v1.4：补无邮箱代建、证件登录与更正、事务 outbox；验证码受
 | 层次 | 选型 | 版本基线 | 说明 |
 | --- | --- | --- | --- |
 | 前端框架 | Vue 3 + TypeScript | Vue 3.5 / TS 5.x | Composition API + `<script setup>` |
-| 构建 | Vite | 6.x | |
+| 构建 | Vite | 8.x | 实际锁定版本见frontend/package-lock.json |
 | UI | Element Plus + Radix Colors | 2.x / 1.x | 管理后台组件库；颜色全站取自 Radix 色阶经 CSS 令牌层引用（FRONTEND_DESIGN_GUIDELINES.md §1），不沿用组件库默认配色 |
 | 状态 | Pinia | 2.x | 用户会话、grants、菜单 |
 | 路由 | Vue Router | 4.x | 动态权限路由 |
@@ -27,7 +27,7 @@ v1.4：补无邮箱代建、证件登录与更正、事务 outbox；验证码受
 | 异步 | Celery | 5.x | 业务通知邮件、证书 PDF、导入任务；验证码也通过持久化 outbox 投递 |
 | 定时 | django-celery-beat | | 状态提醒、清理 |
 | 对象存储 | MinIO（开发/自建）/ S3 兼容 | | 报名材料、证书 PDF，私有桶 + 预签名 URL |
-| 组织树 | django-treebeard | 2.x | Materialized Path，`organizations` 继承 `MP_Node`（v1.1，取代裸 parent_id 递归查询） |
+| 组织树 | django-treebeard | 4.8.x | Materialized Path，`organizations` 继承 `MP_Node`（v1.1，取代裸 parent_id 递归查询） |
 | 导入导出 | django-import-export | 4.x | 获奖名单/人员 Excel；异步任务里直接调 `Resource` API，不走 admin 集成（v1.1） |
 | 邮件 | Django email backend + SMTP | | 注册与找回密码验证码、审核结果通知；发信域名需配 SPF/DKIM，否则验证码邮件进垃圾箱等于注册不可用（v1.1，上线前置条件） |
 | 字段加密 | cryptography（Fernet） | 42+ | 身份证/护照列加密，P0 交付；密钥 `FIELD_ENCRYPTION_KEY`，哈希 pepper 另用 `DOC_HASH_PEPPER`（v1.1） |
@@ -157,7 +157,7 @@ compsphere-web/
 
 ### 4.2 组件复用与后续 AI 助手
 
-标准控件使用 Element Plus；只在真实跨页重复时封装业务组件。手动操作与 AI 建议共享同一业务表单、领域 API、校验与执行命令，不以 DOM 自动点击或任意脚本实现 AI 控制。AI 网关须使用当前 actor 调用已有作用域校验及业务 service；检索前按授权过滤数据。完整设计与接入前验收见 [11-AI 助手设计](11-ai-assistant.md)，当前尚无 AI 服务或正式 Vue 工程。
+标准控件使用 Element Plus；只在真实跨页重复时封装业务组件。手动操作与 AI 建议共享同一业务表单、领域 API、校验与执行命令，不以 DOM 自动点击或任意脚本实现 AI 控制。AI 网关须使用当前 actor 调用已有作用域校验及业务 service；检索前按授权过滤数据。完整设计与接入前验收见 [11-AI 助手设计](11-ai-assistant.md)。正式Vue核心工程已建立；AI目前仅有入口与纯JSON校验器，尚无模型服务或工具执行端点。
 
 聊天内容区优先评估独立社区库 Element-Plus-X，Inspira UI 提供按需交互补充；动画引擎不承担业务状态或权限。静态演示可使用 npm 锁定的 Anime.js 与单独构建入口，生产业务工程仍按既定 Vue/TypeScript 初始化，原型不复制为正式应用。组件与动效的具体约束统一维护在前端设计规范 §7，来源及许可证记录见 [09](09-开源参考调研.md)。
 
