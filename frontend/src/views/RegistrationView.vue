@@ -243,10 +243,10 @@ onMounted(load);
             ><el-input :model-value="fields.selected_school_level || '—'" readonly
           /></el-form-item>
         </div>
-        <el-form-item v-if="offering?.enrollment_type === 'both'" :label="t('registrations')"
+        <el-form-item v-if="offering?.enrollment_type === 'both'" :label="t('enrollmentType')"
           ><el-radio-group v-model="fields.enrollment_kind"
             ><el-radio value="team">{{ t('team') }}</el-radio
-            ><el-radio value="individual">{{ t('name') }}</el-radio></el-radio-group
+            ><el-radio value="individual">{{ t('individualEnrollment') }}</el-radio></el-radio-group
           ></el-form-item
         >
         <div class="form-grid">
@@ -333,7 +333,7 @@ onMounted(load);
       <el-table :data="record.members"
         ><el-table-column prop="real_name" :label="t('name')" /><el-table-column
           prop="school_level"
-          :label="t('schoolLevel')" /><el-table-column prop="grade" :label="t('group')"
+          :label="t('schoolLevel')" /><el-table-column prop="grade" :label="t('grade')"
       /></el-table>
     </section>
     <section class="content-panel">

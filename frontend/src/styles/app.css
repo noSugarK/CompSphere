@@ -470,7 +470,7 @@ textarea {
   z-index: 89;
   inset-inline-end: 24px;
   inset-block-end: 88px;
-  inline-size: min(376px, calc(100vw - 32px));
+  inline-size: min(376px, calc(100% - 32px));
   max-block-size: calc(100dvh - 112px);
   background: var(--color-surface);
   color: var(--color-text);
