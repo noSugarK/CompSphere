@@ -55,7 +55,8 @@ has_perm(user, perm_code, scope_type, scope_id):
 | `user` | `create` `read` `update` `disable` `import` `export` `assign_role` `provision` `reset_student_password` |
 | `profile` | `read_own` `update_own` `read` `update` `review` `request_identity_change` `review_identity_change` |
 | `org` | `create` `read` `update` `disable` `manage_members` `approve_join` `apply_create` `review_create` `request_transfer` `release_transfer` `accept_transfer` `mediate_transfer` |
-| `team` | `create` `read` `update` `dissolve` `manage_members` `review` `read_review_history` `leave_own` `request_transfer` `review_transfer` |
+| `team` | `create` `read` `update` `dissolve` `manage_members` `review_create` `review` `read_review_history` `leave_own` `request_transfer` `review_transfer` `request_season_registration` `review_season_registration` |
+| `season` | `read` `create` `update` `activate` `archive` `set_current` |
 | `competition` | `create` `read` `update` `publish` `archive` `manage_admins` `manage_units` |
 | `edition` | `create` `read` `update` `publish` `close` `manage_team_access` |
 | `group` | `create` `read` `update` `enable_disable` |

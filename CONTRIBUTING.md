@@ -14,6 +14,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
 - Scope is optional; use the affected module or concern, such as `registrations`, `frontend`, `docker`, or `docs`.
 - Explain non-obvious reasons in the body. Cite the requirement for business changes; breaking changes include a `BREAKING CHANGE:` footer and migration instructions.
 - Keep commits focused; separate unrelated formatting and generated files from logic changes. Never commit secrets or real personal data.
+- Commit each completed, validated feature with its relevant documentation and tests before starting the next feature; do not accumulate unrelated implementations in one working-tree batch. Record the checks actually run.
 - `main` receives reviewed PRs. Use short lowercase branches: `feat/<summary>`, `fix/<summary>`, or `codex/<summary>` for agent work.
 - Coordinate history changes on shared branches; use `--force-with-lease` only when a rewrite is agreed.
 
