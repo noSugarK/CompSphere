@@ -32,6 +32,6 @@ Prefer small PRs. Review correctness, security and specification conformance; le
 
 ## Tooling status
 
-This repository currently contains design documents, an isolated static demo and deployment scaffolding. The Pages workflow checks and publishes only the demo. There are **no installed commit hooks, linter configurations or production application CI checks**; malformed commits are not automatically rejected.
+The formal backend and frontend now have a runnable core workflow, locked dependencies, linting, type checks and tests. Commands live in their READMEs. The application workflow checks PostgreSQL 16, OpenAPI drift and the Vue build; the separate Pages workflow still publishes only the isolated demo. A configured workflow is not evidence that a remote run passed.
 
-W1 must add the toolchain described in the coding standards and use the same checks locally and in CI. Run `pre-commit install` only after its configuration and dependencies exist. Until then, report available checks and any unverified behavior explicitly.
+Local hooks are opt-in: install dependencies, activate the backend virtual environment, then run `python -m pre_commit install` from the repository root. The local hook configuration uses that environment for Python and the frontend npm scripts for UI checks. Report actual checks and remaining unverified behavior with each feature commit.
