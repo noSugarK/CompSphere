@@ -1,6 +1,7 @@
 .agent/
 .taste-skill/
 .claude/
+.hallmark/
 
 # 环境与密钥
 .env
