@@ -40,6 +40,8 @@ v1.1 变更：错误码表补 42205-42208 与 40904、新增发码与公示接�
 
 ### 1.3 其他
 
+- 认证与授权遵循 [02 §5](02-permission-matrix.md#5-前后端落地约定)：前端检查路由和操作权限，后端对每次受保护请求独立鉴权；AI 工具适用同一接口与对象权限，不设置绕过授权的内部 AI 接口。工具名、对象 ID 和用户确认均不能代替授权；公开接口仍按显式可见范围返回最小字段。
+
 - 语言使用 Accept-Language，支持 zh-CN / en-US（接受 zh/en 简写），未支持时回退 zh-CN；message 与字段校验提示随请求语言变化，code/status/字段名保持稳定。错误可附 params 供前端按 code 翻译，未知 code 使用本地通用提示与 request_id；语言切换不改变错误码。
 
 - 筛选：`?status=&group_id=&org_id=&search=&ordering=-created_at`；时间范围 `?created_after=&created_before=`（ISO8601 UTC）。
