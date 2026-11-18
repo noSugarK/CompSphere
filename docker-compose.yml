@@ -74,11 +74,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    # 首次启动自动迁移 + seed；生产建议拆独立发布步骤
-    command: >
-      sh -c "python manage.py migrate --noinput &&
-             python scripts/seed_rbac.py &&
-             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60"
+    # Migrations, role seeding and first operator initialization are explicit release steps.
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60
 
   celery_worker:
     build:

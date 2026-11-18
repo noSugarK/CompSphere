@@ -1,6 +1,6 @@
 # 08 部署指南（Docker Compose）
 
-当前是部署草案：前后端与依赖尚未初始化，命令须在完成 W1 后演练。Compose 为单机部署，更新可能短暂中断。以下 shell 示例使用 Bash；备份重定向不直接复制到旧版 Windows PowerShell，以免二进制转码。
+当前已建立正式前后端核心链路，Compose仍是部署草案，整套Docker、SMTP/S3及生产TLS尚未演练，不能据此宣称首期可上线。Compose为集中单机部署，更新可能短暂中断。以下shell示例使用Bash；备份重定向不直接复制到旧版Windows PowerShell，以免二进制转码。
 
 ## 1. 配置与首次部署
 
@@ -9,6 +9,7 @@
 - backend、worker、beat 使用相同 APP_ENV/settings；生产 APP_ENV=prod、DEBUG=false，SMTP 域名完成 SPF/DKIM。
 - S3_ENDPOINT 为容器内部地址，S3_PUBLIC_ENDPOINT 为浏览器可达地址；签名前用独立客户端，不能改写已签名链接。生产使用独立 HTTPS 对象存储域名。
 - Nginx 是直连公网入口，覆盖转发 IP 头；若前置 CDN/负载均衡，先配置可信代理网段再调整真实 IP 解析。/healthz/ 必须覆盖应用依赖就绪状态。
+- 当前healthz仅为应用存活检查，尚未覆盖全部依赖。prod启用HTTPS重定向且默认不信任转发协议头；部署TLS终止时须同时落实后端不可公网直连、入口覆盖转发头及显式可信代理配置，再测试不会重定向循环。现有80端口示例不能直接作为生产TLS部署。
 
 ```bash
 cp .env.example .env
@@ -18,9 +19,12 @@ docker compose config --quiet
 docker compose build
 docker compose up -d postgres redis minio
 # 先执行下方 mc 建桶步骤，再启动应用（避免依赖桶的健康检查阻塞）
-# 后端入口已内置 migrate + seed；seed 必须幂等
+# 迁移和权限seed是独立发布步骤，不创建默认管理员或测试账号
+docker compose run --rm --no-deps backend python manage.py migrate --noinput
+docker compose run --rm --no-deps backend python manage.py seed_rbac
+# 替换为负责人核验的运营邮箱，交互输入强密码；不使用密码命令行参数
+docker compose run --rm --no-deps backend python manage.py bootstrap_platform --email operator@example.invalid
 docker compose up -d
-docker compose exec backend python manage.py createsuperuser
 ```
 
 安装并锁定主机 MinIO Client（mc）的版本，配置别名后创建私有桶；不要假设 server 镜像内含 mc：
