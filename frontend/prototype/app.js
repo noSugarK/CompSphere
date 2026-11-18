@@ -7,6 +7,8 @@ const params = new URLSearchParams(location.search);
 const state = {
   role: params.get('role') || 'visitor', lang: params.get('lang') || 'zh', theme: params.get('theme') || 'light',
   page: location.hash.slice(1) || (params.get('role') === 'reviewer' ? 'reviews' : ['org','event','platform'].includes(params.get('role')) ? 'dashboard' : 'portal'),
+  competitionIndex: [0, 1, 2].includes(Number(params.get('competition'))) ? Number(params.get('competition')) : 0,
+  editionSection: ['basics', 'rules', 'offerings', 'publish'].includes(params.get('section')) ? params.get('section') : 'basics',
   season: '2026-2027', // Platform configuration in this in-memory preview; URL cannot select it.
   seasonLicenses: ['1024A','1024B','1024C','1024D'].map(team => ({ team, season: '2026-2027', status: team === '1024C' ? 'submitted' : 'approved', applicant: '周老师', comment: team === '1024C' ? '' : '材料已核验' })),
   search: '', status: 'all', tab: 'all', reviewTab: 'current', form: {}, photo: '',
@@ -48,7 +50,7 @@ const labels = {
   demo: ['演示导航', 'Demo explorer'],
   discover: ['全部赛事', 'All competitions'], 'public-event': ['赛事详情', 'Competition detail'],
   membership: ['队伍与参赛资格', 'Team & eligibility'], transfers: ['特批换队', 'Transfer approvals'],
-  edition: ['届次与赛项', 'Edition setup'], history: ['历史档案', 'Historical records'],
+  edition: ['赛事配置', 'Competition setup'], history: ['历史档案', 'Historical records'],
   dashboard: ['工作台', 'Overview'], competitions: ['赛事中心', 'Competitions'], registrations: ['报名管理', 'Registrations'],
   reviews: ['报名审核', 'Registration review'], requests: ['资料审核', 'Change requests'], teams: ['队伍管理', 'Teams'],
   students: ['学生账户', 'Student accounts'], organizations: ['单位管理', 'Organizations'], awards: ['获奖名单', 'Awards'],
@@ -57,7 +59,7 @@ const labels = {
   profile: ['个人档案', 'My profile'], roles: ['角色与授权', 'Roles & access'], registration: ['填写报名', 'Registration form'],
   competition: ['赛事详情', 'Competition detail'], portal: ['赛事门户', 'Discover'], login: ['登录账户', 'Sign in'], verify: ['证书验证', 'Verify certificate'],
 };
-const label = (key) => key === 'registrations' && !can('admin:access') ? tr('我的报名', 'My registrations') : key === 'teams' && !canManageTeams() ? tr('本单位队伍', 'Organization teams') : labels[key] ? tr(...labels[key]) : key;
+const label = (key) => key === 'competitions' && can('competition:manage') ? tr('赛事管理', 'Competition management') : key === 'registrations' && !can('admin:access') ? tr('我的报名', 'My registrations') : key === 'teams' && !canManageTeams() ? tr('本单位队伍', 'Organization teams') : labels[key] ? tr(...labels[key]) : key;
 const roles = { visitor: ['访客', 'Visitor'], org: ['单位管理员', 'Organization admin'], event: ['赛事管理员', 'Competition admin'], reviewer: ['赛事审核员', 'Reviewer'], coach: ['教练', 'Coach'], student: ['学生', 'Student'], platform: ['平台管理员', 'Platform admin'] };
 const names = { visitor: '访客', org: '陈老师', event: '赛事管理员', reviewer: '审核员', coach: '陈老师', student: '林知远', platform: '平台管理员' };
 const is = (...rolesToCheck) => rolesToCheck.includes(state.role);
@@ -113,7 +115,7 @@ const badge = (status) => {
 const btn = (text, action, style = '', symbol = '') => `<button type="button" class="button ${style}" data-action="${esc(action)}">${symbol ? icon(symbol) : ''}${text}</button>`;
 const link = (text, page, style = '', symbol = '') => `<a href="#${page}" class="button ${style}">${symbol ? icon(symbol) : ''}${text}</a>`;
 const field = (name, title, value = '', type = 'text', extra = '') => `<div class="field"><label for="${name}">${title}</label><input id="${name}" name="${name}" type="${type}" value="${esc(state.form[name] ?? value)}" ${extra}></div>`;
-const selectField = (name, title, options, extra = '') => `<div class="field"><label for="${name}">${title}</label><select id="${name}" name="${name}" ${extra}>${options.map(([value, text]) => `<option value="${value}" ${state.form[name] === value ? 'selected' : ''}>${text}</option>`).join('')}</select></div>`;
+const selectField = (name, title, options, extra = '', selected = state.form[name]) => `<div class="field"><label for="${name}">${title}</label><select id="${name}" name="${name}" ${extra}>${options.map(([value, text]) => `<option value="${esc(value)}" ${selected === value ? 'selected' : ''}>${text}</option>`).join('')}</select></div>`;
 const notice = (text, color = '') => `<div class="notice ${color}">${icon('shield')}<span>${text}</span></div>`;
 const pageHead = (title, subtitle, actions = '') => `<div class="page-head"><div><h1 id="page-title" tabindex="-1">${title}</h1><p>${subtitle}</p></div><div class="actions">${actions}</div></div>`;
 const panel = (title, body, action = '', bodyClass = '') => `<section class="panel"><div class="panel-head"><h2>${title}</h2>${action}</div><div class="panel-body ${bodyClass}">${body}</div></section>`;
@@ -156,15 +158,15 @@ function seasonRegistrationQueue() {
 }
 const eventNames = ['2026 VEX 机器人华东区域公开赛', '2026 青少年机器人创新挑战赛', '2026 VEX 校际邀请赛'];
 function competitionCards() {
+  const config = editionConfig();
   if (state.season !== '2026-2027') return empty(tr('本赛季暂无可见赛事', 'No visible competitions this season'), tr('赛事发布后将在这里展示。历史参赛档案仅授权管理员可查。', 'Published competitions will appear here. Historical participation records require administrator access.'));
-  return `<div class="competition-grid">${eventNames.map((name, i) => ({name, i})).filter(({name, i}) => name.toLowerCase().includes(state.search.toLowerCase()) && (state.tab !== 'open' || i !== 2) && (state.tab !== 'mine' || i < 2)).map(({name, i}) => `<article class="panel competition-card"><div class="competition-cover"><span><span class="small muted">2026–2027 · ROBOTICS</span><br><span class="event-symbol">${['VEX', 'YRIC', 'VEX'][i]}</span></span><span class="symbol-ring">${icon(i === 1 ? 'robot' : 'trophy')}</span></div><div class="card-content">${badge(i === 2 ? 'upcoming' : 'enrolling')}<h2>${name}</h2><p class="muted small">${tr('华东地区青少年科技教育协作中心', 'East China Youth STEM Education Center')}</p><div class="card-meta"><span>${icon('calendar')}${i === 2 ? '2026-12-12' : '2026-11-28'} — ${i === 2 ? '12-13' : '11-29'}</span><span>${icon('pin')}${i === 1 ? '杭州' : '上海'} · ${tr('线下赛事', 'In-person')}</span><span>${icon('team')}V5RC / VIQRC · ${tr('小学 / 初中 / 高中', 'Elementary / Middle / High school')}</span></div><div class="card-bottom"><span class="muted small">${tr('报名截止', 'Deadline')} ${i === 2 ? '12-05' : '11-23'}</span>${link(tr('查看赛事', 'View competition'), ['portal','discover'].includes(state.page) ? 'public-event' : 'competition', 'small', 'arrow')}</div></div></article>`).join('')}</div>`;
+  return `<div class="competition-grid">${eventNames.map((name, i) => ({name: i === 0 ? config.name : name, i})).filter(({name, i}) => name.toLowerCase().includes(state.search.toLowerCase()) && (state.tab !== 'open' || i !== 2) && (state.tab !== 'mine' || i < 2)).map(({name, i}) => `<article class="panel competition-card"><div class="competition-cover"><span><span class="small muted">2026–2027 · ROBOTICS</span><br><span class="event-symbol">${['VEX', 'YRIC', 'VEX'][i]}</span></span><span class="symbol-ring">${icon(i === 1 ? 'robot' : 'trophy')}</span></div><div class="card-content">${badge(i === 2 ? 'upcoming' : 'enrolling')}<h2>${esc(name)}</h2><p class="muted small">${tr('华东地区青少年科技教育协作中心', 'East China Youth STEM Education Center')}</p><div class="card-meta"><span>${icon('calendar')}${i === 0 ? config.start.slice(0, 10) : i === 2 ? '2026-12-12' : '2026-11-28'} — ${i === 0 ? config.end.slice(5, 10) : i === 2 ? '12-13' : '11-29'}</span><span>${icon('pin')}${i === 0 ? esc(config.venue) : i === 1 ? '杭州' : '上海'} · ${tr('线下赛事', 'In-person')}</span><span>${icon('team')}V5RC / VIQRC · ${tr('小学 / 初中 / 高中', 'Elementary / Middle / High school')}</span></div><div class="card-bottom"><span class="muted small">${tr('报名截止', 'Deadline')} ${i === 0 ? config.enrollEnd.slice(5, 10) : i === 2 ? '12-05' : '11-23'}</span>${btn(tr('查看赛事', 'View competition'), `open-competition:${i}`, 'small', 'arrow')}</div></div></article>`).join('')}</div>`;
 }
 function competitions() {
+  if (can('competition:manage')) return renderCompetitionRegistry();
   return `<header class="catalogue-heading"><div><p class="eyebrow">COMPSPHERE / COMPETITIONS</p><h1 id="page-title" tabindex="-1">${tr('赛事中心', 'Competition center')}</h1><p class="muted">${tr('选择赛场，准备下一次出发。', 'Find your field. Prepare for what’s next.')}</p></div>${currentSeasonContext()}</header><div class="catalogue-tools">${tabs([['all', tr('全部赛事', 'All competitions')], ['open', tr('正在报名', 'Open')], ...(state.role !== 'visitor' ? [['mine', tr('本单位参与', 'My organization')]] : [])])}<search>${filters(tr('搜索赛事', 'Search competitions'))}</search>${is('platform') ? btn(tr('创建赛事', 'Create competition'), 'new-competition', 'primary', 'plus') : ''}</div>` + competitionCards();
 }
-function competitionDetail() {
-  return pageHead(eventNames[0], tr('2026–2027 赛季 · 上海 · 区域公开赛', '2026–2027 season · Shanghai · Regional open'), link(tr('返回赛事', 'All competitions'), 'competitions')) + `<div class="cols"><div class="stack">${panel(tr('赛事概况', 'About the competition'), `<div class="actions">${badge('enrolling')}<span class="tag">V5RC / VIQRC</span></div><p style="margin-top:18px;line-height:1.9">${tr('面向青少年学生的机器人赛事，以团队协作、工程实践和创新探索为核心。请先阅读赛事章程，确认本队赛项与组别，再完成报名。', 'A student robotics competition centered on teamwork, engineering and innovation. Read the rules and select your event and division before registering.')}</p><dl class="detail-grid"><div><dt>${tr('主办单位', 'Organizer')}</dt><dd>华东青少年科技教育协作中心</dd></div><div><dt>${tr('比赛地点', 'Venue')}</dt><dd>上海青少年科技活动中心</dd></div><div><dt>${tr('比赛时间', 'Competition dates')}</dt><dd>2026-11-28 — 2026-11-29</dd></div><div><dt>${tr('报名时间', 'Registration period')}</dt><dd>2026-11-01 — 2026-11-23</dd></div></dl>`)}<section class="panel"><div class="panel-head"><h2>${tr('开放赛项与组别', 'Events & divisions')}</h2></div>${table(tr('开放组合', 'Available offerings'), [tr('赛项', 'Event'), tr('组别', 'Division'), tr('学生人数', 'Students per team'), tr('材料', 'Materials')], [['V5RC', tr('初中组 / 高中组', 'Middle / High school'), '3–5', tr('参赛授权、作品说明', 'Consent, project overview')], ['VIQRC', tr('小学组 / 初中组', 'Elementary / Middle school'), '2–4', tr('参赛授权', 'Participation consent')]], false)}</section>${panel(tr('赛事文件', 'Competition documents'), `<div class="task-row"><span class="task-icon">${icon('file')}</span><div class="task-text"><h3>${tr('2026 华东区域公开赛章程.pdf', '2026 Regional Open Rules.pdf')}</h3><p>PDF · 1.8 MB · 2026-11-01</p></div>${btn(tr('预览', 'Preview'), 'rules', 'text')}</div>`)}</div><div class="stack">${panel(tr('报名本届赛事', 'Register for this edition'), `<div class="mini-row"><span class="muted">${tr('当前状态', 'Status')}</span>${badge('enrolling')}</div><div class="mini-row"><span class="muted">${tr('截止时间', 'Deadline')}</span><strong>11-23 18:00</strong></div><div class="divider"></div><p class="muted small" style="margin-bottom:18px">${tr('请选择队伍已审核的正式版本。提交后本场资料及成员将冻结。', 'Register with an approved team version. Submission freezes this competition’s data and members.')}</p>${is('student', 'coach') ? link(tr('开始报名', 'Start registration'), 'registration', 'primary', 'arrow') : btn(tr('查看报名', 'View registrations'), 'competition-registrations', 'primary', 'arrow')}`)}${panel(tr('联系赛事方', 'Contact organizer'), `<p>${tr('赛事服务组', 'Competition service desk')}</p><p class="muted small" style="margin-top:10px">${tr('工作日 09:00–17:00', 'Weekdays 09:00–17:00')}</p><p class="muted small">service@example.invalid</p>`)}</div></div>`;
-}
+function competitionDetail() { return renderPublicCompetitionDetail(); }
 
 function registrations() {
   if (!can('admin:access')) return renderParticipantRegistrations();
@@ -202,9 +204,7 @@ function certificates() {
   if (is('org', 'coach')) return pageHead(label('certificates'), tr('证书仅发给参赛学生，教练与单位管理员不领取学生证书。', 'Certificates are issued only to participating students.')) + panel(tr('我的证书', 'My certificates'), empty(tr('暂无个人证书', 'No personal certificates'), tr('查看完整证书发放台请切换为赛事管理员预览。', 'Switch to the competition admin preview to explore certificate management.')));
   return pageHead(is('student') ? tr('我的证书', 'My certificates') : label('certificates'), tr('证书按本场审核通过版本的学生队员逐人发放。', 'Certificates are issued individually to students in the approved submission.'), is('event', 'platform') ? btn(tr('生成证书', 'Generate certificates'), 'generate-certificates', 'primary', 'file') : '') + `<div class="competition-grid">${[0, 1].map((i) => `<article class="panel"><div class="certificate"><div class="eyebrow">COMPSPHERE · 2026</div><div class="seal">${icon('trophy')}</div><h2>${tr('荣誉证书', 'CERTIFICATE')}</h2><p class="muted small">${tr('授予', 'Presented to')}</p><strong>${is('student') ? '林知远' : i ? '苏予宁' : '林知远'}</strong><p>${tr('机器人挑战赛 · 一等奖', 'Robotics Challenge · First prize')}</p><p class="muted small mono">CS-2026-0000${i + 1}</p></div><div class="card-content" style="padding:18px"><div class="actions" style="justify-content:space-between">${badge('issued')}${btn(tr('查看证书', 'View certificate'), `certificate-detail:${i}`, 'text small', 'arrow')}</div></div></article>`).join('')}</div>`;
 }
-function edition() {
-  return pageHead(label('edition'), tr('2026 VEX 华东区域公开赛 · 配置开放组合、审核与公示。', '2026 VEX East China Open · Configure offerings, review and publication.'), btn(tr('保存配置', 'Save configuration'), 'save-edition', 'primary', 'check')) + panel(tr('届次与时间', 'Edition & schedule'), '<div class="form-grid">' + field('edition-name', tr('届次名称', 'Edition title'), '2026 华东区域公开赛') + field('edition-season', tr('所属赛季（已有提交，不可更改）', 'Season (locked after submission)'), '2026–2027', 'text', 'disabled') + field('edition-enroll-start', tr('报名开始', 'Registration opens'), '2026-11-01T09:00', 'datetime-local') + field('edition-enroll-end', tr('报名截止', 'Registration closes'), '2026-11-23T18:00', 'datetime-local') + selectField('edition-review', tr('审核模式', 'Review mode'), [['single', tr('单级：赛事审核', 'Single: competition review')], ['two_stage', tr('两级：单位初审 + 赛事复审', 'Two-stage: organization + competition')]]) + selectField('edition-publication', tr('通过名单公示', 'Approved roster visibility'), [['none', tr('不公开', 'Private')], ['login', tr('所有登录用户可见', 'All signed-in users')], ['open', tr('公开可见', 'Public')]]) + '</div>') + '<section class="panel"><div class="panel-head"><h2>' + tr('开放赛项与组别', 'Available event / division combinations') + '</h2></div>' + table(tr('开放组合配置', 'Offering configuration'), [tr('赛项', 'Event'), tr('组别', 'Division'), tr('学生人数', 'Students'), tr('材料', 'Materials'), tr('状态', 'Status')], [['V5RC', tr('高中组', 'High school'), '3–5', tr('授权 + 作品说明', 'Consent + project'), badge('active')], ['V5RC', tr('初中组', 'Middle school'), '3–5', tr('授权 + 作品说明', 'Consent + project'), badge('active')], ['VIQRC', tr('小学组', 'Elementary school'), '2–4', tr('参赛授权', 'Consent'), badge('active')]]) + '</section>';
-}
+function edition() { return renderEditionManager(); }
 function historicalRecords() {
   return pageHead(label('history'), tr('关闭届次的报名和成员历史仅在授权管理范围内保留。', 'Closed edition registrations and member history are retained for authorized administrators.')) + notice(tr('按提交时单位和赛事范围读取，不因学生转队或当前单位变化而转移历史。', 'Access follows the original submission scope. Later team or organization changes do not transfer history.')) + '<section class="panel"><div class="panel-head"><h2>' + tr('2025 华东区域邀请赛', '2025 East China Invitational') + '</h2>' + badge('closed') + '</div>' + table(tr('历史参赛档案', 'Historical participation records'), [tr('队伍', 'Team'), tr('赛项与组别', 'Event / Division'), tr('历史学生成员', 'Students at submission'), tr('结果', 'Result'), tr('提交版本', 'Version')], [['1024A · 逐光机器人队', 'V5RC · ' + tr('高中组', 'High school'), '林知远 / 苏予宁 / 程以安', tr('二等奖', 'Second prize'), 'v2'], ['1024B · 星河探索队', 'VIQRC · ' + tr('初中组', 'Middle school'), '许星遥 / 杨知夏 / 周若澄', tr('一等奖', 'First prize'), 'v1']]) + '</section>';
 }
@@ -397,6 +397,7 @@ function pageAllowed(page) {
 function syncUrl() {
   const url = new URL(location.href);
   url.searchParams.delete('variant');
+  url.searchParams.set('competition', state.competitionIndex || 0);
   for (const key of ['role', 'lang', 'theme', 'season']) url.searchParams.set(key, state[key]);
   url.hash = state.page;
   history.replaceState(null, '', url);
@@ -414,10 +415,13 @@ function render() {
   if (!pageAllowed(state.page)) {
     const body = pageHead(tr('暂无访问权限', 'Access unavailable'), tr('如需访问，请联系管理员分配相应权限。', 'Contact your administrator if you need access.')) + empty(tr('页面不在当前权限范围内', 'Outside your access scope'), '', link(tr('返回赛事门户', 'Back to competitions'), 'portal'));
     $('#app').innerHTML = can('admin:access') ? shell(body) : renderPublicLayout(body, true);
+    syncAssistant();
     return;
   }
   const content = (pages[state.page] || dashboard)();
   $('#app').innerHTML = ['portal', 'login', 'verify', 'demo'].includes(state.page) ? content : can('admin:access') && !['discover','public-event'].includes(state.page) ? shell(content) : renderPublicLayout(content, true);
+  revealEditionSection();
+  syncAssistant();
 }
 function downloadSample() {
   const text = '\uFEFFteam_number,event,team_name,status\n' + state.registrations.map((r) => [r.code, r.event, r.team, r.status].join(',')).join('\n');
@@ -429,6 +433,12 @@ document.addEventListener('click', (event) => {
   const button = event.target.closest('[data-action]');
   if (!button) return;
   const [action, arg, arg2] = button.dataset.action.split(':');
+  if (action === 'assistant') return openAssistant();
+  if (action === 'assistant-minimize') return minimizeAssistant();
+  if (action === 'assistant-clear') return clearAssistantConversation();
+  if (action === 'assistant-example') { $('#assistant-question').value = arg === 'register' ? tr('我想报名比赛', 'Help me register') : arg === 'review' ? tr('帮我审核报名', 'Help me review registrations') : tr('这场赛事什么时候截止报名？', 'When does registration close?'); return sendAssistantMessage(); }
+  if (action === 'open-competition') { state.competitionIndex = Number(arg); location.hash = can('admin:access') ? 'competition' : 'public-event'; render(); return; }
+  if (handleOperationsAction(action, arg)) return;
   if (handleMembershipAction(button.dataset.action)) return;
   if (action === 'close') return closeDialog();
   if (action === 'menu') { const open = $('.shell').classList.toggle('menu-open'); button.setAttribute('aria-expanded', String(open)); return; }
@@ -509,7 +519,6 @@ document.addEventListener('click', (event) => {
   if (action === 'certificate-detail') { dialog(tr('学生荣誉证书', 'Student certificate'), `CS-2026-0000${Number(arg) + 1}`, `<div class="certificate"><div class="seal">${icon('trophy')}</div><h2>${tr('荣誉证书', 'CERTIFICATE')}</h2><strong>${is('student') ? '林知远' : Number(arg) ? '苏予宁' : '林知远'}</strong><p>${tr('2026 机器人挑战赛 · 一等奖', '2026 Robotics Challenge · First prize')}</p><p class="muted small">${tr('海川实验学校 · 逐光机器人队', 'Haichuan School · Chasing Light')}</p><p class="mono small">CS-2026-0000${Number(arg) + 1}</p></div>`, link(tr('验证证书', 'Verify certificate'), 'verify', '', 'shield')); return; }
   if (action === 'rules') { dialog(tr('赛事章程', 'Competition rules'), tr('设计预览 · 文件阅读器', 'Design preview · Document viewer'), `<h3>${eventNames[0]}</h3><div class="divider"></div><p>${tr('参赛对象：小学、初中及高中学生。队伍须完成资料审核，按开放赛项与组别报名，提交后本场资料冻结。', 'Open to elementary, middle and high school students. Use an approved team and available event / division. Submitted details are frozen.')}</p>`, btn(tr('关闭', 'Close'), 'close')); return; }
   if (action === 'submit-roster' || action === 'generate-certificates') { dialog(tr('确认名单操作', 'Confirm roster action'), tr('仅面向审核通过版本中的学生，不向教练或单位发奖。', 'Awards and certificates are for students in approved submissions only.'), notice(tr('名单确认后将锁定；学生证书逐人生成，任务可后台继续。', 'Confirmation locks the roster. Individual student certificate jobs run in the background.')), btn(tr('取消', 'Cancel'), 'close') + btn(tr('确认演示操作', 'Confirm sample action'), 'finish-job', 'primary')); return; }
-  if (action === 'save-edition') { toast(tr('已保存本次预览配置。当前已提交的报名不会受规则变更影响。', 'Saved in this preview. Existing submitted registrations stay unchanged.')); return; }
   if (action === 'finish-job') { closeDialog(); return toast(tr('演示任务已进入处理中，可在证书中心查看。', 'Sample job queued. Check the certificate center.')); }
   if (action === 'organization-detail' || action === 'organization-request' || action === 'view-grant') { dialog(tr('单位信息', 'Organization information'), '海川实验学校', `<dl class="detail-grid"><div><dt>${tr('管理员', 'Administrator')}</dt><dd>陈老师</dd></div><div><dt>${tr('单位类型', 'Type')}</dt><dd>${tr('学校', 'School')}</dd></div><div><dt>${tr('队伍', 'Teams')}</dt><dd>12</dd></div><div><dt>${tr('学生', 'Students')}</dt><dd>86</dd></div></dl>`, btn(tr('关闭', 'Close'), 'close') + btn(tr('更换管理员', 'Replace administrator'), 'replace-admin', 'primary')); }
 });
@@ -534,11 +543,16 @@ document.addEventListener('change', (event) => {
 });
 document.addEventListener('submit', (event) => {
   event.preventDefault(); const form = event.target;
+  if (form.id === 'assistant-form') return sendAssistantMessage();
+  if (handleOperationsForm(form)) return;
   if (handleMembershipForm(form)) return;
   if (form.id === 'registration-form') {
     if (state.season !== '2026-2027' || teamSeasonLicense('1024A', '2026-2027')?.status !== 'approved') return toast(tr('本场不属于当前赛季，或队伍尚未取得对应赛季许可。', 'This is not the current season, or the team has no approved season license.'));
     if (is('student')) { const student = state.students.find((s) => s.code === 'S202601'); if (!student.team.startsWith(state.registrations[0].code)) { toast(tr('你已不属于该队，不能重新提交原队报名。请由原队更正阵容，目标队另行报名。', 'You no longer belong to this team. Correct the source roster and register separately with the target team.')); return; } }
     const level = $('#reg-level').value, group = $('#reg-group').value;
+    const offering = editionConfig().offerings.find(o => o.event === 'V5RC' && o.group === group && o.enabled);
+    if (!offering) return toast(tr('所选组合已停用，请选择开放组别或联系赛事方。', 'This offering is disabled. Choose an open division or contact the organizer.'));
+    if (state.registrations[0].count < offering.min || state.registrations[0].count > offering.max) return toast(tr(`学生人数须为 ${offering.min}–${offering.max} 人，请联系单位管理员核对阵容。`, `This offering requires ${offering.min}–${offering.max} students. Ask your organization administrator to check the roster.`));
     if (level !== group) { $('#reg-group').setCustomValidity(tr('本场学段须与所选组别一致。', 'School level must match the selected division.')); $('#reg-group').reportValidity(); $('#reg-group').setCustomValidity(''); return; }
     state.registrations[0].status = 'pending'; state.registrations[0].round += 1; render(); return toast(tr('报名已提交，新版本资料与成员已冻结。', 'Registration submitted. The new version is frozen.'));
   }
@@ -563,7 +577,7 @@ document.addEventListener('submit', (event) => {
   }
 });
 $('#drawer').addEventListener('close', () => { if (dialogFocus?.isConnected) dialogFocus.focus(); });
-window.addEventListener('hashchange', () => { closeDialog(); state.page = location.hash.slice(1) || 'dashboard'; state.search = ''; state.status = 'all'; state.tab = 'all'; render(); window.scrollTo(0, 0); $('#page-title')?.focus({ preventScroll: true }); });
+window.addEventListener('hashchange', () => { const isChatFocused = document.activeElement?.id === 'assistant-question'; closeDialog(); state.page = location.hash.slice(1) || 'dashboard'; state.search = ''; state.status = 'all'; state.tab = 'all'; render(); window.scrollTo(0, 0); if (!isChatFocused) $('#page-title')?.focus({ preventScroll: true }); });
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') { $('.shell')?.classList.remove('menu-open'); $('.mobile-menu')?.setAttribute('aria-expanded','false'); }
 });

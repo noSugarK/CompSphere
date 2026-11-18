@@ -4,6 +4,9 @@ import { readFile } from 'node:fs/promises';
 const files = { '/': ['index.html', 'text/html'], '/index.html': ['index.html', 'text/html'], '/styles.css': ['styles.css', 'text/css'], '/app.js': ['app.js', 'text/javascript'] };
 files['/design.css'] = ['design.css', 'text/css'];
 files['/layouts.js'] = ['layouts.js', 'text/javascript'];
+files['/operations.js'] = ['operations.js', 'text/javascript'];
+files['/assistant.js'] = ['assistant.js', 'text/javascript'];
+files['/operations.css'] = ['operations.css', 'text/css'];
 for (const name of ['barlow-condensed-latin-600-normal.woff2', 'ibm-plex-sans-latin-400-normal.woff2', 'ibm-plex-sans-latin-500-normal.woff2']) {
   files[`/fonts/${name}`] = [`fonts/${name}`, 'font/woff2'];
 }

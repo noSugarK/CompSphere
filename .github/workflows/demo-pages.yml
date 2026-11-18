@@ -28,10 +28,13 @@ jobs:
         run: |
           node --check frontend/prototype/app.js
           node --check frontend/prototype/layouts.js
+          node --check frontend/prototype/operations.js
+          node --check frontend/prototype/assistant.js
+          node frontend/prototype/operations.check.mjs
       - name: Package static demo only
         run: |
           mkdir -p _site
-          cp frontend/prototype/{index.html,styles.css,design.css,app.js,layouts.js} _site/
+          cp frontend/prototype/{index.html,styles.css,design.css,operations.css,app.js,layouts.js,operations.js,assistant.js} _site/
           cp -R frontend/prototype/fonts _site/fonts
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3

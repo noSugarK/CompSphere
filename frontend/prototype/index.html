@@ -1,18 +1,25 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-type="software">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="page-type" content="software" />
+    <meta name="site-kind" content="software" />
+    <meta name="description" content="竞云竞赛门户与赛事管理界面原型。发现赛事、跟进报名、配置赛项与组别。" />
     <title>竞云 CompSphere · 界面设计预览</title>
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./design.css" />
+    <link rel="stylesheet" href="./operations.css" />
     <script src="./layouts.js" defer></script>
+    <script src="./operations.js" defer></script>
+    <script src="./assistant.js" defer></script>
     <script src="./app.js" defer></script>
   </head>
   <body>
     <a class="skip" href="#page-title">跳转至主要内容 / Skip to content</a>
     <div id="app"></div>
+    <div id="assistant-root"></div>
     <dialog id="drawer" aria-labelledby="dialog-title"></dialog>
     <div id="toast" role="status" aria-live="polite"></div>
   </body>

@@ -155,6 +155,10 @@ compsphere-web/
 - 未登录默认中文，读取本地选择；登录后 GET /me 的 locale/theme 为准。切换立即应用并缓存，同时 PATCH /me/preferences，仅保存有限枚举；保存失败保留当前显示并提示偏好未同步。
 - theme 存用户选择 light/dark/system，system 才监听 prefers-color-scheme；以语义令牌切换 Radix 与 Element Plus 主题，并同步原生控件 color-scheme。页面首次绘制前应用本地缓存，避免白屏闪烁；不为主题切换添加动画。
 
+### 4.2 组件复用与后续 AI 助手
+
+标准控件使用 Element Plus；只在真实跨页重复时封装业务组件。手动操作与 AI 建议共享同一业务表单、领域 API、校验与执行命令，不以 DOM 自动点击或任意脚本实现 AI 控制。AI 网关须使用当前 actor 调用已有作用域校验及业务 service；检索前按授权过滤数据。完整设计与接入前验收见 [11-AI 助手设计](11-ai-assistant.md)，当前尚无 AI 服务或正式 Vue 工程。
+
 ## 5. 环境与配置
 
 - 配置全部环境变量注入（`django-environ`），仓库只提交 `.env.example`。
