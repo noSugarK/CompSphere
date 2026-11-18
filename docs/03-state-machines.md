@@ -60,7 +60,7 @@ draft ─submit→ submitted ─org_approve→ org_approved ─final_approve→ 
 - 本场提交后（含 approved）资料/成员/学段/材料均冻结；队伍档案可经独立审核更新用于其他比赛，本场快照保持原样。
 - cancel_review 只允许当前 pending_review/submitted 且本轮无 approve/reject/return 决定，锁定同一报名与审核动作串行竞争；取消先提交则后到审核返回 40906。已审核或 approved 必须先由审核员驳回再改。取消后下一次 submit 新建轮次，不覆盖旧版。
 - 驳回时清空 approved_submission_no，并作废未锁定名单中该轮的待定获奖条目（保留历史），新轮次需重新评奖；有锁定名单/非作废证书时先按解锁作废流程处理。
-- 个人报名按现有资格规则执行；团队版本/准入规则在里程碑 2 启用。
+- 个人报名按现有资格规则执行；团队已审核版本、成员冻结及赛季许可在首期启用，准入名单与复杂跨队特批仍在里程碑2。首期不校验年龄，声明学段/年级条件与在读证明材料按PRD核验。证书相关阻断仅在后续证书能力启用后产生，不能据此要求首期交付证书。
 - 每次 submit/resubmit 新建 registration_submissions 并冻结本轮成员/文件；returned/rejected/org_returned/org_rejected 只编辑工作副本，不更新历史提交，审核必须指明当前 submission_no，过期操作返回 40906。
 - two_stage 同样允许 approved → reject → rejected（approval:reject_approved），重提回到 submitted，重走初审；rejected/org_rejected 均不是终态，仍使用原报名编号。驳回后不自动清除原提交记录或取消唯一性占用。
 - 已通过报名被驳回后立即退出通过名单；截止后允许驳回但不自动延长重提窗口，主办方如允许补正须先调整有效报名时间窗。
