@@ -6,7 +6,7 @@ v1.4：增加证件更正审批守卫、护照/代建账户、队号归属与赛
 
 > 2026-11-17 审阅：本 schema 尚无迁移实现；同届外键、逐人证书与个人信息规则已按产品确认修订，见 [审阅待办](10-review-notes.md)。文中的服务层不变式不能替代数据库约束。
 
-> 2026-11-18 范围同步：队伍基础、逐赛季许可和团队报名进入首期；证书及复杂跨队特批表保留后续设计，不据此开放首期接口。首期不计算年龄资格，`competition_groups.age_min/age_max` 保持 NULL，配置接口拒绝启用年龄限制，不从证件生日派生年龄判定；使用私有在读证明人工核验。现有 registration_files 可按材料类型与提交轮次引用证明，不新增 AI 文件副本；AI 只能获得脱敏核验状态。授权引用/consent_snapshot 记录单位线下核验事实，不代表已实现线上监护签署。可执行DDL保持兼容，本轮不新增字段或迁移。
+> 2026-11-18 范围同步：队伍基础、逐赛季许可和团队报名进入首期；证书及复杂跨队特批表保留后续设计，不据此开放首期接口。首期不计算年龄资格，`competition_groups.age_min/age_max` 保持 NULL，配置接口拒绝启用年龄限制，不从证件生日派生年龄判定；使用私有在读证明人工核验。现有 registration_files 可按材料类型与提交轮次引用证明，不新增 AI 文件副本；AI 只能获得脱敏核验状态。授权引用/consent_snapshot 记录单位线下核验事实，不代表已实现线上监护签署。下列SQL为完整领域设计；首批已实现模型、技术字段及物理命名映射见§9，正式部署执行Django迁移，不重复执行本文建表SQL。
 
 个人信息按 [01 §5](01-PRD.md#5-合规与个人信息保护) 长期保存，保留受控更正、停用和必要删除机制；普通CRUD仍禁止硬删除历史。特殊处置须评估证件绑定、成员/报名快照、文件、审计及备份的关联影响，按审定政策执行并留脱敏处置记录，不提供通用级联删除接口。导入暂存最长30天清理仍有效，与业务资料长期留存区分；服务器外备份及密钥恢复按部署指南验收。
 
@@ -1095,4 +1095,18 @@ ALTER TABLE certificates
 8. 大表预估（百万级前无需分区）：`registrations`、`registration_members`、`audit_logs`。`audit_logs` 上一年热表，P1 考虑按月分区。
 9. JSONB 使用原则：只用于**配置快照与低频筛选**（材料要求、成员快照、form_data）；高频筛选列一律实体列 + B-tree。公示字段拆成 `public_info` 与加密 `snapshot_enc` 两列，是因为白名单过滤必须发生在数据库读取层，而不是取回整行再在 Python 里删字段——后者一旦有人写了 `SELECT *` 就泄露。
 10. 证件照对象使用 profiles/{user_id}/{uuid}.jpg，上传经授权，先读尺寸并限制最多 2000 万像素，再完整解码；透明图铺白底，统一重编码 JPEG 并剥离 EXIF；数据库只保存 key。替换时先上传新对象，事务内锁定本人档案并更新引用，提交后删除旧对象；失败回收新对象，孤儿对象由定时任务延迟清理（跳过最近 24 小时对象并复核引用，避免误删上传中的对象）。删除同样先清引用再提交后删对象，失败重试。签名链接短期有效且须重新鉴权，公开 serializer 不包含 key 或照片链接。照片不默认进入报名快照或证书。
+
+## 9. 首批ORM实施映射
+
+首批迁移覆盖认证、RBAC、单位基础读取、赛事基础读取、队伍提案/许可及报名审核核心；完整领域设计中的注册验证码、单位申请/交接、证件更正、文件、奖项/证书等表并未全部实现。85项SQL设计约束测试通过不等于ORM已实现全部设计；已实现部分另在真实PG16运行迁移和API/并发反例，未完成清单见backend/README。
+
+| 位置 | 首批物理实现与原因 |
+| --- | --- |
+| `registrations` | 新增`version`（正整数，初值1，乐观并发控制）、`draft_enc BYTEA NOT NULL`（Fernet加密工作副本）、`selected_school_level VARCHAR(8) NULL`（草稿声明学段）；contact/form/consent旧列保留占位，不写敏感工作副本，服务层从draft_enc投影 |
+| `api_idempotency_records` | 新增id主键、actor_id用户外键、key VARCHAR(128)、action VARCHAR(160)、request_hash VARCHAR(64)、可空result JSONB、created_at；唯一(actor_id,key,action)。result仅存业务对象引用，缓存命中仍重新鉴权，不持有联系人或模型正文 |
+| `role_permissions`、`registration_submissions`、`season_student_team_bindings` | 使用自增bigint代理主键id以适配Django关系；原复合业务键保留唯一约束，复合外键继续引用该唯一键，不能因代理主键取消防重复 |
+| 外键命名 | Django关系字段在数据库中默认附加`_id`，例如submitted_by_id/reviewer_id/granted_by_id/created_by_id/actor_id；API仍使用12契约字段名。users.password映射既有password_hash，last_login映射last_login_at，稳定赛项外键显式映射event_code |
+| PostgreSQL专用约束 | registrations/0002_postgresql_integrity增加同届/同队/同轮复合引用、审核通过轮次守卫、submission/member/approval历史不可变触发器；取消仅可补充取消元数据。SQLite跳过这些PG专项，不作为生产并发验证 |
+
+实际物理列及可逆迁移以backend/apps/*/migrations及backend/core/migrations为部署入口。技术映射不授予额外权限，不新增AI数据库访问；后续实现其余领域前仍须补齐相应模型/迁移及原设计约束反例。
 11. 统计不做预聚合物化视图（P0 数据量下实时 count + Redis 短缓存足够），P1 再上汇总表。
