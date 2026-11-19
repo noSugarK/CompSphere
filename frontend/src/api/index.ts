@@ -28,6 +28,7 @@ import {
   meSchema,
   orgMemberSchema,
   offeringDraftSchema,
+  offeringOverridesSchema,
   orgSchema,
   pageSchema,
   preferencesSchema,
@@ -179,6 +180,13 @@ export const api = {
     ),
   setOfferingState: (id: number, action: 'enable' | 'disable') =>
     request('POST', `/offerings/${idSchema.parse(id)}/${action}`, managedOfferingSchema, {}),
+  updateOffering: (id: number, body: unknown) =>
+    request(
+      'PATCH',
+      `/offerings/${idSchema.parse(id)}`,
+      managedOfferingSchema,
+      offeringOverridesSchema.parse(body),
+    ),
   deleteOffering: (id: number) => request('DELETE', `/offerings/${idSchema.parse(id)}`, z.null()),
   eligibleEditionSeasons: (competition: number, page = 1) =>
     request(

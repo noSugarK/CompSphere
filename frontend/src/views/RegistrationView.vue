@@ -9,6 +9,7 @@ import { useSession } from '../stores/session';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { formatEventDateTime } from '../utils/format';
+import { isOfferingOpen } from '../utils/offerings';
 
 const { t } = useI18n(),
   route = useRoute(),
@@ -34,6 +35,12 @@ const fields = reactive({
   document_usage: false,
 });
 const offering = computed(() => edition.value?.offerings.find((o) => o.id === fields.offering_id));
+const selectableOfferings = computed(
+  () =>
+    edition.value?.offerings.filter(
+      (item) => item.id === record.value?.offering_id || isOfferingOpen(item),
+    ) ?? [],
+);
 const coachChoices = computed(() => {
   const choices = new Map<number, string>();
   for (const team of teams.value) {
@@ -76,7 +83,7 @@ async function load() {
       edition.value = await api.edition(value.edition_id);
     } else {
       edition.value = await api.edition(Number(route.params.editionId));
-      fields.offering_id = edition.value.offerings.find((o) => o.is_enabled)?.id;
+      fields.offering_id = selectableOfferings.value[0]?.id;
       selectOffering();
     }
     if (session.hasAny('registration:create')) teams.value = (await api.teams()).items;
@@ -216,7 +223,10 @@ onMounted(load);
   <ErrorNotice :error="error" @retry="load" /><el-skeleton v-if="loading" :rows="9" animated />
   <template v-else-if="edition">
     <el-alert v-if="!editable" :title="t('frozen')" type="info" :closable="false" show-icon />
-    <section class="content-panel">
+    <p v-if="!record && !selectableOfferings.length" class="content-panel">
+      {{ t('offerings.noCurrentWindow') }}
+    </p>
+    <section v-else class="content-panel">
       <el-form
         ref="form"
         :model="fields"
@@ -233,9 +243,7 @@ onMounted(load);
             :rules="[{ required: true, message: t('required'), trigger: 'change' }]"
             ><el-select v-model="fields.offering_id" @change="selectOffering"
               ><el-option
-                v-for="option in edition.offerings.filter(
-                  (o) => o.is_enabled || o.id === record?.offering_id,
-                )"
+                v-for="option in selectableOfferings"
                 :key="option.id"
                 :value="option.id"
                 :label="`${option.event_name} · ${option.group_name}`" /></el-select></el-form-item

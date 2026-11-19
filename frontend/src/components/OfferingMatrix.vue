@@ -5,6 +5,7 @@ import { ElMessageBox } from 'element-plus';
 import { api } from '../api';
 import type { ManagedEdition, ManagedEvent, ManagedGroup, ManagedOffering } from '../api/schemas';
 import { useSession } from '../stores/session';
+import { formatEventDateTime } from '../utils/format';
 import { hasEditionPermission } from '../utils/permissions';
 import ErrorNotice from './ErrorNotice.vue';
 
@@ -20,6 +21,16 @@ const busy = ref(false);
 const loadError = ref<unknown>(null);
 const actionError = ref<unknown>(null);
 const feedback = ref('');
+const editor = ref<{ item: ManagedOffering; event: ManagedEvent; group: ManagedGroup }>();
+const editorOpen = ref(false);
+const editError = ref<unknown>(null);
+const dateFields = [
+  ['enroll_start', 'editionEnrollStart'],
+  ['enroll_end', 'editionEnrollEnd'],
+] as const;
+const rules = ref({ enroll_start: '', enroll_end: '', quota: '' });
+const localInput = (value: string | null) =>
+  value ? formatEventDateTime(value).replace(' ', 'T') : '';
 const editable = computed(
   () =>
     props.edition.status !== 'closed' &&
@@ -73,13 +84,13 @@ async function load() {
   }
 }
 
-type OfferingAction = 'add' | 'enable' | 'disable' | 'remove';
+type OfferingAction = 'add' | 'enable' | 'disable' | 'remove' | 'edit';
 function actionText(action: OfferingAction, event: ManagedEvent, group: ManagedGroup) {
   return { action: t(`offerings.${action}`), event: event.name, group: group.name };
 }
 
 async function change(
-  action: OfferingAction,
+  action: Exclude<OfferingAction, 'edit'>,
   event: ManagedEvent,
   group: ManagedGroup,
   item?: ManagedOffering,
@@ -125,6 +136,51 @@ async function change(
   }
 }
 
+function edit(item: ManagedOffering, event: ManagedEvent, group: ManagedGroup) {
+  editor.value = { item, event, group };
+  rules.value = {
+    enroll_start: localInput(item.enroll_start),
+    enroll_end: localInput(item.enroll_end),
+    quota: item.quota?.toString() ?? '',
+  };
+  editError.value = null;
+  editorOpen.value = true;
+}
+
+async function saveRules() {
+  if (!editor.value || busy.value) return;
+  const { item, event, group } = editor.value;
+  const quota = rules.value.quota === '' ? null : Number(rules.value.quota);
+  const changes = {
+    ...(rules.value.enroll_start !== localInput(item.enroll_start) && {
+      enroll_start: rules.value.enroll_start || null,
+    }),
+    ...(rules.value.enroll_end !== localInput(item.enroll_end) && {
+      enroll_end: rules.value.enroll_end || null,
+    }),
+    ...(quota !== item.quota && { quota }),
+  };
+  if (!Object.keys(changes).length) {
+    editorOpen.value = false;
+    return;
+  }
+  busy.value = true;
+  editError.value = null;
+  try {
+    const updated = await api.updateOffering(item.id, { ...changes, time_zone: 'Asia/Shanghai' });
+    offerings.value = offerings.value.map((existing) =>
+      existing.id === updated.id ? updated : existing,
+    );
+    editorOpen.value = false;
+    feedback.value = t('offerings.saved', actionText('edit', event, group));
+    emit('changed');
+  } catch (error) {
+    editError.value = error;
+  } finally {
+    busy.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -159,12 +215,39 @@ onMounted(load);
             <td v-for="cell in row.cells" :key="cell.group.id">
               <template v-if="cell.offering">
                 <el-tag v-if="cell.offering.is_enabled" type="success" effect="light">{{
-                  t('offerings.open')
+                  t('enabled')
                 }}</el-tag>
                 <span v-else class="small muted">{{
                   t(cell.offering.status === 'disabled' ? 'disabled' : 'offerings.blocked')
                 }}</span>
+                <p
+                  v-if="cell.offering.enroll_start || cell.offering.enroll_end"
+                  class="small muted"
+                >
+                  {{
+                    t('offerings.registrationWindow', {
+                      start: formatEventDateTime(
+                        cell.offering.enroll_start ?? edition.enroll_start,
+                      ),
+                      end: formatEventDateTime(cell.offering.enroll_end ?? edition.enroll_end),
+                    })
+                  }}
+                </p>
+                <p v-if="cell.offering.quota !== null" class="small muted">
+                  {{ t('offerings.quotaValue', { quota: cell.offering.quota }) }}
+                </p>
                 <div v-if="editable" class="matrix-actions">
+                  <el-button
+                    v-if="draftWritable"
+                    link
+                    type="primary"
+                    :disabled="busy"
+                    :aria-label="
+                      t('offerings.actionName', actionText('edit', row.event, cell.group))
+                    "
+                    @click="edit(cell.offering, row.event, cell.group)"
+                    >{{ t('offerings.edit') }}</el-button
+                  >
                   <el-button
                     v-if="cell.offering.status === 'enabled'"
                     link
@@ -219,6 +302,39 @@ onMounted(load);
       </table>
     </div>
   </section>
+  <el-dialog
+    v-if="editor"
+    v-model="editorOpen"
+    :title="t('offerings.actionName', actionText('edit', editor.event, editor.group))"
+    width="min(560px, calc(100% - 32px))"
+    :show-close="!busy"
+    :close-on-click-modal="false"
+    :close-on-press-escape="!busy"
+  >
+    <p class="muted">{{ t('offerings.overrideHint') }}</p>
+    <el-form label-position="top" @submit.prevent="saveRules">
+      <ErrorNotice v-if="editError" :error="editError" />
+      <el-form-item v-for="[field, label] in dateFields" :key="field" :label="t(label)">
+        <el-input v-model="rules[field]" type="datetime-local" :disabled="busy" />
+        <div class="small muted">
+          {{ t('offerings.inherits', { date: formatEventDateTime(edition[field]) }) }}
+        </div>
+      </el-form-item>
+      <el-form-item :label="t('offerings.quota')">
+        <el-input
+          v-model="rules.quota"
+          type="number"
+          min="0"
+          max="2147483647"
+          step="1"
+          :disabled="busy"
+        />
+        <div class="small muted">{{ t('offerings.quotaHint') }}</div>
+      </el-form-item>
+      <el-button :disabled="busy" @click="editorOpen = false">{{ t('cancel') }}</el-button>
+      <el-button type="primary" native-type="submit" :loading="busy">{{ t('save') }}</el-button>
+    </el-form>
+  </el-dialog>
 </template>
 
 <style scoped>

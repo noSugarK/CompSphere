@@ -212,6 +212,14 @@ export type ManagedGroup = components['schemas']['ManagedGroup'];
 export const offeringDraftSchema = z
   .object({ event_id: idSchema, group_id: idSchema })
   .strict() satisfies z.ZodType<components['schemas']['OfferingDraftRequest']>;
+export const offeringOverridesSchema = z
+  .object({
+    enroll_start: z.string().nullable().optional(),
+    enroll_end: z.string().nullable().optional(),
+    quota: z.number().int().min(0).max(2147483647).nullable().optional(),
+    time_zone: z.literal('Asia/Shanghai').optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['PatchedOfferingOverridesRequest']>;
 export const managedOfferingSchema = offeringDraftSchema.extend({
   id: idSchema,
   status: z.enum(['enabled', 'disabled']),
