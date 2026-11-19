@@ -111,7 +111,7 @@ export const router = createRouter({
     {
       path: '/reviews',
       name: 'reviews',
-      component: () => import('../views/RegistrationsView.vue'),
+      component: () => import('../views/ReviewsView.vue'),
       meta: { title: 'reviews', auth: true, permissions: ['approval:review_single'] },
     },
     {

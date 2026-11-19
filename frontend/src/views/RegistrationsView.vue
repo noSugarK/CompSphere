@@ -1,35 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api } from '../api';
-import type { Edition, Registration, ReviewQueueFilters, ReviewQueueItem } from '../api/schemas';
+import type { Edition, Registration } from '../api/schemas';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import StatusTag from '../components/StatusTag.vue';
-const route = useRoute(),
-  { t } = useI18n();
-const reviewing = computed(() => route.name === 'reviews');
-const items = ref<(Registration | ReviewQueueItem)[]>([]),
+const { t } = useI18n();
+const items = ref<Registration[]>([]),
   editions = ref<Edition[]>([]),
   editionId = ref<number>(),
   page = ref(1),
   total = ref(0),
-  status = ref<ReviewQueueFilters['status'] | ''>(''),
   loading = ref(true),
   error = ref<unknown>(null);
 async function load() {
   loading.value = true;
   error.value = null;
   try {
-    const data = reviewing.value
-      ? await api.registrations({
-          edition: editionId.value,
-          page: page.value,
-          status: status.value || undefined,
-        })
-      : editionId.value
-        ? await api.myRegistrations(editionId.value, page.value)
-        : null;
+    const data = editionId.value ? await api.myRegistrations(editionId.value, page.value) : null;
     items.value = data?.items || [];
     total.value = data?.total || 0;
   } catch (e) {
@@ -42,7 +30,7 @@ async function load() {
 onMounted(async () => {
   try {
     editions.value = (await api.competitions()).items.flatMap((item) => item.editions);
-    if (!reviewing.value) editionId.value = editions.value[0]?.id;
+    editionId.value = editions.value[0]?.id;
     await load();
   } catch (e) {
     error.value = e;
@@ -53,8 +41,7 @@ onMounted(async () => {
 <template>
   <div class="page-heading">
     <div>
-      <h1 id="page-title" tabindex="-1">{{ t(reviewing ? 'reviews' : 'registrations') }}</h1>
-      <p v-if="reviewing">{{ t('desktopHint') }}</p>
+      <h1 id="page-title" tabindex="-1">{{ t('registrations') }}</h1>
     </div>
   </div>
   <div class="filter-bar">
@@ -68,7 +55,6 @@ onMounted(async () => {
       ><el-form-item :label="t('selectEdition')"
         ><el-select
           v-model="editionId"
-          :clearable="reviewing"
           @change="
             page = 1;
             load();
@@ -78,18 +64,6 @@ onMounted(async () => {
             :key="edition.id"
             :value="edition.id"
             :label="edition.name" /></el-select></el-form-item
-      ><el-form-item v-if="reviewing" :label="t('status')"
-        ><el-select
-          v-model="status"
-          @change="
-            page = 1;
-            load();
-          "
-          ><el-option value="" :label="t('all')" /><el-option
-            v-for="s in ['pending_review', 'approved', 'returned', 'rejected']"
-            :key="s"
-            :value="s"
-            :label="t(s)" /></el-select></el-form-item
     ></el-form>
   </div>
   <ErrorNotice :error="error" @retry="load" /><el-skeleton
@@ -103,10 +77,9 @@ onMounted(async () => {
         prop="batch_no"
         :label="t('registrations')"
         min-width="170"
-      /><el-table-column
-        :prop="reviewing ? 'team_code' : 'team_id'"
-        :label="t('team')"
-      /><el-table-column :label="t('status')" min-width="120"
+      /><el-table-column prop="team_id" :label="t('team')" /><el-table-column
+        :label="t('status')"
+        min-width="120"
         ><template #default="{ row }"><StatusTag :status="row.status" /></template></el-table-column
       ><el-table-column :label="t('details')" min-width="110"
         ><template #default="{ row }"

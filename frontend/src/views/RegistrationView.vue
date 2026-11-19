@@ -9,6 +9,7 @@ import { useSession } from '../stores/session';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { formatEventDateTime } from '../utils/format';
+import { readReviewQueueQuery, writeReviewQueueQuery } from '../utils/reviewQueue';
 
 const { t } = useI18n(),
   route = useRoute(),
@@ -56,6 +57,13 @@ const coachChoices = computed(() => {
   return Array.from(choices, ([id, label]) => ({ id, label }));
 });
 const editable = computed(() => !record.value || record.value.can_edit);
+const backTarget = computed(() => {
+  if (!session.hasAny('approval:review_single')) return '/registrations';
+  if (route.query.origin === 'reviews') {
+    return { name: 'reviews', query: writeReviewQueueQuery(readReviewQueueQuery(route.query)) };
+  }
+  return session.hasAny('registration:read_own') ? '/registrations' : '/reviews';
+});
 const canReview = computed(
   () =>
     record.value &&
@@ -246,15 +254,7 @@ async function review(action: 'approve' | 'reject' | 'return') {
 onMounted(load);
 </script>
 <template>
-  <router-link
-    :to="
-      session.hasAny('approval:review_single') && !session.hasAny('registration:read_own')
-        ? '/reviews'
-        : '/registrations'
-    "
-    class="back-link"
-    >{{ t('back') }}</router-link
-  >
+  <router-link :to="backTarget" class="back-link">{{ t('back') }}</router-link>
   <div class="page-heading">
     <div>
       <h1 id="page-title" tabindex="-1">{{ edition?.name || t('registrations') }}</h1>
