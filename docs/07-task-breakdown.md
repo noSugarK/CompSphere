@@ -62,7 +62,8 @@ v1.1 变更：新增日志基座、邮箱验证码、身份证加密、赛项/�
 - [ ] competitions 剩余：详情与编辑、分类/级别、封面附件、publish/archive 状态机、主办/承办/协办单位
 - [x] editions 子项：作用域内届次列表与草稿创建、选择赛季、报名/比赛时间窗校验；草稿不公开。
 - [ ] editions 剩余：详情与编辑、publish/close、派生状态计算（enrolling 等不入库）。
-- [ ] **events（v1.1 新增 app）**：赛项 CRUD + 状态、`competition_offerings` 开放组合 CRUD 与停用约束
+- [x] events 子项：已配置稳定赛项字典；支持作用域内查看赛项和在私有届次草稿新增赛项，校验人数及教练要求。
+- [ ] events 剩余：更新、状态动作、`competition_offerings` 开放组合及停用约束。
 - [ ] groups：组别（学段）CRUD + 状态 + **资格校验器**（学段/年级/成员条件，首期不配置或计算年龄资格，在读证明由授权人员核验）
 - [ ] competition_admins（写 user_roles + 展示表双写）
 - [ ] 门户公开页：赛事列表/详情（AllowAny serializer 白名单）

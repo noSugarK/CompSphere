@@ -31,6 +31,12 @@ export const router = createRouter({
       meta: { title: 'editionRegistry', auth: true, permissions: ['edition:read'] },
     },
     {
+      path: '/edition-config/:id',
+      name: 'editionConfig',
+      component: () => import('../views/EditionConfigurationView.vue'),
+      meta: { title: 'editionConfiguration', auth: true, permissions: ['event:read'] },
+    },
+    {
       path: '/editions/:id',
       name: 'edition',
       component: () => import('../views/EditionView.vue'),

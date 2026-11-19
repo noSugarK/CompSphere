@@ -11,11 +11,14 @@ import {
   competitionSchema,
   draftFieldsSchema,
   editionDraftSchema,
+  editionEventDraftSchema,
   editionSchema,
+  eventTypeSummarySchema,
   idSchema,
   loginSchema,
   managedCompetitionSchema,
   managedEditionSchema,
+  managedEventSchema,
   managedSeasonSchema,
   meSchema,
   orgMemberSchema,
@@ -90,6 +93,27 @@ export const api = {
       'GET',
       `/competitions/${idSchema.parse(competition)}/editions?page=${page}`,
       pageSchema(managedEditionSchema),
+    ),
+  managedEdition: (id: number) =>
+    request('GET', `/editions/${idSchema.parse(id)}`, managedEditionSchema),
+  editionEventTypes: (id: number, page = 1) =>
+    request(
+      'GET',
+      `/editions/${idSchema.parse(id)}/event-types?page=${page}&page_size=100`,
+      pageSchema(eventTypeSummarySchema),
+    ),
+  editionEvents: (id: number, page = 1) =>
+    request(
+      'GET',
+      `/editions/${idSchema.parse(id)}/events?page=${page}`,
+      pageSchema(managedEventSchema),
+    ),
+  createEditionEvent: (id: number, body: unknown) =>
+    request(
+      'POST',
+      `/editions/${idSchema.parse(id)}/events`,
+      managedEventSchema,
+      editionEventDraftSchema.parse(body),
     ),
   eligibleEditionSeasons: (competition: number, page = 1) =>
     request(

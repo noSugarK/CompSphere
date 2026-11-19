@@ -9,7 +9,11 @@ import ErrorNotice from '../components/ErrorNotice.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { useSession } from '../stores/session';
 import { formatEventDateTime } from '../utils/format';
-import { mayCreateEdition, mayViewCompetitionRegistry } from '../utils/permissions';
+import {
+  hasEditionPermission,
+  mayCreateEdition,
+  mayViewCompetitionRegistry,
+} from '../utils/permissions';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -153,7 +157,14 @@ onMounted(load);
     <ul v-else class="edition-list">
       <li v-for="item in items" :key="item.id" class="edition-row">
         <div>
-          <h2>{{ item.name }}</h2>
+          <h2>
+            <RouterLink
+              v-if="hasEditionPermission(session.me, 'event:read', item.id, competitionId)"
+              :to="{ name: 'editionConfig', params: { id: item.id } }"
+              >{{ item.name }}</RouterLink
+            >
+            <template v-else>{{ item.name }}</template>
+          </h2>
           <p class="muted small">
             {{ t('editionIdentity', { year: item.year, number: item.edition_no }) }}
           </p>

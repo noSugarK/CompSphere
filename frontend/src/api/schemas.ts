@@ -148,6 +148,33 @@ export const managedEditionSchema = editionSchema
   }) satisfies z.ZodType<components['schemas']['ManagedEdition']>;
 export type ManagedEdition = components['schemas']['ManagedEdition'];
 
+export const eventTypeSummarySchema = z
+  .object({
+    code: text.min(1).max(16),
+    name: text.min(1).max(64),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['EventTypeSummary']>;
+const editionEventFields = z
+  .object({
+    event_code: text.regex(/^[A-Z0-9][A-Z0-9-]{0,15}$/),
+    name: text.trim().min(1).max(64),
+    min_members: z.number().int().min(1).max(2147483647),
+    max_members: z.number().int().min(1).max(2147483647),
+    coach_required: z.boolean(),
+  })
+  .strict();
+export const editionEventDraftSchema = editionEventFields.refine(
+  (item) => item.min_members <= item.max_members,
+  { path: ['max_members'] },
+) satisfies z.ZodType<components['schemas']['EditionEventDraftRequest']>;
+export const managedEventSchema = editionEventFields.extend({
+  id: idSchema,
+  event_code: text.min(1).max(16),
+  status: z.enum(['enabled', 'disabled']),
+}) satisfies z.ZodType<components['schemas']['ManagedEvent']>;
+export type ManagedEvent = components['schemas']['ManagedEvent'];
+export type EventTypeSummary = components['schemas']['EventTypeSummary'];
+
 export const competitionSchema = z
   .object({
     id: idSchema,
