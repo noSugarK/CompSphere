@@ -5,6 +5,7 @@ from drf_spectacular.views import SpectacularAPIView
 from apps.accounts import views as accounts
 from apps.competitions import views as competitions
 from apps.events import views as events
+from apps.groups import views as groups
 from apps.notifications import views as notifications
 from apps.registrations import views as registrations
 from apps.teams import views as teams
@@ -46,6 +47,15 @@ urlpatterns = [
         events.EditionEventTypeListView.as_view(),
     ),
     path("api/v1/editions/<int:pk>/events", events.EditionEventListView.as_view()),
+    path("api/v1/editions/<int:pk>/groups", groups.GroupListView.as_view()),
+    path("api/v1/groups/<int:pk>", groups.GroupDetailView.as_view()),
+    path(
+        "api/v1/groups/<int:pk>/enable", groups.GroupStateView.as_view(action="enable")
+    ),
+    path(
+        "api/v1/groups/<int:pk>/disable",
+        groups.GroupStateView.as_view(action="disable"),
+    ),
     path("api/v1/editions/<int:pk>", competitions.ManagedEditionDetailView.as_view()),
     path("api/v1/seasons", competitions.SeasonRegistryView.as_view()),
     path("api/v1/seasons/<int:pk>/activate", competitions.SeasonActivateView.as_view()),

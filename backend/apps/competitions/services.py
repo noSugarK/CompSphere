@@ -63,9 +63,11 @@ def edition_seasons(actor, competition_id):
     return Season.objects.filter(status__in=allowed).order_by("-starts_on", "-id")
 
 
-def configuration_edition(actor, edition_id, permission, *, draft_write=False):
+def configuration_edition(
+    actor, edition_id, permission, *, draft_write=False, lock=False
+):
     editions = Edition.objects.filter(is_deleted=False, competition__is_deleted=False)
-    if draft_write:
+    if draft_write or lock:
         editions = editions.select_for_update(of=("self",))
     item = editions.get(pk=edition_id)
     require_perm(actor, permission, edition=item)

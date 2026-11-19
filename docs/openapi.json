@@ -653,6 +653,98 @@
                 }
             }
         },
+        "/api/v1/editions/{id}/groups": {
+            "get": {
+                "operationId": "editions_groups_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "page_size",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ManagedGroupsResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "editions_groups_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GroupDraftRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GroupDraftResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/editions/{id}/registrations": {
             "get": {
                 "operationId": "editions_registrations_retrieve",
@@ -723,6 +815,164 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/RegistrationCreateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/groups/{id}": {
+            "patch": {
+                "operationId": "groups_partial_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedGroupDraftRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GroupUpdateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "groups_destroy",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/v1/groups/{id}/disable": {
+            "post": {
+                "operationId": "groups_disable_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GroupStateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/groups/{id}/enable": {
+            "post": {
+                "operationId": "groups_enable_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GroupStateResponse"
                                 }
                             }
                         },
@@ -2223,6 +2473,14 @@
                     "request_id"
                 ]
             },
+            "ConfigurationStateEnum": {
+                "enum": [
+                    "enabled",
+                    "disabled"
+                ],
+                "type": "string",
+                "description": "* `enabled` - enabled\n* `disabled` - disabled"
+            },
             "Consents": {
                 "type": "object",
                 "properties": {
@@ -2891,6 +3149,131 @@
                     "scope_type"
                 ]
             },
+            "GroupDraftRequest": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 8,
+                        "pattern": "^[A-Z0-9][A-Z0-9-]{0,7}$"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "school_level": {
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/SelectedSchoolLevelEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    },
+                    "enrollment_type": {
+                        "$ref": "#/components/schemas/EnrollmentTypeEnum"
+                    },
+                    "grade_limits": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 32
+                        },
+                        "maxItems": 32
+                    }
+                },
+                "required": [
+                    "code",
+                    "enrollment_type",
+                    "grade_limits",
+                    "name",
+                    "school_level"
+                ],
+                "additionalProperties": false
+            },
+            "GroupDraftResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedGroup"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "GroupStateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedGroup"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "GroupUpdateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedGroup"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
             "KindEnum": {
                 "enum": [
                     "submitted",
@@ -3299,7 +3682,7 @@
                         "maximum": 9007199254740991
                     },
                     "status": {
-                        "$ref": "#/components/schemas/ManagedEventStatusEnum"
+                        "$ref": "#/components/schemas/ConfigurationStateEnum"
                     }
                 },
                 "required": [
@@ -3312,14 +3695,6 @@
                     "status"
                 ],
                 "additionalProperties": false
-            },
-            "ManagedEventStatusEnum": {
-                "enum": [
-                    "enabled",
-                    "disabled"
-                ],
-                "type": "string",
-                "description": "* `enabled` - enabled\n* `disabled` - disabled"
             },
             "ManagedEventsPage": {
                 "type": "object",
@@ -3358,6 +3733,118 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/ManagedEventsPage"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "ManagedGroup": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "maxLength": 8,
+                        "pattern": "^[A-Z0-9][A-Z0-9-]{0,7}$"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 64
+                    },
+                    "school_level": {
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/SelectedSchoolLevelEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    },
+                    "enrollment_type": {
+                        "$ref": "#/components/schemas/EnrollmentTypeEnum"
+                    },
+                    "grade_limits": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 32
+                        },
+                        "maxItems": 32
+                    },
+                    "id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ConfigurationStateEnum"
+                    }
+                },
+                "required": [
+                    "code",
+                    "enrollment_type",
+                    "grade_limits",
+                    "id",
+                    "name",
+                    "school_level",
+                    "status"
+                ],
+                "additionalProperties": false
+            },
+            "ManagedGroupsPage": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ManagedGroup"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "maximum": 100,
+                        "minimum": 1
+                    },
+                    "total": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                    }
+                },
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total"
+                ]
+            },
+            "ManagedGroupsResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedGroupsPage"
                     },
                     "code": {
                         "type": "integer",
@@ -3928,6 +4415,46 @@
                     "message",
                     "request_id"
                 ]
+            },
+            "PatchedGroupDraftRequest": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 8,
+                        "pattern": "^[A-Z0-9][A-Z0-9-]{0,7}$"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "school_level": {
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/SelectedSchoolLevelEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    },
+                    "enrollment_type": {
+                        "$ref": "#/components/schemas/EnrollmentTypeEnum"
+                    },
+                    "grade_limits": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 32
+                        },
+                        "maxItems": 32
+                    }
+                },
+                "additionalProperties": false
             },
             "PatchedPreferencesRequest": {
                 "type": "object",

@@ -36,3 +36,8 @@ class ErrorCode(IntEnum):
 EDITABLE_STATES = ("draft", "returned", "rejected")
 REVIEW_ACTIONS = ("approve", "reject", "return")
 SCHOOL_LEVELS = ("ES", "MS", "HS", "U")
+CONFIGURATION_STATES = ("enabled", "disabled")
+CONFIGURATION_TRANSITIONS = {
+    ("enabled", "disable"): "disabled",
+    ("disabled", "enable"): "enabled",
+}

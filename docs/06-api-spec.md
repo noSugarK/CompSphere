@@ -169,7 +169,9 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | GET | `/editions/{id}/event-types?page=&page_size=` | 赛项类型字典；该届次 `event:create`。 |
 | GET/POST | `/editions/{id}/events` | 作用域 `event:read/create`；仅草稿届次允许创建。创建接收 `event_code`、`name`、`min_members`、`max_members`、`coach_required`，返回这些字段及 `id/status`。编码来自稳定字典，一届不重复；不少于 1 人且下限不大于上限。 |
 | PATCH/DELETE / POST | `/events/{id}` 和 `/events/{id}/enable|disable` | 编辑、删除、状态动作待接入。 |
-| GET/POST | `/editions/{id}/groups`；PATCH/DELETE `/groups/{id}`；POST `/groups/{id}/enable|disable` | 组别（`group:*`） |
+| GET/POST | `/editions/{id}/groups` | 届次作用域 `group:read/create`，仅草稿可创建。接收 `code`（1–8 位大写字母、数字或连字符）、`name`、`school_level`（ES/MS/HS/U 或 null）、`enrollment_type`（individual/team/both）及 `grade_limits`（唯一的年级原文字符串列表；空列表不限），返回这些字段及 `id/status`。不接受年龄字段。 |
+| PATCH/DELETE | `/groups/{id}` | `group:update`，仅草稿可部分更新或软删除；已被组合引用不得删，删除后不复用同届编码。 |
+| POST | `/groups/{id}/enable`、`/groups/{id}/disable` | 届次作用域 `group:enable_disable`，请求空对象；允许草稿及已发布届次，关闭后只读。组合实际可报名状态还取决于赛项和组合本身。 |
 | GET/POST | `/editions/{id}/offerings`；PATCH/DELETE `/offerings/{id}` | 开放组合（v1.1）。已有报名的组合不可删除，服务层按 offering_id 的 RESTRICT 返回冲突，只能停用 |
 | GET/PUT | `/editions/{id}/team-access` | 查看/设置 team_entry_mode 与 team_access_version；写入须带当前版本，权限 edition:manage_team_access（里程碑 2） |
 | GET/POST | `/editions/{id}/team-allowlist`；DELETE `/editions/{id}/team-allowlist/{team_id}` | 名单查询/增补/撤销（标 revoked）；edition:manage_team_access，不公开全量 |

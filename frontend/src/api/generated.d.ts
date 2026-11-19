@@ -228,6 +228,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/editions/{id}/groups': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['editions_groups_retrieve'];
+    put?: never;
+    post: operations['editions_groups_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/editions/{id}/registrations': {
     parameters: {
       query?: never;
@@ -238,6 +254,54 @@ export interface paths {
     get: operations['editions_registrations_retrieve'];
     put?: never;
     post: operations['editions_registrations_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/groups/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations['groups_destroy'];
+    options?: never;
+    head?: never;
+    patch: operations['groups_partial_update'];
+    trace?: never;
+  };
+  '/api/v1/groups/{id}/disable': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['groups_disable_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/groups/{id}/enable': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['groups_enable_create'];
     delete?: never;
     options?: never;
     head?: never;
@@ -792,6 +856,12 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    /**
+     * @description * `enabled` - enabled
+     *     * `disabled` - disabled
+     * @enum {string}
+     */
+    ConfigurationStateEnum: 'enabled' | 'disabled';
     Consents: {
       document_usage: boolean;
     };
@@ -967,6 +1037,36 @@ export interface components {
       scope_id: number | null;
       permissions: string[];
     };
+    GroupDraftRequest: {
+      code: string;
+      name: string;
+      school_level:
+        | (components['schemas']['SelectedSchoolLevelEnum'] | components['schemas']['NullEnum'])
+        | null;
+      enrollment_type: components['schemas']['EnrollmentTypeEnum'];
+      grade_limits: string[];
+    };
+    GroupDraftResponse: {
+      data: components['schemas']['ManagedGroup'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    GroupStateResponse: {
+      data: components['schemas']['ManagedGroup'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    GroupUpdateResponse: {
+      data: components['schemas']['ManagedGroup'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     /**
      * @description * `submitted` - Submitted
      *     * `approved` - Approved
@@ -1088,14 +1188,8 @@ export interface components {
       max_members: number;
       coach_required: boolean;
       id: number;
-      status: components['schemas']['ManagedEventStatusEnum'];
+      status: components['schemas']['ConfigurationStateEnum'];
     };
-    /**
-     * @description * `enabled` - enabled
-     *     * `disabled` - disabled
-     * @enum {string}
-     */
-    ManagedEventStatusEnum: 'enabled' | 'disabled';
     ManagedEventsPage: {
       items: components['schemas']['ManagedEvent'][];
       page: number;
@@ -1104,6 +1198,30 @@ export interface components {
     };
     ManagedEventsResponse: {
       data: components['schemas']['ManagedEventsPage'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    ManagedGroup: {
+      code: string;
+      name: string;
+      school_level:
+        | (components['schemas']['SelectedSchoolLevelEnum'] | components['schemas']['NullEnum'])
+        | null;
+      enrollment_type: components['schemas']['EnrollmentTypeEnum'];
+      grade_limits: string[];
+      id: number;
+      status: components['schemas']['ConfigurationStateEnum'];
+    };
+    ManagedGroupsPage: {
+      items: components['schemas']['ManagedGroup'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    ManagedGroupsResponse: {
+      data: components['schemas']['ManagedGroupsPage'];
       code: number;
       message: string;
       /** Format: uuid */
@@ -1234,6 +1352,15 @@ export interface components {
       message: string;
       /** Format: uuid */
       request_id: string;
+    };
+    PatchedGroupDraftRequest: {
+      code?: string;
+      name?: string;
+      school_level?:
+        | (components['schemas']['SelectedSchoolLevelEnum'] | components['schemas']['NullEnum'])
+        | null;
+      enrollment_type?: components['schemas']['EnrollmentTypeEnum'];
+      grade_limits?: string[];
     };
     PatchedPreferencesRequest: {
       locale?: components['schemas']['LocaleEnum'];
@@ -2196,6 +2323,55 @@ export interface operations {
       };
     };
   };
+  editions_groups_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ManagedGroupsResponse'];
+        };
+      };
+    };
+  };
+  editions_groups_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GroupDraftRequest'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GroupDraftResponse'];
+        };
+      };
+    };
+  };
   editions_registrations_retrieve: {
     parameters: {
       query?: never;
@@ -2238,6 +2414,101 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RegistrationCreateResponse'];
+        };
+      };
+    };
+  };
+  groups_destroy: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No response body */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  groups_partial_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['PatchedGroupDraftRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GroupUpdateResponse'];
+        };
+      };
+    };
+  };
+  groups_disable_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GroupStateResponse'];
+        };
+      };
+    };
+  };
+  groups_enable_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GroupStateResponse'];
         };
       };
     };
