@@ -2411,6 +2411,41 @@
                 }
             }
         },
+        "/api/v1/registrations/bulk-approval": {
+            "post": {
+                "operationId": "registrations_bulk_approval_create",
+                "tags": [
+                    "registrations"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BulkRegistrationReviewRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BulkRegistrationApprovalResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/registrations/filter-options": {
             "get": {
                 "operationId": "registrations_filter_options_retrieve",
@@ -3218,6 +3253,111 @@
                     "message",
                     "request_id"
                 ]
+            },
+            "BulkRegistrationApprovalResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BulkReviewResult"
+                        }
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "BulkRegistrationReviewRequest": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "$ref": "#/components/schemas/ReviewActionEnum"
+                    },
+                    "comment": {
+                        "type": "string",
+                        "maxLength": 2000
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BulkReviewTargetRequest"
+                        }
+                    }
+                },
+                "required": [
+                    "action",
+                    "comment",
+                    "items"
+                ],
+                "additionalProperties": false
+            },
+            "BulkReviewResult": {
+                "type": "object",
+                "properties": {
+                    "registration_id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "status": {
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/RegistrationStatusEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "code",
+                    "registration_id",
+                    "status"
+                ],
+                "additionalProperties": false
+            },
+            "BulkReviewTargetRequest": {
+                "type": "object",
+                "properties": {
+                    "registration_id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "submission_no": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    }
+                },
+                "required": [
+                    "registration_id",
+                    "submission_no"
+                ],
+                "additionalProperties": false
             },
             "Competition": {
                 "type": "object",
@@ -6733,6 +6873,9 @@
                     "status": {
                         "$ref": "#/components/schemas/RegistrationStatusEnum"
                     },
+                    "can_review": {
+                        "type": "boolean"
+                    },
                     "submission_no": {
                         "type": "integer",
                         "maximum": 9007199254740991,
@@ -6745,6 +6888,7 @@
                 },
                 "required": [
                     "batch_no",
+                    "can_review",
                     "edition_name",
                     "event_name",
                     "group_name",

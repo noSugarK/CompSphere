@@ -188,6 +188,22 @@ class RegistrationApprovalView(BaseView):
         return success(request, services.serialize_registration(item, request.user))
 
 
+class BulkRegistrationApprovalView(BaseView):
+    required_perm = "approval:review_single"
+
+    @extend_schema(
+        request=schema.BulkRegistrationReview,
+        responses=envelope(
+            "BulkRegistrationApprovalResponse", schema.BulkReviewResult, many=True
+        ),
+    )
+    def post(self, request):
+        results = services.bulk_review_registrations(
+            request.user, validated(schema.BulkRegistrationReview, request)
+        )
+        return success(request, schema.BulkReviewResult(results, many=True).data)
+
+
 class ApprovalRecordListView(BaseView):
     @extend_schema(responses=listing("ApprovalRecords", schema.ApprovalRecord))
     def get(self, request, pk):

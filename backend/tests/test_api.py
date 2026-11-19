@@ -550,6 +550,100 @@ def test_cross_scope_and_self_review(dataset, actor_client, draft_payload):
         format="json",
     )
     assert self_review.status_code == 403 and self_review.data["code"] == 40303
+    (row,) = client.get("/api/v1/registrations").data["data"]["items"]
+    assert row["can_review"] is False
+    blocked = client.post(
+        "/api/v1/registrations/bulk-approval",
+        {
+            "action": "approve",
+            "comment": "",
+            "items": [{"registration_id": draft["id"], "submission_no": 1}],
+        },
+        format="json",
+    )
+    assert blocked.data["data"][0]["code"] == 40303
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("action", "status"),
+    [("approve", "approved"), ("reject", "rejected"), ("return", "returned")],
+)
+def test_bulk_review_has_independent_scoped_versioned_results(
+    dataset, actor_client, draft_payload, action, status
+):
+    client, first = create_draft(actor_client, dataset, draft_payload)
+    assert submit(client, first, "bulk-team-submission").status_code == 200
+    individual = {
+        key: value for key, value in draft_payload.items() if key != "team_id"
+    }
+    individual["enrollment_kind"] = "individual"
+    _, second = create_draft(actor_client, dataset, individual)
+    assert submit(client, second, "bulk-individual-submission").status_code == 200
+    targets = [
+        {"registration_id": second["id"], "submission_no": 2},
+        {"registration_id": first["id"], "submission_no": 1},
+        {"registration_id": second["id"] + 99, "submission_no": 1},
+    ]
+    endpoint = "/api/v1/registrations/bulk-approval"
+    payload = {"action": action, "comment": "Synthetic decision", "items": targets}
+    assert client.post(endpoint, payload, format="json").status_code == 403
+    outsider = actor_client(dataset["accounts"]["outsider"])
+    UserRole.objects.create(
+        user=dataset["accounts"]["outsider"],
+        role=Role.objects.get(code="reviewer"),
+        scope_type="edition",
+        scope_id=dataset["edition"].id + 99,
+    )
+    invisible = outsider.post(endpoint, payload, format="json").data["data"]
+    assert [item["code"] for item in invisible] == [40401, 40401, 40401]
+    reviewer = actor_client(dataset["accounts"]["reviewer"])
+    assert all(
+        row["can_review"]
+        for row in reviewer.get("/api/v1/registrations").data["data"]["items"]
+    )
+    assert (
+        reviewer.post(
+            endpoint, {**payload, "items": [targets[1], targets[1]]}, format="json"
+        ).status_code
+        == 400
+    )
+    assert (
+        reviewer.post(endpoint, {**payload, "items": []}, format="json").status_code
+        == 400
+    )
+    oversize = [
+        {"registration_id": number, "submission_no": 1} for number in range(1, 22)
+    ]
+    assert (
+        reviewer.post(
+            endpoint, {**payload, "items": oversize}, format="json"
+        ).status_code
+        == 400
+    )
+    assert (
+        reviewer.post(
+            endpoint, {**payload, "action": "return", "comment": "  "}, format="json"
+        ).status_code
+        == 400
+    )
+
+    response = reviewer.post(endpoint, payload, format="json")
+    assert response.status_code == 200, response.data
+    assert response.data["data"] == [
+        {"registration_id": second["id"], "code": 40906, "status": None},
+        {"registration_id": first["id"], "code": 0, "status": status},
+        {"registration_id": second["id"] + 99, "code": 40401, "status": None},
+    ]
+    assert (
+        reviewer.post(endpoint, payload, format="json").data["data"][1]["code"] == 40902
+    )
+    item = Registration.objects.get(pk=first["id"])
+    assert item.status == status and item.approval_records.count() == 1
+    assert (
+        RegistrationNotice.objects.filter(registration=item, kind=status).count() == 1
+    )
+    assert Registration.objects.get(pk=second["id"]).status == "pending_review"
 
 
 @pytest.mark.django_db

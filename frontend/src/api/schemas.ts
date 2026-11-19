@@ -410,6 +410,7 @@ export const reviewQueueItemSchema = z
     group_name: text,
     org_name: text,
     status: registrationStatusSchema,
+    can_review: z.boolean(),
     submission_no: z.number().int().positive(),
     submitted_at: z.string().datetime({ offset: true }),
   })

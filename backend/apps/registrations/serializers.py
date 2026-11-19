@@ -58,6 +58,30 @@ class RegistrationReview(ReviewSerializer):
     submission_no = serializers.IntegerField(min_value=1)
 
 
+class BulkReviewTarget(StrictSerializer):
+    registration_id = serializers.IntegerField(min_value=1)
+    submission_no = serializers.IntegerField(min_value=1)
+
+
+class BulkRegistrationReview(ReviewSerializer):
+    items: serializers.ListSerializer = serializers.ListSerializer(
+        child=BulkReviewTarget(), allow_empty=False, max_length=20
+    )
+
+    def validate_items(self, items):
+        if len({item["registration_id"] for item in items}) != len(items):
+            raise serializers.ValidationError(
+                "A registration may only be reviewed once per batch."
+            )
+        return items
+
+
+class BulkReviewResult(StrictSerializer):
+    registration_id = serializers.IntegerField()
+    code = serializers.IntegerField()
+    status = serializers.ChoiceField(choices=REGISTRATION_STATES, allow_null=True)
+
+
 class ReviewQueueFilters(serializers.Serializer):
     edition = serializers.IntegerField(min_value=1, max_value=2**53 - 1, required=False)
     event = serializers.IntegerField(min_value=1, max_value=2**53 - 1, required=False)
@@ -86,6 +110,7 @@ class ReviewQueueItem(StrictSerializer):
     group_name = serializers.CharField()
     org_name = serializers.CharField()
     status = serializers.ChoiceField(choices=REGISTRATION_STATES)
+    can_review = serializers.BooleanField()
     submission_no = serializers.IntegerField()
     submitted_at = serializers.DateTimeField()
 

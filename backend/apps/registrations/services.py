@@ -4,7 +4,7 @@ import uuid
 from collections import defaultdict
 
 from django.db import transaction
-from django.db.models import F, FilteredRelation, Q
+from django.db.models import Case, Exists, F, FilteredRelation, OuterRef, Q, Value, When
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -32,7 +32,7 @@ from apps.registrations.models import (
 )
 from apps.teams.models import SeasonRegistration, Team, TeamMember
 from apps.teams.services import member_data
-from core.constants import EDITABLE_STATES
+from core.constants import EDITABLE_STATES, ErrorCode
 from core.crypto import decrypt, encrypt
 from core.exceptions import BusinessError
 from core.models import IdempotencyRecord
@@ -104,11 +104,28 @@ def review_queue_items(actor, filters):
         items = items.filter(
             Q(batch_no__icontains=search) | Q(team__team_number__code__icontains=search)
         )
+    member = RegistrationMember.objects.filter(
+        registration_id=OuterRef("pk"),
+        submission_no=OuterRef("current_submission_no"),
+        user_id=actor.id,
+    )
+    can_review = Case(
+        When(
+            Q(status="pending_review", edition__season__status="active")
+            & ~Q(edition__status="closed")
+            & ~Q(submitted_by_id=actor.id)
+            & registration_filter(actor, "approval:review_single")
+            & ~Exists(member),
+            then=Value(True),
+        ),
+        default=Value(False),
+    )
     return items.values(
         "id",
         "batch_no",
         "status",
         "submitted_at",
+        can_review=can_review,
         submission_no=F("current_submission_no"),
         team_code=F("team__team_number__code"),
         **{
@@ -778,7 +795,7 @@ def cancel_or_withdraw(actor, pk, version, action):
 
 
 @transaction.atomic
-def review_registration(actor, pk, data):
+def review_registration(actor, pk, data, *, pending_only=False):
     lock_registration_team(actor, pk, reviewing=True)
     item = (
         Registration.objects.select_for_update(of=("self",))
@@ -800,6 +817,10 @@ def review_registration(actor, pk, data):
         raise BusinessError(40902, "There is no submitted round to review")
     if item.current_submission_no != data["submission_no"]:
         raise BusinessError(40906, "Submission version has changed")
+    if pending_only and item.status != "pending_review":
+        raise BusinessError(
+            ErrorCode.STATE, "Bulk review requires a pending submission"
+        )
     member_ids = list(
         item.submitted_members.filter(submission_no=number).values_list(
             "user_id", flat=True
@@ -868,3 +889,44 @@ def review_registration(actor, pk, data):
     )
     record_registration_notice(item, number, item.status)
     return item
+
+
+def bulk_review_registrations(actor, data):
+    ids = [target["registration_id"] for target in data["items"]]
+    visible_ids = set(
+        visible_registrations(actor, managed=True)
+        .filter(id__in=ids)
+        .values_list("id", flat=True)
+    )
+    results = []
+    for target in data["items"]:
+        registration_id = target["registration_id"]
+        result = {
+            "registration_id": registration_id,
+            "code": ErrorCode.NOT_FOUND,
+            "status": None,
+        }
+        if registration_id in visible_ids:
+            try:
+                row = review_registration(
+                    actor,
+                    registration_id,
+                    {
+                        "action": data["action"],
+                        "comment": data["comment"],
+                        "submission_no": target["submission_no"],
+                    },
+                    pending_only=True,
+                )
+            except Registration.DoesNotExist:
+                pass
+            except BusinessError as error:
+                result["code"] = (
+                    ErrorCode.NOT_FOUND
+                    if error.code == ErrorCode.FORBIDDEN
+                    else error.code
+                )
+            else:
+                result.update(code=0, status=row.status)
+        results.append(result)
+    return results

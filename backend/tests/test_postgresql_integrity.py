@@ -9,7 +9,12 @@ from apps.accounts.models import User
 from apps.competitions.models import Season
 from apps.competitions.services import set_current_season
 from apps.registrations.models import RegistrationSubmission
-from apps.registrations.services import create_registration, submit_registration
+from apps.registrations.services import (
+    bulk_review_registrations,
+    create_registration,
+    review_registration,
+    submit_registration,
+)
 from core.exceptions import BusinessError
 
 
@@ -69,6 +74,47 @@ def test_postgresql_concurrent_submission_is_serialized(dataset, draft_payload):
         results = list(executor.map(run, [1, 2]))
     assert sorted(map(str, results)) == ["40906", "pending_review"]
     assert RegistrationSubmission.objects.filter(registration=registration).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_postgresql_bulk_and_single_review_serialize_same_round(dataset, draft_payload):
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL row locking test")
+    author = dataset["accounts"]["student"]
+    reviewer_id = dataset["accounts"]["reviewer"].id
+    registration = create_registration(author, dataset["edition"], draft_payload)
+    submit_registration(
+        author, registration.id, registration.version, "concurrent-review-key"
+    )
+    barrier = Barrier(2)
+
+    def run(bulk):
+        try:
+            reviewer = User.objects.get(pk=reviewer_id)
+            action = {"action": "return", "comment": "Synthetic correction"}
+            barrier.wait(timeout=10)
+            if bulk:
+                return bulk_review_registrations(
+                    reviewer,
+                    {
+                        **action,
+                        "items": [
+                            {"registration_id": registration.id, "submission_no": 1}
+                        ],
+                    },
+                )[0]["code"]
+            review_registration(
+                reviewer, registration.id, {**action, "submission_no": 1}
+            )
+            return 0
+        except BusinessError as error:
+            return error.code
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        assert sorted(executor.map(run, [True, False])) == [0, 40902]
+    assert registration.approval_records.count() == 1
 
 
 @pytest.mark.django_db

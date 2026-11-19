@@ -772,6 +772,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/registrations/bulk-approval': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['registrations_bulk_approval_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/registrations/filter-options': {
     parameters: {
       query?: never;
@@ -1039,6 +1055,29 @@ export interface components {
       message: string;
       /** Format: uuid */
       request_id: string;
+    };
+    BulkRegistrationApprovalResponse: {
+      data: components['schemas']['BulkReviewResult'][];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    BulkRegistrationReviewRequest: {
+      action: components['schemas']['ReviewActionEnum'];
+      comment: string;
+      items: components['schemas']['BulkReviewTargetRequest'][];
+    };
+    BulkReviewResult: {
+      registration_id: number;
+      code: number;
+      status:
+        | (components['schemas']['RegistrationStatusEnum'] | components['schemas']['NullEnum'])
+        | null;
+    };
+    BulkReviewTargetRequest: {
+      registration_id: number;
+      submission_no: number;
     };
     Competition: {
       id: number;
@@ -1956,6 +1995,7 @@ export interface components {
       group_name: string;
       org_name: string;
       status: components['schemas']['RegistrationStatusEnum'];
+      can_review: boolean;
       submission_no: number;
       /** Format: date-time */
       submitted_at: string;
@@ -3705,6 +3745,29 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RegistrationCancelResponse'];
+        };
+      };
+    };
+  };
+  registrations_bulk_approval_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BulkRegistrationReviewRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BulkRegistrationApprovalResponse'];
         };
       };
     };
