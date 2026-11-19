@@ -2,12 +2,13 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Plus } from '@element-plus/icons-vue';
+import { ElMessageBox } from 'element-plus';
 import { api } from '../api';
 import type { ManagedCompetition } from '../api/schemas';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { useSession } from '../stores/session';
-import { mayCreateCompetition } from '../utils/permissions';
+import { hasCompetitionPermission, mayCreateCompetition } from '../utils/permissions';
 
 const { t } = useI18n();
 const session = useSession();
@@ -23,6 +24,9 @@ const saveError = ref<unknown>(null);
 const nameError = ref(false);
 const nameInput = ref<{ focus: () => void }>();
 const created = ref('');
+const publishedName = ref('');
+const publishingId = ref<number>();
+const publishError = ref<unknown>(null);
 const form = reactive({ name: '', summary: '' });
 
 async function load() {
@@ -46,6 +50,7 @@ function startDraft() {
   saveError.value = null;
   nameError.value = false;
   created.value = '';
+  publishedName.value = '';
   open.value = true;
 }
 
@@ -71,6 +76,36 @@ async function saveDraft() {
   }
 }
 
+async function publish(item: ManagedCompetition) {
+  if (publishingId.value) return;
+  publishingId.value = item.id;
+  try {
+    try {
+      await ElMessageBox.confirm(
+        t('publication.competitionConfirm', { name: item.name }),
+        t('publication.competitionAction'),
+        {
+          type: 'warning',
+          cancelButtonText: t('cancel'),
+          confirmButtonText: t('publication.competitionAction'),
+        },
+      );
+    } catch {
+      return;
+    }
+    publishError.value = null;
+    publishedName.value = '';
+    const updated = await api.publishCompetition(item.id);
+    items.value = items.value.map((current) => (current.id === updated.id ? updated : current));
+    created.value = '';
+    publishedName.value = updated.name;
+  } catch (error) {
+    publishError.value = error;
+  } finally {
+    publishingId.value = undefined;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -90,8 +125,10 @@ onMounted(load);
   </div>
   <div role="status" class="registry-feedback">
     <p v-if="created">{{ t('competitionCreated', { name: created }) }}</p>
+    <p v-if="publishedName">{{ t('publication.competitionDone', { name: publishedName }) }}</p>
   </div>
   <div class="content-panel">
+    <ErrorNotice v-if="publishError" :error="publishError" />
     <p v-if="loading">{{ t('loading') }}</p>
     <ErrorNotice v-else-if="loadError" :error="loadError" @retry="load" />
     <p v-else-if="!items.length" class="muted">{{ t('competitionEmpty') }}</p>
@@ -110,7 +147,24 @@ onMounted(load);
             }}</RouterLink>
             <span class="small muted">{{ item.public_code }}</span>
           </th>
-          <td><StatusTag :status="item.status" /></td>
+          <td>
+            <div class="registry-state">
+              <StatusTag :status="item.status" />
+              <el-button
+                v-if="
+                  item.status === 'draft' &&
+                  hasCompetitionPermission(session.me, 'competition:publish', item.id)
+                "
+                link
+                type="primary"
+                :loading="publishingId === item.id"
+                :disabled="Boolean(publishingId)"
+                :aria-label="t('publication.competitionLabel', { name: item.name })"
+                @click="publish(item)"
+                >{{ t('publication.competitionAction') }}</el-button
+              >
+            </div>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -173,6 +227,12 @@ onMounted(load);
 </template>
 
 <style scoped>
+.registry-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
 .registry-table {
   inline-size: 100%;
   border-collapse: collapse;

@@ -147,6 +147,16 @@ export const managedEditionSchema = editionSchema
     year: z.number().int().positive(),
   }) satisfies z.ZodType<components['schemas']['ManagedEdition']>;
 export type ManagedEdition = components['schemas']['ManagedEdition'];
+export const editionPublicationChecksSchema = z
+  .object({
+    active_season: z.boolean(),
+    title_and_venue: z.boolean(),
+    ordered_schedule: z.boolean(),
+    open_offering: z.boolean(),
+    supported_rules: z.boolean(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['EditionPublicationChecks']>;
+export type EditionPublicationChecks = components['schemas']['EditionPublicationChecks'];
 
 export const eventTypeSummarySchema = z
   .object({

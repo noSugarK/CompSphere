@@ -8,6 +8,7 @@ import type { EventTypeSummary, ManagedEdition, ManagedEvent } from '../api/sche
 import ErrorNotice from '../components/ErrorNotice.vue';
 import GroupConfiguration from '../components/GroupConfiguration.vue';
 import OfferingMatrix from '../components/OfferingMatrix.vue';
+import EditionPublicationPanel from '../components/EditionPublicationPanel.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { useSession } from '../stores/session';
 import { hasEditionPermission, mayViewCompetitionRegistry } from '../utils/permissions';
@@ -31,6 +32,7 @@ const saveError = ref<unknown>(null);
 const rangeError = ref(false);
 const created = ref('');
 const matrixRevision = ref(0);
+const publicationRevision = ref(0);
 const blank = {
   event_code: '',
   name: '',
@@ -103,7 +105,7 @@ async function saveEvent() {
       max_members: max,
     });
     created.value = result.name;
-    matrixRevision.value += 1;
+    configurationChanged();
     open.value = false;
     await load();
   } catch (error) {
@@ -111,6 +113,11 @@ async function saveEvent() {
   } finally {
     saving.value = false;
   }
+}
+
+function configurationChanged() {
+  matrixRevision.value += 1;
+  publicationRevision.value += 1;
 }
 
 onMounted(load);
@@ -186,7 +193,7 @@ onMounted(load);
       edition && hasEditionPermission(session.me, 'group:read', edition.id, edition.competition_id)
     "
     :edition="edition"
-    @changed="matrixRevision += 1"
+    @changed="configurationChanged"
   />
   <OfferingMatrix
     v-if="
@@ -194,6 +201,13 @@ onMounted(load);
     "
     :key="matrixRevision"
     :edition="edition"
+    @changed="publicationRevision += 1"
+  />
+  <EditionPublicationPanel
+    v-if="edition"
+    :edition="edition"
+    :revision="publicationRevision"
+    @published="edition = $event"
   />
   <el-dialog
     v-model="open"

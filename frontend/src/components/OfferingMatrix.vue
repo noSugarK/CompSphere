@@ -9,6 +9,7 @@ import { hasEditionPermission } from '../utils/permissions';
 import ErrorNotice from './ErrorNotice.vue';
 
 const props = defineProps<{ edition: ManagedEdition }>();
+const emit = defineEmits<{ changed: [] }>();
 const { t } = useI18n();
 const session = useSession();
 const events = ref<ManagedEvent[]>([]);
@@ -116,6 +117,7 @@ async function change(
       }
     }
     feedback.value = t('offerings.saved', labels);
+    emit('changed');
   } catch (error) {
     actionError.value = error;
   } finally {

@@ -25,6 +25,26 @@ const zh = {
   competitionRegistry: '赛事管理',
   editionRegistry: '届次管理',
   editionConfiguration: '届次配置',
+  publication: {
+    title: '发布检查',
+    editionAction: '发布届次',
+    competitionAction: '发布赛事',
+    competitionLabel: '发布赛事：{name}',
+    competitionDone: '赛事「{name}」已发布。',
+    editionDone: '届次已发布。',
+    competitionConfirm:
+      '发布「{name}」？至少需要一个配置完整的届次；门户只显示当前赛季中已发布的届次。',
+    editionConfirm:
+      '发布「{name}」？仅当所属赛事也已发布，且该届次属于当前赛季时，才会在门户显示。',
+    hint: '赛事和届次分别发布。门户只展示当前赛季中同时满足两级发布的届次。',
+    ready: '已满足',
+    missing: '待完善',
+    active_season: '赛季已激活，且赛事未归档',
+    title_and_venue: '名称与比赛地点已填写',
+    ordered_schedule: '时间顺序正确，报名未截止',
+    open_offering: '至少有一个实际开放的报名组合',
+    supported_rules: '规则受支持，且无需目前不可上传的必交材料',
+  },
   eventSettings: '赛项配置',
   offerings: {
     title: '开放组合',
@@ -317,6 +337,26 @@ const en: typeof zh = {
   competitionRegistry: 'Competition management',
   editionRegistry: 'Edition management',
   editionConfiguration: 'Edition configuration',
+  publication: {
+    title: 'Publication checklist',
+    editionAction: 'Publish edition',
+    competitionAction: 'Publish competition',
+    competitionLabel: 'Publish competition: {name}',
+    competitionDone: 'Competition {name} published.',
+    editionDone: 'Edition published.',
+    competitionConfirm:
+      'Publish {name}? Configure at least one edition first. The portal only lists published editions in the current season.',
+    editionConfirm:
+      'Publish {name}? It appears in the portal only if its competition is also published and its season is current.',
+    hint: 'Competitions and editions are published separately. The portal only lists current-season editions that meet both conditions.',
+    ready: 'Ready',
+    missing: 'Needs attention',
+    active_season: 'Season active and competition not archived',
+    title_and_venue: 'Name and venue provided',
+    ordered_schedule: 'Schedule in order and registration deadline not passed',
+    open_offering: 'At least one open registration offering',
+    supported_rules: 'Supported rules and no required files that cannot be uploaded yet',
+  },
   eventSettings: 'Event settings',
   offerings: {
     title: 'Registration offerings',

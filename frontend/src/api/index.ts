@@ -12,6 +12,7 @@ import {
   draftFieldsSchema,
   editionDraftSchema,
   editionEventDraftSchema,
+  editionPublicationChecksSchema,
   editionSchema,
   eventTypeSummarySchema,
   groupDraftSchema,
@@ -100,6 +101,16 @@ export const api = {
     ),
   managedEdition: (id: number) =>
     request('GET', `/editions/${idSchema.parse(id)}`, managedEditionSchema),
+  editionPublicationChecks: (id: number) =>
+    request(
+      'GET',
+      `/editions/${idSchema.parse(id)}/publication-checks`,
+      editionPublicationChecksSchema,
+    ),
+  publishEdition: (id: number) =>
+    request('POST', `/editions/${idSchema.parse(id)}/publish`, managedEditionSchema, {}),
+  publishCompetition: (id: number) =>
+    request('POST', `/competitions/${idSchema.parse(id)}/publish`, managedCompetitionSchema, {}),
   editionEventTypes: (id: number, page = 1) =>
     request(
       'GET',

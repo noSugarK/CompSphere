@@ -1,5 +1,16 @@
 import type { Me } from '../api/schemas';
 
+export function hasCompetitionPermission(me: Me | null, permission: string, competitionId: number) {
+  return (
+    me?.grants.some(
+      (grant) =>
+        grant.permissions.includes(permission) &&
+        ((grant.role === 'platform_admin' && grant.scope_type === 'global') ||
+          (grant.scope_type === 'competition' && grant.scope_id === competitionId)),
+    ) ?? false
+  );
+}
+
 export function hasEditionPermission(
   me: Me | null,
   permission: string,
