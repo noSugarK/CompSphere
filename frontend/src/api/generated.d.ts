@@ -324,6 +324,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/events/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations['events_destroy'];
+    options?: never;
+    head?: never;
+    patch: operations['events_partial_update'];
+    trace?: never;
+  };
+  '/api/v1/events/{id}/disable': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['events_disable_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/events/{id}/enable': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['events_enable_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/groups/{id}': {
     parameters: {
       query?: never;
@@ -1060,13 +1108,27 @@ export interface components {
       request_id: string;
     };
     EditionEventDraftRequest: {
-      event_code: string;
       name: string;
       min_members: number;
       max_members: number;
       coach_required: boolean;
+      event_code: string;
     };
     EditionEventDraftResponse: {
+      data: components['schemas']['ManagedEvent'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    EditionEventStateResponse: {
+      data: components['schemas']['ManagedEvent'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    EditionEventUpdateResponse: {
       data: components['schemas']['ManagedEvent'];
       code: number;
       message: string;
@@ -1322,11 +1384,11 @@ export interface components {
       request_id: string;
     };
     ManagedEvent: {
-      event_code: string;
       name: string;
       min_members: number;
       max_members: number;
       coach_required: boolean;
+      event_code: string;
       id: number;
       status: components['schemas']['ConfigurationStateEnum'];
     };
@@ -1530,6 +1592,12 @@ export interface components {
       message: string;
       /** Format: uuid */
       request_id: string;
+    };
+    PatchedEditionEventRulesRequest: {
+      name?: string;
+      min_members?: number;
+      max_members?: number;
+      coach_required?: boolean;
     };
     PatchedGroupDraftRequest: {
       code?: string;
@@ -2712,6 +2780,101 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RegistrationCreateResponse'];
+        };
+      };
+    };
+  };
+  events_destroy: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No response body */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  events_partial_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['PatchedEditionEventRulesRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EditionEventUpdateResponse'];
+        };
+      };
+    };
+  };
+  events_disable_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EditionEventStateResponse'];
+        };
+      };
+    };
+  };
+  events_enable_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EditionEventStateResponse'];
         };
       };
     };

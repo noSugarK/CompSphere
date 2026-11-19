@@ -9,21 +9,28 @@ class EventTypeSummary(StrictSerializer):
     name = serializers.CharField(max_length=64)
 
 
-class EditionEventDraft(StrictSerializer):
-    event_code: serializers.CharField = serializers.RegexField(
-        r"\A[A-Z0-9][A-Z0-9-]{0,15}\Z", max_length=16
-    )
+class EditionEventRules(StrictSerializer):
     name = serializers.CharField(max_length=64)
     min_members = serializers.IntegerField(min_value=1, max_value=2147483647)
     max_members = serializers.IntegerField(min_value=1, max_value=2147483647)
     coach_required = serializers.BooleanField()
 
     def validate(self, attrs):
-        if attrs["min_members"] > attrs["max_members"]:
+        if (
+            "min_members" in attrs
+            and "max_members" in attrs
+            and attrs["min_members"] > attrs["max_members"]
+        ):
             raise serializers.ValidationError(
                 {"max_members": ["Maximum is smaller than minimum."]}
             )
         return attrs
+
+
+class EditionEventDraft(EditionEventRules):
+    event_code: serializers.CharField = serializers.RegexField(
+        r"\A[A-Z0-9][A-Z0-9-]{0,15}\Z", max_length=16
+    )
 
 
 class ManagedEvent(EditionEventDraft):

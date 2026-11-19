@@ -51,6 +51,14 @@ urlpatterns = [
         events.EditionEventTypeListView.as_view(),
     ),
     path("api/v1/editions/<int:pk>/events", events.EditionEventListView.as_view()),
+    path("api/v1/events/<int:pk>", events.EventDetailView.as_view()),
+    path(
+        "api/v1/events/<int:pk>/enable", events.EventStateView.as_view(action="enable")
+    ),
+    path(
+        "api/v1/events/<int:pk>/disable",
+        events.EventStateView.as_view(action="disable"),
+    ),
     path("api/v1/editions/<int:pk>/groups", groups.GroupListView.as_view()),
     path(
         "api/v1/editions/<int:pk>/offerings", events.EditionOfferingListView.as_view()

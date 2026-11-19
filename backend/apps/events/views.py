@@ -4,10 +4,13 @@ from apps.competitions.services import configuration_edition
 from apps.events import serializers as schema
 from apps.events.models import Event, EventType, Offering
 from apps.events.services import (
+    change_event_state,
     change_offering_state,
     create_event,
     create_offering,
+    delete_event,
     delete_offering,
+    update_event,
 )
 from core.api import BaseView, page, success, validated
 from core.schema import envelope, listing
@@ -56,6 +59,40 @@ class EditionEventListView(BaseView):
             request.user, pk, validated(schema.EditionEventDraft, request)
         )
         return success(request, schema.ManagedEvent(item).data, status=201)
+
+
+class EventDetailView(BaseView):
+    @extend_schema(
+        request=schema.EditionEventRules,
+        responses=envelope("EditionEventUpdateResponse", schema.ManagedEvent),
+    )
+    def patch(self, request, pk):
+        form = schema.EditionEventRules(data=request.data, partial=True)
+        form.is_valid(raise_exception=True)
+        item = update_event(request.user, pk, form.validated_data)
+        return success(request, schema.ManagedEvent(item).data)
+
+    @extend_schema(
+        responses=envelope("EditionEventDeleteResponse", EmptySerializer, nullable=True)
+    )
+    def delete(self, request, pk):
+        delete_event(request.user, pk)
+        return success(request)
+
+
+class EventStateView(BaseView):
+    action = ""
+
+    @extend_schema(
+        request=EmptySerializer,
+        responses=envelope("EditionEventStateResponse", schema.ManagedEvent),
+    )
+    def post(self, request, pk):
+        validated(EmptySerializer, request)
+        return success(
+            request,
+            schema.ManagedEvent(change_event_state(request.user, pk, self.action)).data,
+        )
 
 
 class EditionOfferingListView(BaseView):

@@ -26,6 +26,68 @@ def create_event(actor, edition_id, data):
     return item
 
 
+def locked_event(actor, event_id, permission, *, draft_write=False):
+    edition_id = Event.objects.values_list("edition_id", flat=True).get(
+        pk=event_id, is_deleted=False
+    )
+    edition = configuration_edition(
+        actor, edition_id, permission, draft_write=draft_write, lock=True
+    )
+    if edition.status == "closed":
+        raise BusinessError(40902, "Closed editions are read-only")
+    return Event.objects.get(pk=event_id, is_deleted=False)
+
+
+@transaction.atomic
+def update_event(actor, event_id, data):
+    item = locked_event(actor, event_id, "event:update", draft_write=True)
+    if not data:
+        return item
+    if data.get("min_members", item.min_members) > data.get(
+        "max_members", item.max_members
+    ):
+        raise BusinessError(
+            40001, "Maximum participants cannot be below the minimum", 400
+        )
+    for field, value in data.items():
+        setattr(item, field, value)
+    item.save(update_fields=[*data, "updated_at"])
+    audit(
+        actor, "event.updated", "event", item.pk, scope={"edition_id": item.edition_id}
+    )
+    return item
+
+
+@transaction.atomic
+def delete_event(actor, event_id):
+    item = locked_event(actor, event_id, "event:update", draft_write=True)
+    if item.offering_set.filter(is_deleted=False).exists():
+        raise BusinessError(
+            40902, "Detach the event from all offerings before deleting it"
+        )
+    item.is_deleted = True
+    item.deleted_at = timezone.now()
+    item.save(update_fields=["is_deleted", "deleted_at", "updated_at"])
+    audit(
+        actor, "event.deleted", "event", item.pk, scope={"edition_id": item.edition_id}
+    )
+
+
+@transaction.atomic
+def change_event_state(actor, event_id, action):
+    item = locked_event(actor, event_id, "event:enable_disable")
+    transition(item, action, CONFIGURATION_TRANSITIONS)
+    item.save(update_fields=["status", "updated_at"])
+    audit(
+        actor,
+        f"event.{item.status}",
+        "event",
+        item.pk,
+        scope={"edition_id": item.edition_id},
+    )
+    return item
+
+
 @transaction.atomic
 def create_offering(actor, edition_id, data):
     edition = configuration_edition(

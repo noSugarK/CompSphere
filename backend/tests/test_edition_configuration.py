@@ -86,6 +86,52 @@ def test_event_registry_uses_stable_types_and_locks_published_rules(
 
 
 @pytest.mark.django_db
+def test_event_rule_edits_stay_in_drafts_and_state_controls_public_availability(
+    dataset, actor_client, draft_edition
+):
+    platform = actor_client(dataset["accounts"]["platform"])
+    organizer = actor_client(dataset["accounts"]["organizer"])
+    event = Event.objects.create(
+        edition=draft_edition,
+        code_id="VURC",
+        name="Draft event",
+        min_members=2,
+        max_members=4,
+    )
+    detail = f"/api/v1/events/{event.pk}"
+    assert (
+        organizer.patch(detail, {"name": "Outside"}, format="json").status_code == 403
+    )
+    assert (
+        platform.patch(detail, {"event_code": "V5RC"}, format="json").status_code == 400
+    )
+    assert platform.patch(detail, {"max_members": 1}, format="json").status_code == 400
+    updated = platform.patch(
+        detail, {"max_members": 5, "coach_required": False}, format="json"
+    )
+    assert updated.status_code == 200, updated.data
+    assert updated.data["data"]["max_members"] == 5
+    division = Group.objects.create(edition=draft_edition, code="U", name="University")
+    Offering.objects.create(edition=draft_edition, event=event, group=division)
+    assert platform.delete(detail).status_code == 409
+    assert organizer.post(f"{detail}/disable", {}, format="json").status_code == 403
+
+    existing = dataset["offering"].event
+    published = f"/api/v1/events/{existing.pk}"
+    portal = f"/api/v1/public/editions/{existing.edition_id}"
+    assert (
+        organizer.patch(published, {"min_members": 2}, format="json").status_code == 409
+    )
+    assert organizer.post(f"{published}/disable", {}, format="json").status_code == 200
+    assert not platform.get(portal).data["data"]["offerings"][0]["is_enabled"]
+    assert organizer.post(f"{published}/enable", {}, format="json").status_code == 200
+    assert platform.get(portal).data["data"]["offerings"][0]["is_enabled"]
+    existing.edition.status = "closed"
+    existing.edition.save(update_fields=["status"])
+    assert organizer.post(f"{published}/disable", {}, format="json").status_code == 409
+
+
+@pytest.mark.django_db
 def test_group_crud_and_enable_disable_are_scoped(dataset, actor_client, draft_edition):
     platform = actor_client(dataset["accounts"]["platform"])
     organizer = actor_client(dataset["accounts"]["organizer"])

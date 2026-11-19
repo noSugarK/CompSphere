@@ -1038,6 +1038,164 @@
                 }
             }
         },
+        "/api/v1/events/{id}": {
+            "patch": {
+                "operationId": "events_partial_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "events"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedEditionEventRulesRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EditionEventUpdateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "events_destroy",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "events"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/v1/events/{id}/disable": {
+            "post": {
+                "operationId": "events_disable_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "events"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EditionEventStateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/events/{id}/enable": {
+            "post": {
+                "operationId": "events_enable_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "events"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EditionEventStateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/groups/{id}": {
             "patch": {
                 "operationId": "groups_partial_update",
@@ -3143,12 +3301,6 @@
             "EditionEventDraftRequest": {
                 "type": "object",
                 "properties": {
-                    "event_code": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 16,
-                        "pattern": "^[A-Z0-9][A-Z0-9-]{0,15}$"
-                    },
                     "name": {
                         "type": "string",
                         "minLength": 1,
@@ -3166,6 +3318,12 @@
                     },
                     "coach_required": {
                         "type": "boolean"
+                    },
+                    "event_code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 16,
+                        "pattern": "^[A-Z0-9][A-Z0-9-]{0,15}$"
                     }
                 },
                 "required": [
@@ -3178,6 +3336,58 @@
                 "additionalProperties": false
             },
             "EditionEventDraftResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedEvent"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "EditionEventStateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedEvent"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "EditionEventUpdateResponse": {
                 "type": "object",
                 "properties": {
                     "data": {
@@ -4092,10 +4302,6 @@
             "ManagedEvent": {
                 "type": "object",
                 "properties": {
-                    "event_code": {
-                        "type": "string",
-                        "maxLength": 16
-                    },
                     "name": {
                         "type": "string",
                         "maxLength": 64
@@ -4112,6 +4318,10 @@
                     },
                     "coach_required": {
                         "type": "boolean"
+                    },
+                    "event_code": {
+                        "type": "string",
+                        "maxLength": 16
                     },
                     "id": {
                         "type": "integer",
@@ -5017,6 +5227,30 @@
                     "message",
                     "request_id"
                 ]
+            },
+            "PatchedEditionEventRulesRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "min_members": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 1
+                    },
+                    "max_members": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 1
+                    },
+                    "coach_required": {
+                        "type": "boolean"
+                    }
+                },
+                "additionalProperties": false
             },
             "PatchedGroupDraftRequest": {
                 "type": "object",

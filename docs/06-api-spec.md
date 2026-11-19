@@ -169,7 +169,8 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | POST | `/editions/{id}/publish` | `edition:publish`，空对象；服务端重新校验发布清单，失败 40902；不修改赛事状态。关闭与审核模式配置待实现。 |
 | GET | `/editions/{id}/event-types?page=&page_size=` | 赛项类型字典；该届次 `event:create`。 |
 | GET/POST | `/editions/{id}/events` | 作用域 `event:read/create`；仅草稿届次允许创建。创建接收 `event_code`、`name`、`min_members`、`max_members`、`coach_required`，返回这些字段及 `id/status`。编码来自稳定字典，一届不重复；不少于 1 人且下限不大于上限。 |
-| PATCH/DELETE / POST | `/events/{id}` 和 `/events/{id}/enable|disable` | 编辑、删除、状态动作待接入。 |
+| PATCH/DELETE | `/events/{id}` | `event:update`，仅草稿可部分更新名称、人数与教练要求；稳定编码不可修改。已被组合引用时不可删除。 |
+| POST | `/events/{id}/enable`、`/events/{id}/disable` | `event:enable_disable`，空对象。草稿和已发布届次允许操作，关闭后只读。状态变化不重写既有报名或配置。 |
 | GET/POST | `/editions/{id}/groups` | 届次作用域 `group:read/create`，仅草稿可创建。接收 `code`（1–8 位大写字母、数字或连字符）、`name`、`school_level`（ES/MS/HS/U 或 null）、`enrollment_type`（individual/team/both）及 `grade_limits`（唯一的年级原文字符串列表；空列表不限），返回这些字段及 `id/status`。不接受年龄字段。 |
 | PATCH/DELETE | `/groups/{id}` | `group:update`，仅草稿可部分更新或软删除；已被组合引用不得删，删除后不复用同届编码。 |
 | POST | `/groups/{id}/enable`、`/groups/{id}/disable` | 届次作用域 `group:enable_disable`，请求空对象；允许草稿及已发布届次，关闭后只读。组合实际可报名状态还取决于赛项和组合本身。 |

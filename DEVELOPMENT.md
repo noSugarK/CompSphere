@@ -44,7 +44,7 @@
 | `competition.created` | 平台创建赛事草稿；仅记录操作者与赛事 ID，不记录表单正文 |
 | `edition.created` | 创建届次草稿；记录届次、赛事及赛季 ID，不记录表单正文 |
 | `competition.published` / `edition.published` | 赛事和届次分别发布，记录对应 ID、操作者及届次赛季关联 |
-| `event.created` | 创建届次赛项，记录赛项和届次 ID，不记录表单正文 |
+| `event.created` / `event.updated` / `event.enabled` / `event.disabled` / `event.deleted` | 赛项配置与状态变化，记录赛项和届次 ID，不记录表单正文 |
 | `group.created` / `group.updated` / `group.enabled` / `group.disabled` / `group.deleted` | 组别配置与状态变化，记录组别和届次 ID，不记录表单正文 |
 | `offering.created` / `offering.enabled` / `offering.disabled` / `offering.deleted` | 组合配置与状态变化，记录组合和届次 ID |
 | `season.created` / `season.activated` / `season.current_changed` | 平台创建、激活、切换赛季；切换另记原赛季 ID |
