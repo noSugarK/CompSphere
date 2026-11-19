@@ -209,7 +209,7 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations['editions_partial_update'];
     trace?: never;
   };
   '/api/v1/editions/{id}/event-types': {
@@ -1089,9 +1089,6 @@ export interface components {
       offerings: components['schemas']['Offering'][];
     };
     EditionDraftRequest: {
-      season_id: number;
-      edition_no: number;
-      year: number;
       name: string;
       venue: string;
       time_zone?: components['schemas']['TimeZoneEnum'];
@@ -1099,6 +1096,9 @@ export interface components {
       enroll_end: string;
       start_date: string;
       end_date: string;
+      season_id: number;
+      edition_no: number;
+      year: number;
     };
     EditionDraftResponse: {
       data: components['schemas']['ManagedEdition'];
@@ -1183,6 +1183,13 @@ export interface components {
      * @enum {string}
      */
     EditionStatusEnum: 'draft' | 'published' | 'closed';
+    EditionUpdateResponse: {
+      data: components['schemas']['ManagedEdition'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     EligibleEditionSeasonsPage: {
       items: components['schemas']['ManagedSeason'][];
       page: number;
@@ -1609,6 +1616,15 @@ export interface components {
       message: string;
       /** Format: uuid */
       request_id: string;
+    };
+    PatchedEditionDetailsRequest: {
+      name?: string;
+      venue?: string;
+      time_zone?: components['schemas']['TimeZoneEnum'];
+      enroll_start?: string;
+      enroll_end?: string;
+      start_date?: string;
+      end_date?: string;
     };
     PatchedEditionEventRulesRequest: {
       name?: string;
@@ -2540,6 +2556,31 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ManagedEditionResponse'];
+        };
+      };
+    };
+  };
+  editions_partial_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['PatchedEditionDetailsRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EditionUpdateResponse'];
         };
       };
     };

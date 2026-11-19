@@ -554,6 +554,48 @@
                         "description": ""
                     }
                 }
+            },
+            "patch": {
+                "operationId": "editions_partial_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedEditionDetailsRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EditionUpdateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
             }
         },
         "/api/v1/editions/{id}/event-types": {
@@ -3260,21 +3302,6 @@
             "EditionDraftRequest": {
                 "type": "object",
                 "properties": {
-                    "season_id": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 9007199254740991
-                    },
-                    "edition_no": {
-                        "type": "integer",
-                        "maximum": 9999,
-                        "minimum": 1
-                    },
-                    "year": {
-                        "type": "integer",
-                        "maximum": 9999,
-                        "minimum": 1
-                    },
                     "name": {
                         "type": "string",
                         "minLength": 1,
@@ -3299,6 +3326,21 @@
                     },
                     "end_date": {
                         "type": "string"
+                    },
+                    "season_id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "edition_no": {
+                        "type": "integer",
+                        "maximum": 9999,
+                        "minimum": 1
+                    },
+                    "year": {
+                        "type": "integer",
+                        "maximum": 9999,
+                        "minimum": 1
                     }
                 },
                 "required": [
@@ -3627,6 +3669,32 @@
                 ],
                 "type": "string",
                 "description": "* `draft` - draft\n* `published` - published\n* `closed` - closed"
+            },
+            "EditionUpdateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedEdition"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
             },
             "EligibleEditionSeasonsPage": {
                 "type": "object",
@@ -5331,6 +5399,37 @@
                     "message",
                     "request_id"
                 ]
+            },
+            "PatchedEditionDetailsRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                    },
+                    "venue": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "time_zone": {
+                        "$ref": "#/components/schemas/TimeZoneEnum"
+                    },
+                    "enroll_start": {
+                        "type": "string"
+                    },
+                    "enroll_end": {
+                        "type": "string"
+                    },
+                    "start_date": {
+                        "type": "string"
+                    },
+                    "end_date": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
             },
             "PatchedEditionEventRulesRequest": {
                 "type": "object",

@@ -42,7 +42,7 @@
 | `role.grant` / `role.revoke` / `team.member` | 管理员交接授权撤销/授予，成员 joined/left、自主退队、赛季绑定建立及平台特批换队申请/审核/执行；记录范围、旧/新队伍、申请 ID、操作者、时间与理由，不记录离职履历 |
 | `auth.login` / `rbac.denied` | 登录结果、权限拒绝 |
 | `competition.created` | 平台创建赛事草稿；仅记录操作者与赛事 ID，不记录表单正文 |
-| `edition.created` | 创建届次草稿；记录届次、赛事及赛季 ID，不记录表单正文 |
+| `edition.created` / `edition.updated` | 创建或修改届次草稿；记录届次、赛事及赛季 ID，不记录表单正文 |
 | `competition.published` / `edition.published` | 赛事和届次分别发布，记录对应 ID、操作者及届次赛季关联 |
 | `event.created` / `event.updated` / `event.enabled` / `event.disabled` / `event.deleted` | 赛项配置与状态变化，记录赛项和届次 ID，不记录表单正文 |
 | `group.created` / `group.updated` / `group.enabled` / `group.disabled` / `group.deleted` | 组别配置与状态变化，记录组别和届次 ID，不记录表单正文 |

@@ -77,10 +77,7 @@ def normalize_edition_times(attrs, fields):
     return attrs
 
 
-class EditionDraft(StrictSerializer):
-    season_id = serializers.IntegerField(min_value=1)
-    edition_no = serializers.IntegerField(min_value=1, max_value=9999)
-    year = serializers.IntegerField(min_value=1, max_value=9999)
+class EditionDetails(StrictSerializer):
     name = serializers.CharField(max_length=128)
     venue = serializers.CharField(max_length=255)
     time_zone = serializers.ChoiceField(choices=["Asia/Shanghai"], required=False)
@@ -90,9 +87,18 @@ class EditionDraft(StrictSerializer):
     end_date = EditionTimeField()
 
     def validate(self, attrs):
-        normalize_edition_times(
+        return normalize_edition_times(
             attrs, ("enroll_start", "enroll_end", "start_date", "end_date")
         )
+
+
+class EditionDraft(EditionDetails):
+    season_id = serializers.IntegerField(min_value=1)
+    edition_no = serializers.IntegerField(min_value=1, max_value=9999)
+    year = serializers.IntegerField(min_value=1, max_value=9999)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
         if (
             not attrs["enroll_start"]
             < attrs["enroll_end"]

@@ -164,7 +164,7 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | POST | `/competitions/{id}/editions` | 平台或具有该赛事作用域 `edition:create` 的账号创建草稿；届次授权不能创建其他届次。 |
 | GET | `/competitions/{id}/edition-seasons?page=&page_size=` | 同创建权限；返回可选赛季，平台可选 active/draft，受委派的赛事管理员仅可选 active。 |
 | GET | `/editions/{id}` | 管理详情：作用域 `edition:read`，返回与届次管理列表单项相同的配置摘要。 |
-| PATCH | `/editions/{id}` | `edition:update`（编辑待接入） |
+| PATCH | `/editions/{id}` | 届次作用域 `edition:update`，仅草稿。可部分更新名称、地点和四项报名/比赛时间，时间格式同创建；不改赛季、归属赛事、年份或编号。新时间须保持届次与所有未删除组合的生效窗口有效，否则 42203。 |
 | GET | `/editions/{id}/publication-checks` | `edition:read`；返回 `active_season/title_and_venue/ordered_schedule/open_offering/supported_rules` 布尔值。 |
 | POST | `/editions/{id}/publish` | `edition:publish`，空对象；服务端重新校验发布清单，失败 40902；不修改赛事状态。关闭与审核模式配置待实现。 |
 | GET | `/editions/{id}/event-types?page=&page_size=` | 赛项类型字典；该届次 `event:create`。 |

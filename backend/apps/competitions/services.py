@@ -79,6 +79,46 @@ def configuration_edition(
     return item
 
 
+@transaction.atomic
+def update_edition_details(actor, edition_id, data):
+    edition = configuration_edition(
+        actor, edition_id, "edition:update", draft_write=True
+    )
+    if not data:
+        return edition
+    for field, value in data.items():
+        setattr(edition, field, value)
+    if (
+        not edition.enroll_start
+        < edition.enroll_end
+        <= edition.start_date
+        < edition.end_date
+    ):
+        raise BusinessError(42203, "Registration and event dates are out of order", 422)
+    configurable_dates = {"enroll_start", "enroll_end", "start_date"}
+    if configurable_dates.intersection(data):
+        for option in edition.offerings.filter(is_deleted=False).iterator():
+            start, end = option.registration_window(edition)
+            if not start < end <= edition.start_date:
+                raise BusinessError(
+                    42203,
+                    "Adjust the offering overrides before changing this schedule",
+                    422,
+                )
+    edition.save(update_fields=[*data, "updated_at"])
+    audit(
+        actor,
+        "edition.updated",
+        "edition",
+        edition.pk,
+        scope={
+            "competition_id": edition.competition_id,
+            "season_id": edition.season_id,
+        },
+    )
+    return edition
+
+
 def edition_publication_checks(item):
     now = timezone.now()
     offerings = list(

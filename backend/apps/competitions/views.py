@@ -16,6 +16,7 @@ from apps.competitions.services import (
     publish_competition,
     publish_edition,
     set_current_season,
+    update_edition_details,
 )
 from apps.orgs.models import Organization, OrganizationMember
 from apps.rbac.services import org_filter, require_perm
@@ -230,6 +231,16 @@ class ManagedEditionDetailView(BaseView):
     @extend_schema(responses=envelope("ManagedEditionResponse", schema.ManagedEdition))
     def get(self, request, pk):
         edition = configuration_edition(request.user, pk, "edition:read")
+        return success(request, schema.ManagedEdition(edition).data)
+
+    @extend_schema(
+        request=schema.EditionDetails,
+        responses=envelope("EditionUpdateResponse", schema.ManagedEdition),
+    )
+    def patch(self, request, pk):
+        serializer = schema.EditionDetails(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        edition = update_edition_details(request.user, pk, serializer.validated_data)
         return success(request, schema.ManagedEdition(edition).data)
 
 

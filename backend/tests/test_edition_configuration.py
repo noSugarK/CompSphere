@@ -28,6 +28,62 @@ def draft_edition(dataset):
 
 
 @pytest.mark.django_db
+def test_draft_edition_updates_keep_identity_and_offering_windows(
+    dataset, actor_client, draft_edition
+):
+    platform = actor_client(dataset["accounts"]["platform"])
+    organizer = actor_client(dataset["accounts"]["organizer"])
+    endpoint = f"/api/v1/editions/{draft_edition.id}"
+    assert (
+        organizer.patch(endpoint, {"name": "Forbidden"}, format="json").status_code
+        == 403
+    )
+    assert (
+        platform.patch(
+            endpoint, {"season_id": draft_edition.season_id}, format="json"
+        ).status_code
+        == 400
+    )
+    assert (
+        platform.patch(
+            endpoint,
+            {"enroll_start": draft_edition.enroll_end.isoformat()},
+            format="json",
+        ).status_code
+        == 422
+    )
+    event = Event.objects.create(edition=draft_edition, code_id="VURC", name="VURC")
+    division = Group.objects.create(edition=draft_edition, code="U", name="University")
+    Offering.objects.create(
+        edition=draft_edition,
+        event=event,
+        group=division,
+        enroll_end=draft_edition.start_date,
+    )
+    earlier = draft_edition.start_date - timedelta(minutes=1)
+    assert (
+        platform.patch(
+            endpoint, {"start_date": earlier.isoformat()}, format="json"
+        ).status_code
+        == 422
+    )
+    response = platform.patch(
+        endpoint, {"name": "Revised edition", "venue": "New venue"}, format="json"
+    )
+    assert response.status_code == 200, response.data
+    assert response.data["data"]["name"] == "Revised edition"
+    assert response.data["data"]["season_id"] == draft_edition.season_id
+    assert AuditLog.objects.filter(
+        action="edition.updated", resource_id=str(draft_edition.id)
+    ).exists()
+    published_url = f"/api/v1/editions/{dataset['edition'].id}"
+    assert (
+        platform.patch(published_url, {"name": "Rejected"}, format="json").status_code
+        == 409
+    )
+
+
+@pytest.mark.django_db
 def test_event_registry_uses_stable_types_and_locks_published_rules(
     dataset, actor_client, draft_edition
 ):
