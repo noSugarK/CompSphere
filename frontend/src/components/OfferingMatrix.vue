@@ -5,7 +5,7 @@ import { ElMessageBox } from 'element-plus';
 import { api } from '../api';
 import type { ManagedEdition, ManagedEvent, ManagedGroup, ManagedOffering } from '../api/schemas';
 import { useSession } from '../stores/session';
-import { formatEventDateTime } from '../utils/format';
+import { formatEventDateTime, formatEventDateTimeInput } from '../utils/format';
 import { hasEditionPermission } from '../utils/permissions';
 import ErrorNotice from './ErrorNotice.vue';
 
@@ -29,8 +29,7 @@ const dateFields = [
   ['enroll_end', 'editionEnrollEnd'],
 ] as const;
 const rules = ref({ enroll_start: '', enroll_end: '', quota: '' });
-const localInput = (value: string | null) =>
-  value ? formatEventDateTime(value).replace(' ', 'T') : '';
+const localInput = (value: string | null) => (value ? formatEventDateTimeInput(value) : '');
 const editable = computed(
   () =>
     props.edition.status !== 'closed' &&

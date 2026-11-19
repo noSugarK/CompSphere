@@ -10,6 +10,7 @@ import {
   competitionDraftSchema,
   competitionSchema,
   draftFieldsSchema,
+  editionDetailsSchema,
   editionDraftSchema,
   editionEventDraftSchema,
   editionEventUpdateSchema,
@@ -103,6 +104,13 @@ export const api = {
     ),
   managedEdition: (id: number) =>
     request('GET', `/editions/${idSchema.parse(id)}`, managedEditionSchema),
+  updateEdition: (id: number, body: unknown) =>
+    request(
+      'PATCH',
+      `/editions/${idSchema.parse(id)}`,
+      managedEditionSchema,
+      editionDetailsSchema.parse(body),
+    ),
   editionPublicationChecks: (id: number) =>
     request(
       'GET',

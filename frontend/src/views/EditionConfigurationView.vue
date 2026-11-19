@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ElMessageBox } from 'element-plus';
@@ -12,7 +12,7 @@ import OfferingMatrix from '../components/OfferingMatrix.vue';
 import EditionPublicationPanel from '../components/EditionPublicationPanel.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { useSession } from '../stores/session';
-import { formatEventDateTime } from '../utils/format';
+import { formatEventDateTime, formatEventDateTimeInput } from '../utils/format';
 import { hasEditionPermission, mayViewCompetitionRegistry } from '../utils/permissions';
 
 const { t } = useI18n();
@@ -26,6 +26,11 @@ const dateFields = [
   ['start_date', 'editionEventStart'],
   ['end_date', 'editionEventEnd'],
 ] as const;
+const basicsDraft = ref<ReturnType<typeof editionDetails>>();
+const basicsSaving = ref(false);
+const basicsError = ref<unknown>(null);
+const basicsHeading = ref<HTMLElement>();
+const basicsEditHeading = ref<HTMLElement>();
 const events = ref<ManagedEvent[]>([]);
 const eventTypes = ref<EventTypeSummary[]>([]);
 const page = ref(1);
@@ -56,6 +61,9 @@ const hasEventGrant = (permission: string) =>
     edition.value &&
     hasEditionPermission(session.me, permission, editionId, edition.value.competition_id),
   );
+const mayEditBasics = computed(
+  () => edition.value?.status === 'draft' && hasEventGrant('edition:update'),
+);
 const mayCreate = computed(
   () => edition.value?.status === 'draft' && hasEventGrant('event:create'),
 );
@@ -192,6 +200,58 @@ function configurationChanged() {
   publicationRevision.value += 1;
 }
 
+function editionDetails(item: ManagedEdition) {
+  return {
+    name: item.name,
+    venue: item.venue,
+    enroll_start: formatEventDateTimeInput(item.enroll_start),
+    enroll_end: formatEventDateTimeInput(item.enroll_end),
+    start_date: formatEventDateTimeInput(item.start_date),
+    end_date: formatEventDateTimeInput(item.end_date),
+  };
+}
+
+async function editBasics(item: ManagedEdition) {
+  basicsDraft.value = editionDetails(item);
+  basicsError.value = null;
+  feedback.value = '';
+  await nextTick();
+  basicsEditHeading.value?.focus();
+}
+
+async function closeBasicsEditor() {
+  basicsDraft.value = undefined;
+  await nextTick();
+  if (section.value === 'basics') basicsHeading.value?.focus();
+}
+
+async function saveBasics() {
+  if (!edition.value || !basicsDraft.value || !mayEditBasics.value || basicsSaving.value) return;
+  const draft = basicsDraft.value;
+  const current = editionDetails(edition.value);
+  const fields = ['name', 'venue', ...dateFields.map(([field]) => field)] as const;
+  const changes = fields.filter((field) => current[field] !== draft[field]);
+  if (!changes.length) {
+    await closeBasicsEditor();
+    return;
+  }
+  basicsSaving.value = true;
+  basicsError.value = null;
+  try {
+    edition.value = await api.updateEdition(editionId, {
+      ...Object.fromEntries(changes.map((field) => [field, draft[field]])),
+      time_zone: 'Asia/Shanghai',
+    });
+    publicationRevision.value += 1;
+    feedback.value = t('editionDetailsSaved');
+    await closeBasicsEditor();
+  } catch (error) {
+    basicsError.value = error;
+  } finally {
+    basicsSaving.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -221,34 +281,85 @@ onMounted(load);
     v-else
     v-model="section"
     class="edition-sections"
+    role="region"
     :aria-label="t('editionConfiguration')"
   >
     <el-tab-pane :label="t('editionBasics')" name="basics">
-      <section class="content-panel" aria-labelledby="edition-basics-title">
-        <h2 id="edition-basics-title">{{ t('editionBasics') }}</h2>
-        <dl class="edition-facts">
-          <div>
-            <dt>{{ t('editionVenue') }}</dt>
-            <dd>{{ edition.venue }}</dd>
+      <el-form
+        v-if="basicsDraft && mayEditBasics"
+        label-position="top"
+        :disabled="basicsSaving"
+        @submit.prevent="saveBasics"
+      >
+        <section class="content-panel" aria-labelledby="edition-basics-edit-title">
+          <h2 id="edition-basics-edit-title" ref="basicsEditHeading" tabindex="-1">
+            {{ t('editionBasics') }}
+          </h2>
+          <ErrorNotice v-if="basicsError" :error="basicsError" />
+          <div class="edition-facts">
+            <el-form-item :label="t('editionName')" required>
+              <el-input v-model.trim="basicsDraft.name" maxlength="128" required />
+            </el-form-item>
+            <el-form-item :label="t('editionVenue')" required>
+              <el-input v-model.trim="basicsDraft.venue" maxlength="255" required />
+            </el-form-item>
           </div>
-          <div>
-            <dt>{{ t('editionSeason') }}</dt>
-            <dd>#{{ edition.season_id }}</dd>
+        </section>
+        <section class="content-panel" aria-labelledby="edition-dates-edit-title">
+          <h2 id="edition-dates-edit-title">{{ t('editionDates') }}</h2>
+          <p class="muted">{{ t('editionTimeZone') }} {{ t('editionTimeOrder') }}</p>
+          <div class="edition-facts">
+            <el-form-item
+              v-for="[field, label] in dateFields"
+              :key="field"
+              :label="t(label)"
+              required
+            >
+              <el-input v-model="basicsDraft[field]" type="datetime-local" required />
+            </el-form-item>
           </div>
-        </dl>
-      </section>
-      <section class="content-panel" aria-labelledby="edition-dates-title">
-        <h2 id="edition-dates-title">{{ t('editionDates') }}</h2>
-        <p class="muted">{{ t('editionDisplayedTimeZone') }}</p>
-        <dl class="edition-facts">
-          <div v-for="[field, label] in dateFields" :key="field">
-            <dt>{{ t(label) }}</dt>
-            <dd>
-              <time :datetime="edition[field]">{{ formatEventDateTime(edition[field]) }}</time>
-            </dd>
+          <div class="event-actions">
+            <el-button @click="closeBasicsEditor">{{ t('cancel') }}</el-button>
+            <el-button type="primary" native-type="submit" :loading="basicsSaving">{{
+              t('save')
+            }}</el-button>
           </div>
-        </dl>
-      </section>
+        </section>
+      </el-form>
+      <template v-else>
+        <section class="content-panel" aria-labelledby="edition-basics-title">
+          <div class="event-heading">
+            <h2 id="edition-basics-title" ref="basicsHeading" tabindex="-1">
+              {{ t('editionBasics') }}
+            </h2>
+            <el-button v-if="mayEditBasics" @click="editBasics(edition)">{{
+              t('editionEditDetails')
+            }}</el-button>
+          </div>
+          <dl class="edition-facts">
+            <div>
+              <dt>{{ t('editionVenue') }}</dt>
+              <dd>{{ edition.venue }}</dd>
+            </div>
+            <div>
+              <dt>{{ t('editionSeason') }}</dt>
+              <dd>#{{ edition.season_id }}</dd>
+            </div>
+          </dl>
+        </section>
+        <section class="content-panel" aria-labelledby="edition-dates-title">
+          <h2 id="edition-dates-title">{{ t('editionDates') }}</h2>
+          <p class="muted">{{ t('editionDisplayedTimeZone') }}</p>
+          <dl class="edition-facts">
+            <div v-for="[field, label] in dateFields" :key="field">
+              <dt>{{ t(label) }}</dt>
+              <dd>
+                <time :datetime="edition[field]">{{ formatEventDateTime(edition[field]) }}</time>
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </template>
     </el-tab-pane>
     <el-tab-pane :label="t('editionRegistrationRules')" name="rules">
       <section class="content-panel" aria-labelledby="edition-rules-title">
@@ -431,7 +542,7 @@ onMounted(load);
   text-decoration: underline;
   text-underline-offset: 5px;
 }
-.edition-sections :deep(.el-tab-pane > .content-panel + .content-panel) {
+.edition-sections :deep(.content-panel + .content-panel) {
   margin-block-start: 16px;
 }
 .edition-facts {

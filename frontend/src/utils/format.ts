@@ -14,3 +14,7 @@ export function formatEventDateTime(instant: string): string {
     parts.find((item) => item.type === type)?.value;
   return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}`;
 }
+
+export function formatEventDateTimeInput(instant: string): string {
+  return formatEventDateTime(instant).replace(' ', 'T');
+}

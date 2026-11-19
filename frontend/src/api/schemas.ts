@@ -143,6 +143,9 @@ export const editionDraftSchema = z
     end_date: editionClock,
   })
   .strict() satisfies z.ZodType<components['schemas']['EditionDraftRequest']>;
+export const editionDetailsSchema = editionDraftSchema
+  .omit({ season_id: true, edition_no: true, year: true })
+  .partial() satisfies z.ZodType<components['schemas']['PatchedEditionDetailsRequest']>;
 export const managedEditionSchema = editionSchema
   .omit({ approval_mode: true, offerings: true })
   .extend({

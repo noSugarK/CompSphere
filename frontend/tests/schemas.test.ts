@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aiOutputSchema,
   csrfSchema,
+  editionDetailsSchema,
   editionDraftSchema,
   envelopeSchema,
   idSchema,
@@ -52,6 +53,16 @@ describe('untrusted JSON boundaries', () => {
     expect(
       editionDraftSchema.safeParse({ ...edition, start_date: '2028-02-01T02:00Z' }).success,
     ).toBe(false);
+  });
+  it('allows partial edition detail edits without accepting identity fields', () => {
+    const patch = {
+      name: 'Updated name',
+      start_date: '2028-02-01T10:00',
+      time_zone: 'Asia/Shanghai',
+    };
+    expect(editionDetailsSchema.parse(patch)).toEqual(patch);
+    expect(editionDetailsSchema.safeParse({ ...patch, season_id: 1 }).success).toBe(false);
+    expect(editionDetailsSchema.safeParse({ venue: '' }).success).toBe(false);
   });
   it('keeps cross-year season dates as calendar strings and rejects inverted ranges', () => {
     const season = {
