@@ -1,5 +1,27 @@
 import type { Me } from '../api/schemas';
 
+export function mayViewCompetitionRegistry(me: Me | null) {
+  return (
+    me?.grants.some(
+      (grant) =>
+        grant.permissions.includes('competition:read') &&
+        (grant.scope_type === 'competition' ||
+          (grant.scope_type === 'global' && grant.role === 'platform_admin')),
+    ) ?? false
+  );
+}
+
+export function mayCreateCompetition(me: Me | null) {
+  return (
+    me?.grants.some(
+      (grant) =>
+        grant.role === 'platform_admin' &&
+        grant.scope_type === 'global' &&
+        grant.permissions.includes('competition:create'),
+    ) ?? false
+  );
+}
+
 export function hasPermission(me: Me | null, permission: string) {
   return me?.grants.some((grant) => grant.permissions.includes(permission)) ?? false;
 }

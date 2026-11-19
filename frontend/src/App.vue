@@ -10,7 +10,7 @@ import { ApiError } from './api/client';
 import { useSession } from './stores/session';
 import ErrorNotice from './components/ErrorNotice.vue';
 import AssistantFloat from './components/AssistantFloat.vue';
-import { mayRenderPrivate } from './utils/permissions';
+import { mayRenderPrivate, mayViewCompetitionRegistry } from './utils/permissions';
 
 const session = useSession();
 const route = useRoute();
@@ -59,11 +59,18 @@ const isManager = computed(() =>
   ),
 );
 const inAdmin = computed(
-  () => isManager.value && ['requests', 'licenses', 'reviews'].includes(String(route.name)),
+  () =>
+    route.name === 'competitionRegistry' ||
+    (isManager.value && ['requests', 'licenses', 'reviews'].includes(String(route.name))),
 );
 const links = computed(() =>
   [
     { name: 'discover', path: '/', visible: true },
+    {
+      name: 'competitionRegistry',
+      path: '/competition-registry',
+      visible: mayViewCompetitionRegistry(session.me),
+    },
     {
       name: 'registrations',
       path: '/registrations',

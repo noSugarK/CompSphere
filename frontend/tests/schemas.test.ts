@@ -9,7 +9,12 @@ import {
   pageSchema,
   seasonSchema,
 } from '../src/api/schemas';
-import { mayEnter, mayRenderPrivate } from '../src/utils/permissions';
+import {
+  mayCreateCompetition,
+  mayEnter,
+  mayRenderPrivate,
+  mayViewCompetitionRegistry,
+} from '../src/utils/permissions';
 
 const actor = meSchema.parse({
   user: { id: 1, username: 'test-user', email: null, must_change_password: false },
@@ -103,6 +108,22 @@ describe('untrusted JSON boundaries', () => {
   });
 });
 describe('frontend permission gates', () => {
+  it.each([
+    ['participant', 'global', null, false, false],
+    ['competition_admin', 'edition', 1, false, false],
+    ['competition_admin', 'competition', 1, true, false],
+    ['platform_admin', 'global', null, true, true],
+  ])('scopes competition registry for %s / %s', (role, scope_type, scope_id, view, create) => {
+    const account = meSchema.parse({
+      ...actor,
+      grants: [
+        { role, scope_type, scope_id, permissions: ['competition:read', 'competition:create'] },
+      ],
+    });
+    expect(mayViewCompetitionRegistry(account)).toBe(view);
+    expect(mayCreateCompetition(account)).toBe(create);
+  });
+
   it('permits only supplied grants and removes access when actor clears', () => {
     expect(mayEnter(actor, ['registration:create'])).toBe(true);
     expect(mayEnter(actor, ['approval:review_single'])).toBe(false);

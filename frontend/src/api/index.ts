@@ -7,11 +7,13 @@ import {
   verificationRequestSchema,
 } from './authSchemas';
 import {
+  competitionDraftSchema,
   competitionSchema,
   draftFieldsSchema,
   editionSchema,
   idSchema,
   loginSchema,
+  managedCompetitionSchema,
   meSchema,
   orgMemberSchema,
   orgSchema,
@@ -67,6 +69,10 @@ export const api = {
   season: () => request('GET', '/seasons/current', seasonSchema.nullable()),
   competitions: (page = 1) =>
     request('GET', `/public/competitions?page=${page}`, pageSchema(competitionSchema)),
+  managedCompetitions: (page = 1) =>
+    request('GET', `/competitions?page=${page}`, pageSchema(managedCompetitionSchema)),
+  createCompetition: (body: unknown) =>
+    request('POST', '/competitions', managedCompetitionSchema, competitionDraftSchema.parse(body)),
   edition: (id: number) => request('GET', `/public/editions/${idSchema.parse(id)}`, editionSchema),
   teams: (page = 1) => request('GET', `/teams?page=${page}`, pageSchema(teamSchema)),
   orgs: () => request('GET', '/orgs', pageSchema(orgSchema)),

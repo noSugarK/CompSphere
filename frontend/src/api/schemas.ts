@@ -116,6 +116,19 @@ export const competitionSchema = z
     editions: z.array(editionSchema),
   })
   .strict();
+export const managedCompetitionSchema = z
+  .object({
+    id: idSchema,
+    public_code: text.min(1).max(32),
+    name: text.min(1).max(128),
+    summary: text,
+    status: z.enum(['draft', 'published', 'archived']),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['ManagedCompetition']>;
+export const competitionDraftSchema = z
+  .object({ name: text.trim().min(1).max(128), summary: text.trim().max(2000) })
+  .strict() satisfies z.ZodType<components['schemas']['CompetitionDraftRequest']>;
+export type ManagedCompetition = components['schemas']['ManagedCompetition'];
 export const memberSchema = z
   .object({
     user_id: idSchema,

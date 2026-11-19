@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useSession } from '../stores/session';
 import { i18n } from '../locales';
-import { mayEnter } from '../utils/permissions';
+import { mayEnter, mayViewCompetitionRegistry } from '../utils/permissions';
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -11,6 +11,12 @@ export const router = createRouter({
       name: 'discover',
       component: () => import('../views/DiscoverView.vue'),
       meta: { title: 'discover' },
+    },
+    {
+      path: '/competition-registry',
+      name: 'competitionRegistry',
+      component: () => import('../views/CompetitionRegistryView.vue'),
+      meta: { title: 'competitionRegistry', auth: true, competitionRegistry: true },
     },
     {
       path: '/editions/:id',
@@ -123,6 +129,8 @@ router.beforeEach(async (to) => {
   if (session.me?.user.must_change_password && to.meta.auth && to.name !== 'password')
     return { name: 'password' };
   const permissions = to.meta.permissions;
+  if (to.meta.competitionRegistry && !mayViewCompetitionRegistry(session.me))
+    return { name: 'forbidden' };
   if (!mayEnter(session.me, permissions)) return { name: 'forbidden' };
 });
 router.afterEach(async (to) => {
