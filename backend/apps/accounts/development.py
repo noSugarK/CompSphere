@@ -65,7 +65,9 @@ def create_development_data(password):
         end_date=now + timedelta(days=41),
         venue="Development venue",
     )
-    event_type = EventType.objects.create(code="V5RC", name="VEX V5 Robotics")
+    event_type, _ = EventType.objects.get_or_create(
+        code="V5RC", defaults={"name": "VEX V5 Robotics"}
+    )
     event = Event.objects.create(
         edition=edition,
         code=event_type,

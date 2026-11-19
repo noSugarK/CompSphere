@@ -5,6 +5,7 @@ from apps.competitions import serializers as schema
 from apps.competitions.models import Competition, Edition, Season
 from apps.competitions.services import (
     activate_season,
+    configuration_edition,
     create_competition,
     create_edition,
     create_season,
@@ -214,6 +215,13 @@ class EditionRegistryView(BaseView):
     def post(self, request, pk):
         item = create_edition(request.user, pk, validated(schema.EditionDraft, request))
         return success(request, schema.ManagedEdition(item).data, status=201)
+
+
+class ManagedEditionDetailView(BaseView):
+    @extend_schema(responses=envelope("ManagedEditionResponse", schema.ManagedEdition))
+    def get(self, request, pk):
+        edition = configuration_edition(request.user, pk, "edition:read")
+        return success(request, schema.ManagedEdition(edition).data)
 
 
 class PublicCompetitionListView(BaseView):

@@ -180,6 +180,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/editions/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['editions_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/event-types': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['editions_event_types_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/events': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['editions_events_retrieve'];
+    put?: never;
+    post: operations['editions_events_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/editions/{id}/registrations': {
     parameters: {
       query?: never;
@@ -822,6 +870,20 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    EditionEventDraftRequest: {
+      event_code: string;
+      name: string;
+      min_members: number;
+      max_members: number;
+      coach_required: boolean;
+    };
+    EditionEventDraftResponse: {
+      data: components['schemas']['ManagedEvent'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     EditionRegistrationsPage: {
       items: components['schemas']['Registration'][];
       page: number;
@@ -876,6 +938,23 @@ export interface components {
      * @enum {string}
      */
     EnrollmentTypeEnum: 'individual' | 'team' | 'both';
+    EventTypeSummariesPage: {
+      items: components['schemas']['EventTypeSummary'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    EventTypeSummariesResponse: {
+      data: components['schemas']['EventTypeSummariesPage'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    EventTypeSummary: {
+      code: string;
+      name: string;
+    };
     FormData: {
       project_title: string;
     };
@@ -982,6 +1061,13 @@ export interface components {
       /** Format: date-time */
       end_date: string;
     };
+    ManagedEditionResponse: {
+      data: components['schemas']['ManagedEdition'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     ManagedEditionsPage: {
       items: components['schemas']['ManagedEdition'][];
       page: number;
@@ -990,6 +1076,34 @@ export interface components {
     };
     ManagedEditionsResponse: {
       data: components['schemas']['ManagedEditionsPage'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    ManagedEvent: {
+      event_code: string;
+      name: string;
+      min_members: number;
+      max_members: number;
+      coach_required: boolean;
+      id: number;
+      status: components['schemas']['ManagedEventStatusEnum'];
+    };
+    /**
+     * @description * `enabled` - enabled
+     *     * `disabled` - disabled
+     * @enum {string}
+     */
+    ManagedEventStatusEnum: 'enabled' | 'disabled';
+    ManagedEventsPage: {
+      items: components['schemas']['ManagedEvent'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    ManagedEventsResponse: {
+      data: components['schemas']['ManagedEventsPage'];
       code: number;
       message: string;
       /** Format: uuid */
@@ -1984,6 +2098,100 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['EditionDraftResponse'];
+        };
+      };
+    };
+  };
+  editions_retrieve: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ManagedEditionResponse'];
+        };
+      };
+    };
+  };
+  editions_event_types_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EventTypeSummariesResponse'];
+        };
+      };
+    };
+  };
+  editions_events_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ManagedEventsResponse'];
+        };
+      };
+    };
+  };
+  editions_events_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EditionEventDraftRequest'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EditionEventDraftResponse'];
         };
       };
     };

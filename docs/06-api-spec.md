@@ -163,9 +163,12 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | GET | `/competitions/{id}/editions?page=&page_size=` | 平台与具备 `edition:read` 的赛事级账号可分页查看该赛事全部届次；届次授权只返回其直接获授的届次。无可授权范围时 404。 |
 | POST | `/competitions/{id}/editions` | 平台或具有该赛事作用域 `edition:create` 的账号创建草稿；届次授权不能创建其他届次。 |
 | GET | `/competitions/{id}/edition-seasons?page=&page_size=` | 同创建权限；返回可选赛季，平台可选 active/draft，受委派的赛事管理员仅可选 active。 |
-| GET/PATCH | `/editions/{id}` | `edition:*`（详情及编辑待接入） |
+| GET | `/editions/{id}` | 管理详情：作用域 `edition:read`，返回与届次管理列表单项相同的配置摘要。 |
+| PATCH | `/editions/{id}` | `edition:update`（编辑待接入） |
 | POST | `/editions/{id}/publish` `/close`；PUT `/editions/{id}/approval-mode` | 状态与审核模式配置 |
-| GET/POST | `/editions/{id}/events`；PATCH/DELETE `/events/{id}`；POST `/events/{id}/enable|disable` | 赛项（`event:*`，v1.1） |
+| GET | `/editions/{id}/event-types?page=&page_size=` | 赛项类型字典；该届次 `event:create`。 |
+| GET/POST | `/editions/{id}/events` | 作用域 `event:read/create`；仅草稿届次允许创建。创建接收 `event_code`、`name`、`min_members`、`max_members`、`coach_required`，返回这些字段及 `id/status`。编码来自稳定字典，一届不重复；不少于 1 人且下限不大于上限。 |
+| PATCH/DELETE / POST | `/events/{id}` 和 `/events/{id}/enable|disable` | 编辑、删除、状态动作待接入。 |
 | GET/POST | `/editions/{id}/groups`；PATCH/DELETE `/groups/{id}`；POST `/groups/{id}/enable|disable` | 组别（`group:*`） |
 | GET/POST | `/editions/{id}/offerings`；PATCH/DELETE `/offerings/{id}` | 开放组合（v1.1）。已有报名的组合不可删除，服务层按 offering_id 的 RESTRICT 返回冲突，只能停用 |
 | GET/PUT | `/editions/{id}/team-access` | 查看/设置 team_entry_mode 与 team_access_version；写入须带当前版本，权限 edition:manage_team_access（里程碑 2） |

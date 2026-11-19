@@ -63,6 +63,19 @@ def edition_seasons(actor, competition_id):
     return Season.objects.filter(status__in=allowed).order_by("-starts_on", "-id")
 
 
+def configuration_edition(actor, edition_id, permission, *, draft_write=False):
+    editions = Edition.objects.filter(is_deleted=False, competition__is_deleted=False)
+    if draft_write:
+        editions = editions.select_for_update(of=("self",))
+    item = editions.get(pk=edition_id)
+    require_perm(actor, permission, edition=item)
+    if draft_write and item.status != "draft":
+        raise BusinessError(
+            40902, "This configuration can only change on a draft edition"
+        )
+    return item
+
+
 @transaction.atomic
 def create_edition(actor, competition_id, data):
     """Store a draft under an authorized parent; configuration does not publish it."""
