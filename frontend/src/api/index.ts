@@ -14,6 +14,7 @@ import {
   idSchema,
   loginSchema,
   managedCompetitionSchema,
+  managedSeasonSchema,
   meSchema,
   orgMemberSchema,
   orgSchema,
@@ -22,6 +23,7 @@ import {
   registrationNoticeSchema,
   registrationSchema,
   seasonRegistrationSchema,
+  seasonDraftSchema,
   seasonSchema,
   teamCreateSchema,
   teamRequestSchema,
@@ -67,6 +69,14 @@ export const api = {
         .parse(body),
     ),
   season: () => request('GET', '/seasons/current', seasonSchema.nullable()),
+  managedSeasons: (page = 1) =>
+    request('GET', `/seasons?page=${page}`, pageSchema(managedSeasonSchema)),
+  createSeason: (body: unknown) =>
+    request('POST', '/seasons', managedSeasonSchema, seasonDraftSchema.parse(body)),
+  activateSeason: (id: number) =>
+    request('POST', `/seasons/${idSchema.parse(id)}/activate`, managedSeasonSchema, {}),
+  setCurrentSeason: (id: number) =>
+    request('POST', `/seasons/${idSchema.parse(id)}/set-current`, managedSeasonSchema, {}),
   competitions: (page = 1) =>
     request('GET', `/public/competitions?page=${page}`, pageSchema(competitionSchema)),
   managedCompetitions: (page = 1) =>

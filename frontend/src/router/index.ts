@@ -13,6 +13,12 @@ export const router = createRouter({
       meta: { title: 'discover' },
     },
     {
+      path: '/season-management',
+      name: 'seasonManagement',
+      component: () => import('../views/SeasonManagementView.vue'),
+      meta: { title: 'seasonManagement', auth: true, permissions: ['season:read'] },
+    },
+    {
       path: '/competition-registry',
       name: 'competitionRegistry',
       component: () => import('../views/CompetitionRegistryView.vue'),

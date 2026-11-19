@@ -7,6 +7,7 @@ import {
   loginSchema,
   meSchema,
   pageSchema,
+  seasonDraftSchema,
   seasonSchema,
 } from '../src/api/schemas';
 import {
@@ -31,6 +32,16 @@ const actor = meSchema.parse({
   theme: 'system',
 });
 describe('untrusted JSON boundaries', () => {
+  it('keeps cross-year season dates as calendar strings and rejects inverted ranges', () => {
+    const season = {
+      code: '2027-2028',
+      name: 'QA season',
+      start_date: '2027-09-01',
+      end_date: '2028-08-31',
+    };
+    expect(seasonDraftSchema.parse(season)).toEqual(season);
+    expect(seasonDraftSchema.safeParse({ ...season, end_date: '2026-01-01' }).success).toBe(false);
+  });
   it.each([true, false, '1', 0, -1, 1.1, Number.MAX_SAFE_INTEGER + 1, null])(
     'rejects invalid ID %s',
     (id) => expect(idSchema.safeParse(id).success).toBe(false),

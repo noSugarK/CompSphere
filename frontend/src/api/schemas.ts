@@ -72,6 +72,23 @@ export const seasonSchema = z
     status: z.enum(['draft', 'active', 'archived']),
   })
   .strict();
+export const managedSeasonSchema = seasonSchema.extend({
+  code: text.min(1).max(32),
+  is_default: z.boolean(),
+}) satisfies z.ZodType<components['schemas']['ManagedSeason']>;
+export const seasonDraftSchema = z
+  .object({
+    code: text.trim().regex(/^[A-Z0-9][A-Z0-9-]{0,31}$/),
+    name: text.trim().min(1).max(64),
+    start_date: text.date(),
+    end_date: text.date(),
+  })
+  .strict()
+  .refine((season) => season.start_date <= season.end_date, {
+    path: ['end_date'],
+  }) satisfies z.ZodType<components['schemas']['SeasonDraftRequest']>;
+export type ManagedSeason = components['schemas']['ManagedSeason'];
+
 export const offeringSchema = z
   .object({
     id: idSchema,

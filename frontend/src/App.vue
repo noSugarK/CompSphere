@@ -60,7 +60,7 @@ const isManager = computed(() =>
 );
 const inAdmin = computed(
   () =>
-    route.name === 'competitionRegistry' ||
+    ['competitionRegistry', 'seasonManagement'].includes(String(route.name)) ||
     (isManager.value && ['requests', 'licenses', 'reviews'].includes(String(route.name))),
 );
 const links = computed(() =>
@@ -70,6 +70,11 @@ const links = computed(() =>
       name: 'competitionRegistry',
       path: '/competition-registry',
       visible: mayViewCompetitionRegistry(session.me),
+    },
+    {
+      name: 'seasonManagement',
+      path: '/season-management',
+      visible: session.hasAny('season:read'),
     },
     {
       name: 'registrations',
