@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { api } from '../api';
@@ -13,6 +13,9 @@ const route = useRoute(),
 const edition = ref<Edition>(),
   loading = ref(true),
   error = ref<unknown>(null);
+const openOfferings = computed(
+  () => edition.value?.offerings.filter((item) => item.is_enabled) ?? [],
+);
 async function load() {
   loading.value = true;
   error.value = null;
@@ -36,11 +39,11 @@ onMounted(load);
       <p>{{ t('venue') }} · {{ edition.venue }}</p>
       <p>{{ t('deadline') }} · {{ formatEventDateTime(edition.enroll_end) }}</p>
       <router-link
-        v-if="session.hasAny('registration:create')"
+        v-if="openOfferings.length && session.hasAny('registration:create')"
         class="primary-link"
         :to="`/registrations/new/${edition.id}`"
         >{{ t('enroll') }}</router-link><router-link
-        v-else-if="!session.authenticated"
+        v-else-if="openOfferings.length && !session.authenticated"
         class="primary-link"
         :to="{ name: 'login', query: { next: `/registrations/new/${edition.id}` } }"
         >{{ t('login') }}</router-link
@@ -48,7 +51,8 @@ onMounted(load);
     </div>
     <section class="content-panel">
       <h2>{{ t('group') }}</h2>
-      <el-table :data="edition.offerings" table-layout="auto"
+      <p v-if="!openOfferings.length" class="muted">{{ t('offerings.publicEmpty') }}</p>
+      <el-table v-else :data="openOfferings" table-layout="auto"
         ><el-table-column prop="event_name" :label="t('event')" /><el-table-column
           prop="group_name"
           :label="t('group')"

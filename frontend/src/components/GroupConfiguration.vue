@@ -11,6 +11,7 @@ import ErrorNotice from './ErrorNotice.vue';
 import StatusTag from './StatusTag.vue';
 
 const props = defineProps<{ edition: ManagedEdition }>();
+const emit = defineEmits<{ changed: [] }>();
 const { t } = useI18n();
 const session = useSession();
 const hasGrant = (permission: string) =>
@@ -72,6 +73,7 @@ async function apply(action: () => Promise<unknown>, message: string, resetPage 
   feedback.value = '';
   try {
     await action();
+    emit('changed');
     open.value = false;
     feedback.value = message;
     if (resetPage) page.value = 1;

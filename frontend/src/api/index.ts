@@ -21,9 +21,11 @@ import {
   managedEditionSchema,
   managedEventSchema,
   managedGroupSchema,
+  managedOfferingSchema,
   managedSeasonSchema,
   meSchema,
   orgMemberSchema,
+  offeringDraftSchema,
   orgSchema,
   pageSchema,
   preferencesSchema,
@@ -104,10 +106,10 @@ export const api = {
       `/editions/${idSchema.parse(id)}/event-types?page=${page}&page_size=100`,
       pageSchema(eventTypeSummarySchema),
     ),
-  editionEvents: (id: number, page = 1) =>
+  editionEvents: (id: number, page = 1, pageSize = 20) =>
     request(
       'GET',
-      `/editions/${idSchema.parse(id)}/events?page=${page}`,
+      `/editions/${idSchema.parse(id)}/events?page=${page}&page_size=${pageSize}`,
       pageSchema(managedEventSchema),
     ),
   createEditionEvent: (id: number, body: unknown) =>
@@ -140,6 +142,22 @@ export const api = {
   deleteGroup: (id: number) => request('DELETE', `/groups/${idSchema.parse(id)}`, z.null()),
   setGroupState: (id: number, action: 'enable' | 'disable') =>
     request('POST', `/groups/${idSchema.parse(id)}/${action}`, managedGroupSchema, {}),
+  editionOfferings: (id: number, page = 1) =>
+    request(
+      'GET',
+      `/editions/${idSchema.parse(id)}/offerings?page=${page}&page_size=100`,
+      pageSchema(managedOfferingSchema),
+    ),
+  createOffering: (id: number, body: unknown) =>
+    request(
+      'POST',
+      `/editions/${idSchema.parse(id)}/offerings`,
+      managedOfferingSchema,
+      offeringDraftSchema.parse(body),
+    ),
+  setOfferingState: (id: number, action: 'enable' | 'disable') =>
+    request('POST', `/offerings/${idSchema.parse(id)}/${action}`, managedOfferingSchema, {}),
+  deleteOffering: (id: number) => request('DELETE', `/offerings/${idSchema.parse(id)}`, z.null()),
   eligibleEditionSeasons: (competition: number, page = 1) =>
     request(
       'GET',

@@ -7,6 +7,7 @@ import { api } from '../api';
 import type { EventTypeSummary, ManagedEdition, ManagedEvent } from '../api/schemas';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import GroupConfiguration from '../components/GroupConfiguration.vue';
+import OfferingMatrix from '../components/OfferingMatrix.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { useSession } from '../stores/session';
 import { hasEditionPermission, mayViewCompetitionRegistry } from '../utils/permissions';
@@ -29,6 +30,7 @@ const typeError = ref<unknown>(null);
 const saveError = ref<unknown>(null);
 const rangeError = ref(false);
 const created = ref('');
+const matrixRevision = ref(0);
 const blank = {
   event_code: '',
   name: '',
@@ -101,6 +103,7 @@ async function saveEvent() {
       max_members: max,
     });
     created.value = result.name;
+    matrixRevision.value += 1;
     open.value = false;
     await load();
   } catch (error) {
@@ -182,6 +185,14 @@ onMounted(load);
     v-if="
       edition && hasEditionPermission(session.me, 'group:read', edition.id, edition.competition_id)
     "
+    :edition="edition"
+    @changed="matrixRevision += 1"
+  />
+  <OfferingMatrix
+    v-if="
+      edition && hasEditionPermission(session.me, 'group:read', edition.id, edition.competition_id)
+    "
+    :key="matrixRevision"
     :edition="edition"
   />
   <el-dialog

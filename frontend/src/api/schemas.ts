@@ -191,6 +191,16 @@ export const managedGroupSchema = groupDraftSchema.extend({
 }) satisfies z.ZodType<components['schemas']['ManagedGroup']>;
 export type ManagedGroup = components['schemas']['ManagedGroup'];
 
+export const offeringDraftSchema = z
+  .object({ event_id: idSchema, group_id: idSchema })
+  .strict() satisfies z.ZodType<components['schemas']['OfferingDraftRequest']>;
+export const managedOfferingSchema = offeringDraftSchema.extend({
+  id: idSchema,
+  status: z.enum(['enabled', 'disabled']),
+  is_enabled: z.boolean(),
+}) satisfies z.ZodType<components['schemas']['ManagedOffering']>;
+export type ManagedOffering = components['schemas']['ManagedOffering'];
+
 export const competitionSchema = z
   .object({
     id: idSchema,
