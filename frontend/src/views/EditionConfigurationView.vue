@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import { api } from '../api';
 import type { EventTypeSummary, ManagedEdition, ManagedEvent } from '../api/schemas';
@@ -26,11 +27,12 @@ const loading = ref(true);
 const loadingTypes = ref(false);
 const saving = ref(false);
 const open = ref(false);
+const editingId = ref<number>();
 const loadError = ref<unknown>(null);
 const typeError = ref<unknown>(null);
 const saveError = ref<unknown>(null);
 const rangeError = ref(false);
-const created = ref('');
+const feedback = ref('');
 const matrixRevision = ref(0);
 const publicationRevision = ref(0);
 const blank = {
@@ -41,10 +43,17 @@ const blank = {
   coach_required: true,
 };
 const form = reactive({ ...blank });
+const hasEventGrant = (permission: string) =>
+  Boolean(
+    edition.value &&
+    hasEditionPermission(session.me, permission, editionId, edition.value.competition_id),
+  );
 const mayCreate = computed(
-  () =>
-    edition.value?.status === 'draft' &&
-    hasEditionPermission(session.me, 'event:create', editionId, edition.value.competition_id),
+  () => edition.value?.status === 'draft' && hasEventGrant('event:create'),
+);
+const mayEdit = computed(() => edition.value?.status === 'draft' && hasEventGrant('event:update'));
+const mayToggle = computed(
+  () => edition.value?.status !== 'closed' && hasEventGrant('event:enable_disable'),
 );
 
 async function load() {
@@ -81,13 +90,25 @@ async function loadTypes() {
   }
 }
 
-function startDraft() {
-  Object.assign(form, blank);
+function startDraft(item?: ManagedEvent) {
+  editingId.value = item?.id;
+  Object.assign(
+    form,
+    item
+      ? {
+          event_code: item.event_code,
+          name: item.name,
+          min_members: String(item.min_members),
+          max_members: String(item.max_members),
+          coach_required: item.coach_required,
+        }
+      : blank,
+  );
   rangeError.value = false;
   saveError.value = null;
-  created.value = '';
+  feedback.value = '';
   open.value = true;
-  void loadTypes();
+  if (!item) void loadTypes();
 }
 
 async function saveEvent() {
@@ -96,23 +117,66 @@ async function saveEvent() {
   const max = Number(form.max_members);
   rangeError.value = min > max;
   if (rangeError.value) return;
-  saving.value = true;
-  saveError.value = null;
-  try {
-    const result = await api.createEditionEvent(editionId, {
-      ...form,
-      min_members: min,
-      max_members: max,
-    });
-    created.value = result.name;
+  const body = {
+    name: form.name,
+    min_members: min,
+    max_members: max,
+    coach_required: form.coach_required,
+  };
+  const id = editingId.value;
+  await applyEventChange(async () => {
+    const result = id
+      ? await api.updateEditionEvent(id, body)
+      : await api.createEditionEvent(editionId, { ...body, event_code: form.event_code });
     configurationChanged();
     open.value = false;
+    return t(id ? 'eventSaved' : 'eventAdded', { name: result.name });
+  });
+}
+
+async function applyEventChange(action: () => Promise<string>) {
+  if (saving.value) return;
+  saving.value = true;
+  saveError.value = null;
+  feedback.value = '';
+  try {
+    feedback.value = await action();
     await load();
   } catch (error) {
     saveError.value = error;
   } finally {
     saving.value = false;
   }
+}
+
+async function changeEvent(item: ManagedEvent, action: 'enable' | 'disable' | 'remove') {
+  if (saving.value) return;
+  if (action !== 'enable') {
+    try {
+      const label = t(action === 'remove' ? 'eventRemove' : 'eventDisable');
+      await ElMessageBox.confirm(
+        t(action === 'remove' ? 'eventRemoveConfirm' : 'eventDisableConfirm', { name: item.name }),
+        label,
+        {
+          type: 'warning',
+          cancelButtonText: t('cancel'),
+          confirmButtonText: label,
+        },
+      );
+    } catch {
+      return;
+    }
+  }
+  await applyEventChange(async () => {
+    if (action === 'remove') {
+      await api.deleteEditionEvent(item.id);
+      page.value = 1;
+    } else {
+      await api.setEditionEventState(item.id, action);
+    }
+    configurationChanged();
+    return t(action === 'remove' ? 'eventRemoved' : 'eventSaved', { name: item.name });
+  });
 }
 
 function configurationChanged() {
@@ -136,7 +200,7 @@ onMounted(load);
     </div>
   </div>
   <div role="status">
-    <p v-if="created">{{ t('eventAdded', { name: created }) }}</p>
+    <p v-if="feedback">{{ feedback }}</p>
   </div>
   <div class="content-panel">
     <div class="event-heading">
@@ -152,10 +216,11 @@ onMounted(load);
         :icon="Plus"
         type="primary"
         :disabled="saving"
-        @click="startDraft"
+        @click="startDraft()"
         >{{ t('eventAdd') }}</el-button
       >
     </div>
+    <ErrorNotice v-if="saveError && !open" :error="saveError" />
     <p v-if="loading">{{ t('loading') }}</p>
     <ErrorNotice v-else-if="loadError" :error="loadError" @retry="load" />
     <p v-else-if="!events.length" class="muted">{{ t('none') }}</p>
@@ -169,7 +234,24 @@ onMounted(load);
           <p>{{ t('eventMemberRange', { min: item.min_members, max: item.max_members }) }}</p>
           <p v-if="item.coach_required" class="small muted">{{ t('eventCoachRequired') }}</p>
         </div>
-        <StatusTag :status="item.status" />
+        <div class="event-actions">
+          <StatusTag :status="item.status" />
+          <template v-if="mayEdit">
+            <el-button link type="primary" :disabled="saving" @click="startDraft(item)">{{
+              t('eventEdit')
+            }}</el-button>
+            <el-button link :disabled="saving" @click="changeEvent(item, 'remove')">{{
+              t('eventRemove')
+            }}</el-button>
+          </template>
+          <el-button
+            v-if="mayToggle"
+            link
+            :disabled="saving"
+            @click="changeEvent(item, item.status === 'enabled' ? 'disable' : 'enable')"
+            >{{ t(item.status === 'enabled' ? 'eventDisable' : 'eventEnable') }}</el-button
+          >
+        </div>
       </li>
     </ul>
     <el-pagination
@@ -211,19 +293,20 @@ onMounted(load);
   />
   <el-dialog
     v-model="open"
-    :title="t('eventAdd')"
+    :title="t(editingId ? 'eventEdit' : 'eventAdd')"
     width="min(560px, calc(100% - 32px))"
     :show-close="!saving && !loadingTypes"
     :close-on-click-modal="false"
     :close-on-press-escape="!saving && !loadingTypes"
   >
-    <p v-if="loadingTypes">{{ t('loading') }}</p>
-    <ErrorNotice v-else-if="typeError" :error="typeError" @retry="loadTypes" />
-    <p v-else-if="!eventTypes.length" class="muted">{{ t('eventNoTypes') }}</p>
+    <p v-if="!editingId && loadingTypes">{{ t('loading') }}</p>
+    <ErrorNotice v-else-if="!editingId && typeError" :error="typeError" @retry="loadTypes" />
+    <p v-else-if="!editingId && !eventTypes.length" class="muted">{{ t('eventNoTypes') }}</p>
     <el-form v-else label-position="top" @submit.prevent="saveEvent">
       <ErrorNotice v-if="saveError" :error="saveError" />
       <el-form-item :label="t('eventType')" required>
-        <el-select v-model="form.event_code" :disabled="saving">
+        <el-input v-if="editingId" :model-value="form.event_code" readonly />
+        <el-select v-else v-model="form.event_code" :disabled="saving">
           <el-option
             v-for="eventType in eventTypes"
             :key="eventType.code"

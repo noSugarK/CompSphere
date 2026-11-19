@@ -12,6 +12,7 @@ import {
   draftFieldsSchema,
   editionDraftSchema,
   editionEventDraftSchema,
+  editionEventUpdateSchema,
   editionPublicationChecksSchema,
   editionSchema,
   eventTypeSummarySchema,
@@ -130,6 +131,16 @@ export const api = {
       managedEventSchema,
       editionEventDraftSchema.parse(body),
     ),
+  updateEditionEvent: (id: number, body: unknown) =>
+    request(
+      'PATCH',
+      `/events/${idSchema.parse(id)}`,
+      managedEventSchema,
+      editionEventUpdateSchema.parse(body),
+    ),
+  deleteEditionEvent: (id: number) => request('DELETE', `/events/${idSchema.parse(id)}`, z.null()),
+  setEditionEventState: (id: number, action: 'enable' | 'disable') =>
+    request('POST', `/events/${idSchema.parse(id)}/${action}`, managedEventSchema, {}),
   editionGroups: (id: number, page = 1, pageSize = 20) =>
     request(
       'GET',

@@ -177,6 +177,11 @@ export const editionEventDraftSchema = editionEventFields.refine(
   (item) => item.min_members <= item.max_members,
   { path: ['max_members'] },
 ) satisfies z.ZodType<components['schemas']['EditionEventDraftRequest']>;
+export const editionEventUpdateSchema = editionEventFields
+  .omit({ event_code: true })
+  .refine((item) => item.min_members <= item.max_members, {
+    path: ['max_members'],
+  }) satisfies z.ZodType<components['schemas']['PatchedEditionEventRulesRequest']>;
 export const managedEventSchema = editionEventFields.extend({
   id: idSchema,
   event_code: text.min(1).max(16),
