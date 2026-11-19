@@ -1858,7 +1858,7 @@ export interface components {
       contact?: components['schemas']['Contact'];
       form_data?: components['schemas']['FormData'];
       consents?: components['schemas']['Consents'];
-      members: components['schemas']['Member'][];
+      members: components['schemas']['ReviewedMember'][];
       files: {
         [key: string]: unknown;
       }[];
@@ -2020,6 +2020,16 @@ export interface components {
     ReviewRequest: {
       action: components['schemas']['ReviewActionEnum'];
       comment: string;
+    };
+    ReviewedMember: {
+      user_id: number;
+      real_name: string;
+      role: components['schemas']['RoleEnum'];
+      school_level: string | null;
+      grade: string | null;
+      document_type?: string | null;
+      document_country?: string | null;
+      document_last4?: string | null;
     };
     /**
      * @description * `captain` - captain

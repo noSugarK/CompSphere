@@ -126,6 +126,21 @@ class ApprovalRecord(serializers.Serializer):
     created_at = serializers.DateTimeField()
 
 
+class MemberSummary(serializers.Serializer):
+    user_id = serializers.IntegerField()
+    real_name = serializers.CharField()
+    role = serializers.ChoiceField(choices=["captain", "member"])
+    school_level = serializers.CharField(allow_null=True)
+    grade = serializers.CharField(allow_null=True)
+
+
+class ReviewedMember(MemberSummary):
+    # 06 §成员字段分级：完整证件号永不出现在响应中，作用域内审核者最多到末四位。
+    document_type = serializers.CharField(allow_null=True, required=False)
+    document_country = serializers.CharField(allow_null=True, required=False)
+    document_last4 = serializers.CharField(allow_null=True, required=False)
+
+
 class Registration(serializers.Serializer):
     id = serializers.IntegerField()
     batch_no = serializers.CharField()
@@ -145,7 +160,7 @@ class Registration(serializers.Serializer):
     contact = Contact(required=False)
     form_data = FormData(required=False)
     consents = Consents(required=False)
-    members = Member(many=True)
+    members = ReviewedMember(many=True)
     files = serializers.ListField(child=serializers.DictField())
     approval_records = ApprovalRecord(many=True)
     can_edit = serializers.BooleanField()

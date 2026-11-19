@@ -1,4 +1,5 @@
 import copy
+import json
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -14,6 +15,7 @@ from apps.groups.models import Group
 from apps.notifications.models import AsyncOutbox, RegistrationNotice
 from apps.notifications.services import REGISTRATION_MAIL_TOPIC
 from apps.notifications.tasks import dispatch_registration_mail
+from apps.profiles.models import Profile
 from apps.rbac.models import Role, UserRole
 from apps.registrations.models import (
     Registration,
@@ -802,6 +804,32 @@ def test_returned_draft_changes_do_not_leak_into_current_submission(
         "school_level",
         "grade",
     }
+
+
+@pytest.mark.django_db
+def test_member_fields_are_tiered_by_reader_scope(dataset, actor_client, draft_payload):
+    student, draft = create_draft(actor_client, dataset, draft_payload)
+    submit(student, draft)
+    url = f"/api/v1/registrations/{draft['id']}"
+    public = {"user_id", "real_name", "role", "school_level", "grade"}
+    own = student.get(url).data["data"]["members"]
+    assert own and all(set(m) == public for m in own)
+    reviewer = actor_client(dataset["accounts"]["reviewer"])
+    rows = reviewer.get(url).data["data"]["members"]
+    tiered = public | {"document_type", "document_country", "document_last4"}
+    assert all(set(m) == tiered for m in rows)
+    profiles = {
+        p.user_id: p
+        for p in Profile.objects.filter(user_id__in=[m["user_id"] for m in rows])
+    }
+    for row in rows:
+        profile = profiles[row["user_id"]]
+        assert row["document_last4"] == profile.document_last4
+        assert row["document_type"] == profile.document_type
+    body = json.dumps(reviewer.get(url).data["data"])
+    for profile in profiles.values():
+        full = decrypt(profile.document_number_enc)
+        assert full not in body and full[:-4] not in body
 
 
 @pytest.mark.django_db

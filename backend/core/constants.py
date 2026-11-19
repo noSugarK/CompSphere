@@ -37,6 +37,10 @@ EDITABLE_STATES = ("draft", "returned", "rejected")
 REGISTRATION_STATES = (*EDITABLE_STATES, "pending_review", "approved", "withdrawn")
 REVIEW_ACTIONS = ("approve", "reject", "return")
 SCHOOL_LEVELS = ("ES", "MS", "HS", "U")
+# 06 §成员字段分级:公开输出仅允许这些 public_info 键,任何新键默认被过滤。
+MEMBER_PUBLIC_FIELDS = frozenset({"real_name", "role", "school_level", "grade"})
+# 仅 registration:read 作用域内可追加,且只到末四位为止。
+MEMBER_DOCUMENT_FIELDS = ("document_type", "document_country", "document_last4")
 CONFIGURATION_STATES = ("enabled", "disabled")
 CONFIGURATION_TRANSITIONS = {
     ("enabled", "disable"): "disabled",

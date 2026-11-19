@@ -32,7 +32,12 @@ from apps.registrations.models import (
 )
 from apps.teams.models import SeasonRegistration, Team, TeamMember
 from apps.teams.services import member_data
-from core.constants import EDITABLE_STATES, ErrorCode
+from core.constants import (
+    EDITABLE_STATES,
+    MEMBER_DOCUMENT_FIELDS,
+    MEMBER_PUBLIC_FIELDS,
+    ErrorCode,
+)
 from core.crypto import decrypt, encrypt
 from core.exceptions import BusinessError
 from core.models import IdempotencyRecord
@@ -180,10 +185,20 @@ def attach_submitted_members(item, submissions):
     ).order_by("submission_no", "sort_order", "id")
     for member in members:
         by_number[member.submission_no].append(
-            dict(member.public_info, user_id=member.user_id)
+            public_member(member.public_info, member.user_id)
         )
     for submission in submissions:
         submission.members = by_number[submission.submission_no]
+
+
+def public_member(public, user_id, profiles=None):
+    data = {key: value for key, value in public.items() if key in MEMBER_PUBLIC_FIELDS}
+    data["user_id"] = user_id
+    if profiles is not None:
+        profile = profiles.get(user_id)
+        for field in MEMBER_DOCUMENT_FIELDS:
+            data[field] = getattr(profile, field, None) if profile else None
+    return data
 
 
 def serialize_registration(item, actor):
@@ -211,16 +226,29 @@ def serialize_registration(item, actor):
         ],
         "can_edit": editable,
     }
-    private = item.submitted_by_id == actor.id or has_perm(
+    scoped_reader = has_perm(
         actor, "registration:read", org_id=item.org_id, edition=item.edition
     )
+    private = item.submitted_by_id == actor.id or scoped_reader
     if item.current_submission_no:
         submission = item.submissions.get(submission_no=item.current_submission_no)
-        data["members"] = [
-            dict(x.public_info, user_id=x.user_id)
-            for x in item.submitted_members.filter(
+        frozen = list(
+            item.submitted_members.filter(
                 submission_no=item.current_submission_no
             ).order_by("sort_order", "id")
+        )
+        profiles = (
+            {
+                p.user_id: p
+                for p in Profile.objects.filter(
+                    user_id__in=[x.user_id for x in frozen if x.user_id]
+                )
+            }
+            if scoped_reader
+            else None
+        )
+        data["members"] = [
+            public_member(x.public_info, x.user_id, profiles) for x in frozen
         ]
         snapshot = decrypt(submission.snapshot_enc)
         if not editable:

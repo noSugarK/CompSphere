@@ -422,11 +422,16 @@ onMounted(load);
     </section>
     <section v-if="record?.members.length" class="content-panel">
       <h2>{{ t('members') }}</h2>
-      <el-table :data="record.members"
-        ><el-table-column prop="real_name" :label="t('name')" /><el-table-column
-          prop="school_level"
-          :label="t('schoolLevel')" /><el-table-column prop="grade" :label="t('grade')"
-      /></el-table>
+      <el-table :data="record.members">
+        <el-table-column prop="real_name" :label="t('name')" />
+        <el-table-column prop="school_level" :label="t('schoolLevel')" />
+        <el-table-column prop="grade" :label="t('grade')" />
+        <el-table-column
+          v-if="'document_last4' in record.members[0]"
+          prop="document_last4"
+          :label="t('documentLast4')"
+        />
+      </el-table>
     </section>
     <section class="content-panel">
       <h2>{{ t('materials') }}</h2>

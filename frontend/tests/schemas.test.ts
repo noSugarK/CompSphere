@@ -10,6 +10,7 @@ import {
   loginSchema,
   meSchema,
   pageSchema,
+  reviewedMemberSchema,
   seasonDraftSchema,
   seasonSchema,
 } from '../src/api/schemas';
@@ -36,6 +37,14 @@ const actor = meSchema.parse({
   theme: 'system',
 });
 describe('untrusted JSON boundaries', () => {
+  it('keeps reviewed member fields capped at document last 4', () => {
+    const base = { user_id: 1, real_name: 'a', role: 'member', school_level: null, grade: null };
+    expect(reviewedMemberSchema.safeParse({ ...base, document_last4: '0027' }).success).toBe(true);
+    expect(reviewedMemberSchema.safeParse({ ...base, document_number: '123456789' }).success).toBe(
+      false,
+    );
+    expect(reviewedMemberSchema.safeParse({ ...base, snapshot_enc: 'x' }).success).toBe(false);
+  });
   it('does not accept a bulk review failure as a completed status change', () => {
     expect(
       bulkReviewResultSchema.safeParse({ registration_id: 1, code: 0, status: 'approved' }).success,

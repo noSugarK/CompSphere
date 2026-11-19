@@ -6378,7 +6378,7 @@
                     "members": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/Member"
+                            "$ref": "#/components/schemas/ReviewedMember"
                         }
                     },
                     "files": {
@@ -6993,6 +6993,49 @@
                     "comment"
                 ],
                 "additionalProperties": false
+            },
+            "ReviewedMember": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "real_name": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "$ref": "#/components/schemas/RoleEnum"
+                    },
+                    "school_level": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "grade": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "document_type": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "document_country": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "document_last4": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "grade",
+                    "real_name",
+                    "role",
+                    "school_level",
+                    "user_id"
+                ]
             },
             "RoleEnum": {
                 "enum": [

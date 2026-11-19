@@ -265,6 +265,11 @@ export const memberSchema = z
     grade: text.nullable(),
   })
   .strict();
+export const reviewedMemberSchema = memberSchema.extend({
+  document_type: text.nullable().optional(),
+  document_country: text.nullable().optional(),
+  document_last4: text.nullable().optional(),
+});
 export const registrationSubmissionSchema = z
   .object({
     submission_no: idSchema,
@@ -459,12 +464,12 @@ export const registrationSchema = z
     contact: contactSchema.optional(),
     form_data: z.object({ project_title: text }).strict().optional(),
     consents: z.object({ document_usage: z.boolean() }).strict().optional(),
-    members: z.array(memberSchema),
+    members: z.array(reviewedMemberSchema),
     files: z.array(z.object({ id: idSchema, material_type: text, name: text }).strict()),
     approval_records: z.array(approvalSchema),
     can_edit: z.boolean(),
   })
-  .strict();
+  .strict() satisfies z.ZodType<components['schemas']['Registration']>;
 export const registrationNoticeSchema = z
   .object({
     id: idSchema,
