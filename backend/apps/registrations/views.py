@@ -6,7 +6,6 @@ from apps.competitions.serializers import Offering, offering_data
 from apps.rbac.services import require_perm
 from apps.registrations import serializers as schema
 from apps.registrations import services
-from apps.registrations.models import RegistrationMember
 from core.api import BaseView, page, success, validated
 from core.schema import envelope, listing
 from core.serializers import VersionSerializer
@@ -206,25 +205,27 @@ class ApprovalRecordListView(BaseView):
 
 
 class SubmissionListView(BaseView):
-    @extend_schema(responses=listing("Submissions", schema.Submission))
+    @extend_schema(
+        parameters=[OpenApiParameter("page", int), OpenApiParameter("page_size", int)],
+        responses=listing("Submissions", schema.Submission),
+    )
     def get(self, request, pk):
         item = services.visible_registrations(request.user).get(pk=pk)
-
-        def serialize(x):
-            return {
-                "submission_no": x.submission_no,
-                "selected_school_level": x.selected_school_level,
-                "submitted_at": x.submitted_at.isoformat(),
-                "cancelled_at": x.cancelled_at.isoformat() if x.cancelled_at else None,
-                "members": [
-                    dict(m.public_info, user_id=m.user_id)
-                    for m in RegistrationMember.objects.filter(
-                        registration=item, submission_no=x.submission_no
-                    ).order_by("sort_order", "id")
-                ],
-            }
-
-        return success(
-            request,
-            page(request, item.submissions.order_by("submission_no"), serialize),
+        result = page(
+            request, services.submission_history(item), lambda submission: submission
         )
+        services.attach_submitted_members(item, result["items"])
+        result["items"] = schema.Submission(result["items"], many=True).data
+        return success(request, result)
+
+
+class SubmissionDetailView(BaseView):
+    @extend_schema(
+        operation_id="registrations_submission_retrieve",
+        responses=envelope("SubmissionResponse", schema.Submission),
+    )
+    def get(self, request, pk, number):
+        item = services.visible_registrations(request.user).get(pk=pk)
+        submission = services.submission_history(item).get(submission_no=number)
+        services.attach_submitted_members(item, [submission])
+        return success(request, schema.Submission(submission).data)

@@ -684,6 +684,30 @@ def test_returned_draft_changes_do_not_leak_into_current_submission(
     )
     (row,) = reviewer.get(queue, {"group": new_group.id}).data["data"]["items"]
     assert row["group_name"] == new_group.name and row["submission_no"] == 2
+    history = f"{queue}/{draft['id']}/submissions"
+    first, second = reviewer.get(history).data["data"]["items"]
+    assert (
+        first["offering_id"] == old_offering.id
+        and first["group_name"] == old_offering.group.name
+    )
+    assert (
+        second["offering_id"] == revised_offering.id
+        and second["group_name"] == new_group.name
+    )
+    assert student.get(f"{history}/1").data["data"] == first
+    assert reviewer.get(history, {"page_size": 1, "page": 2}).data["data"]["items"] == [
+        second
+    ]
+    assert reviewer.get(f"{history}/3").status_code == 404
+    assert outsider.get(f"{history}/1").status_code == 404
+    assert outsider.get(history).status_code == 404
+    assert set(first["members"][0]) == {
+        "user_id",
+        "real_name",
+        "role",
+        "school_level",
+        "grade",
+    }
 
 
 @pytest.mark.django_db
@@ -699,6 +723,12 @@ def test_cancel_preserves_round_and_rejects_stale_review(
     )
     assert canceled.status_code == 200, canceled.data
     assert canceled.data["data"]["status"] == "draft"
+    path = f"/api/v1/registrations/{draft['id']}/submissions/1"
+    cancelled_round = student.get(path).data["data"]
+    assert (
+        cancelled_round["cancelled_at"] is not None
+        and cancelled_round["offering_id"] == dataset["offering"].id
+    )
     assert (
         RegistrationSubmission.objects.get(registration_id=draft["id"]).cancelled_at
         is not None
@@ -709,6 +739,29 @@ def test_cancel_preserves_round_and_rejects_stale_review(
         format="json",
     )
     assert stale.status_code == 409
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("action", ["reject", "return"])
+def test_review_requires_nonblank_rejection_or_return_reason(
+    dataset, actor_client, draft_payload, action
+):
+    student, draft = create_draft(actor_client, dataset, draft_payload)
+    submitted = submit(student, draft).data["data"]
+    reviewer = actor_client(dataset["accounts"]["reviewer"])
+    url = f"/api/v1/registrations/{draft['id']}"
+    response = reviewer.post(
+        f"{url}/approval",
+        {"action": action, "comment": "   ", "submission_no": 1},
+        format="json",
+    )
+    assert response.status_code == 400 and "comment" in response.data["errors"]
+    still_pending = reviewer.get(url).data["data"]
+    assert still_pending["version"] == submitted["version"]
+    assert (
+        still_pending["status"] == "pending_review"
+        and not still_pending["approval_records"]
+    )
 
 
 @pytest.mark.django_db

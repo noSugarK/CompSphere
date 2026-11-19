@@ -1,6 +1,7 @@
 import hashlib
 import json
 import uuid
+from collections import defaultdict
 
 from django.db import transaction
 from django.db.models import F, FilteredRelation, Q
@@ -144,6 +145,28 @@ def approval_data(record):
         "reviewer_id": record.actor_id,
         "created_at": record.created_at.isoformat(),
     }
+
+
+def submission_history(item):
+    return item.submissions.select_related(
+        "offering__event", "offering__group"
+    ).order_by("submission_no")
+
+
+def attach_submitted_members(item, submissions):
+    if not submissions:
+        return
+    by_number = defaultdict(list)
+    members = RegistrationMember.objects.filter(
+        registration=item,
+        submission_no__in=[submission.submission_no for submission in submissions],
+    ).order_by("submission_no", "sort_order", "id")
+    for member in members:
+        by_number[member.submission_no].append(
+            dict(member.public_info, user_id=member.user_id)
+        )
+    for submission in submissions:
+        submission.members = by_number[submission.submission_no]
 
 
 def serialize_registration(item, actor):

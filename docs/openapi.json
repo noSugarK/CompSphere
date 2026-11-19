@@ -2240,6 +2240,20 @@
                             "type": "integer"
                         },
                         "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "page_size",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "tags": [
@@ -2256,6 +2270,49 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SubmissionsResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/registrations/{id}/submissions/{number}": {
+            "get": {
+                "operationId": "registrations_submission_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "number",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "registrations"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SubmissionResponse"
                                 }
                             }
                         },
@@ -7152,6 +7209,17 @@
                         "maximum": 9007199254740991,
                         "minimum": -9007199254740991
                     },
+                    "offering_id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "event_name": {
+                        "type": "string"
+                    },
+                    "group_name": {
+                        "type": "string"
+                    },
                     "selected_school_level": {
                         "type": "string",
                         "nullable": true
@@ -7168,16 +7236,45 @@
                     "members": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/Member"
+                            "$ref": "#/components/schemas/SubmittedMember"
                         }
                     }
                 },
                 "required": [
                     "cancelled_at",
+                    "event_name",
+                    "group_name",
                     "members",
+                    "offering_id",
                     "selected_school_level",
                     "submission_no",
                     "submitted_at"
+                ]
+            },
+            "SubmissionResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Submission"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
                 ]
             },
             "SubmissionsPage": {
@@ -7236,6 +7333,38 @@
                     "data",
                     "message",
                     "request_id"
+                ]
+            },
+            "SubmittedMember": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "nullable": true,
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "real_name": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "$ref": "#/components/schemas/RoleEnum"
+                    },
+                    "school_level": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "grade": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "grade",
+                    "real_name",
+                    "role",
+                    "school_level",
+                    "user_id"
                 ]
             },
             "Team": {

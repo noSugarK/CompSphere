@@ -107,7 +107,7 @@ Registration固定字段 `{id,batch_no,edition_id,offering_id,enrollment_kind,te
 - `POST /registrations/{id}/submit|resubmit`：`{version}`＋幂等键。校验窗口、当前active赛季、队伍版本/许可、人数/教练/材料、组别，新增不可变轮次及成员/材料快照。
 - `POST /registrations/{id}/cancel-review|withdraw`：`{version}`。cancel-review仅当前轮无审核决定，保留取消轮次再回草稿；withdraw遵循时间窗，均不删除历史。
 - `POST /registrations/{id}/approval`：`{action:"approve"|"reject"|"return",comment,submission_no}`，与取消串行，禁止提交人及本轮学生成员自审；过期轮次40906。审核员必须同时有对象读取及相应审批权限；approved后驳回额外校验reject_approved和锁定规则。
-- `GET /registrations/{id}/submissions`：分页不可变轮次，字段按同等范围投影；`GET /registrations/{id}/approval-records`：分页 `{id,submission_no,action,comment,reviewer_id,created_at}`，action包括approve/reject/return及留痕用withdraw/cancel_review，后两者不因此获得审批权。
+- `GET /registrations/{id}/submissions` 与 `/registrations/{id}/submissions/{no}`：分页轮次/单轮摘要，返回原组合、赛项/组别名、声明学段、时间及冻结成员白名单，不返回其他表单字段；`GET /registrations/{id}/approval-records`：分页 `{id,submission_no,action,comment,reviewer_id,created_at}`，action包括approve/reject/return及留痕用withdraw/cancel_review，后两者不因此获得审批权。
 - `POST /registrations/{id}/files`：multipart字段file/material_type；只允许原业务材料上传。暂存upload_id归属、大小、白名单、过期及恶意文件校验通过后才能在提交时建立引用，不接受任意storage_key或URL。
 
 ## 6. AI回传JSON与动作隔离

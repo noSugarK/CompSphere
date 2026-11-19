@@ -126,9 +126,16 @@ class Registration(serializers.Serializer):
     can_edit = serializers.BooleanField()
 
 
+class SubmittedMember(Member):
+    user_id = serializers.IntegerField(allow_null=True)
+
+
 class Submission(serializers.Serializer):
     submission_no = serializers.IntegerField()
+    offering_id = serializers.IntegerField()
+    event_name = serializers.CharField(source="offering.event.name")
+    group_name = serializers.CharField(source="offering.group.name")
     selected_school_level = serializers.CharField(allow_null=True)
     submitted_at = serializers.DateTimeField()
     cancelled_at = serializers.DateTimeField(allow_null=True)
-    members = Member(many=True)
+    members = SubmittedMember(many=True)

@@ -724,6 +724,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/registrations/{id}/submissions/{number}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['registrations_submission_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/registrations/{id}/submit': {
     parameters: {
       query?: never;
@@ -2083,12 +2099,22 @@ export interface components {
     SelectedSchoolLevelEnum: 'ES' | 'MS' | 'HS' | 'U';
     Submission: {
       submission_no: number;
+      offering_id: number;
+      event_name: string;
+      group_name: string;
       selected_school_level: string | null;
       /** Format: date-time */
       submitted_at: string;
       /** Format: date-time */
       cancelled_at: string | null;
-      members: components['schemas']['Member'][];
+      members: components['schemas']['SubmittedMember'][];
+    };
+    SubmissionResponse: {
+      data: components['schemas']['Submission'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
     };
     SubmissionsPage: {
       items: components['schemas']['Submission'][];
@@ -2102,6 +2128,13 @@ export interface components {
       message: string;
       /** Format: uuid */
       request_id: string;
+    };
+    SubmittedMember: {
+      user_id: number | null;
+      real_name: string;
+      role: components['schemas']['RoleEnum'];
+      school_level: string | null;
+      grade: string | null;
     };
     Team: {
       id: number;
@@ -3582,7 +3615,10 @@ export interface operations {
   };
   registrations_submissions_retrieve: {
     parameters: {
-      query?: never;
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
       header?: never;
       path: {
         id: number;
@@ -3597,6 +3633,28 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SubmissionsResponse'];
+        };
+      };
+    };
+  };
+  registrations_submission_retrieve: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+        number: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SubmissionResponse'];
         };
       };
     };

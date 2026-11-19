@@ -166,4 +166,8 @@ urlpatterns = [
         "api/v1/registrations/<int:pk>/submissions",
         registrations.SubmissionListView.as_view(),
     ),
+    path(
+        "api/v1/registrations/<int:pk>/submissions/<int:number>",
+        registrations.SubmissionDetailView.as_view(),
+    ),
 ]

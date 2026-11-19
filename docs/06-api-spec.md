@@ -203,7 +203,7 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | POST | `/registrations/{id}/approval` | body: `{action: approve|reject|return, comment, submission_no}`；已 approved 执行 reject 额外需 approval:reject_approved，并受名单锁定/证书限制；所有审核动作禁止本轮学生成员及提交人自审 | `approval:review_*` |
 | POST | `/registrations/batch-approval` | body: `{items:[{id,submission_no}], action, comment}`；逐项检查版本与权限，已通过报名的批量驳回也需 reject_approved | `approval:batch_review` |
 | GET | `/registrations/{id}/team-review-context` | 本场快照、关联队伍资料版本、分页历届各提交轮次摘要与历史队员；仅团队报名，按 02 历史上下文规则鉴权并审计 | registration:read + approval:review_* + team:read_review_history |
-| GET | `/registrations/{id}/submissions` / `/submissions/{no}` | 分页提交历史/单版快照，按当前报名同等归属与字段权限裁剪，不返回其他队员敏感字段 | read_own / read scoped |
+| GET | `/registrations/{id}/submissions` / `/registrations/{id}/submissions/{no}` | 分页提交历史/单版摘要：原组合与赛项/组别、所选学段、提交/取消时间、冻结成员的 `public_info` 白名单。不返回联系方式、证件、材料或其他表单细节。 | `read_own` / `read` scoped（关闭后按 `read_history`） |
 | GET | `/registrations/{id}/approval-records` | 审核历史 | `approval:read_records` |
 | POST | `/registrations/export` | 异步导出（审计含字段清单） | `registration:export` |
 
