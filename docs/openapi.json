@@ -1077,6 +1077,168 @@
                 }
             }
         },
+        "/api/v1/seasons": {
+            "get": {
+                "operationId": "seasons_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "page_size",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "seasons"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ManagedSeasonsResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "seasons_create",
+                "tags": [
+                    "seasons"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SeasonDraftRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SeasonDraftResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/seasons/{id}/activate": {
+            "post": {
+                "operationId": "seasons_activate_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "seasons"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SeasonActivateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/seasons/{id}/set-current": {
+            "post": {
+                "operationId": "seasons_set_current_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "seasons"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SeasonSetCurrentResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/seasons/current": {
             "get": {
                 "operationId": "seasons_current_retrieve",
@@ -2334,6 +2496,104 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/ManagedCompetitionsPage"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "ManagedSeason": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/SeasonStatusEnum"
+                    },
+                    "code": {
+                        "type": "string",
+                        "maxLength": 32
+                    },
+                    "is_default": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "code",
+                    "end_date",
+                    "id",
+                    "is_default",
+                    "name",
+                    "start_date",
+                    "status"
+                ]
+            },
+            "ManagedSeasonsPage": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ManagedSeason"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "maximum": 100,
+                        "minimum": 1
+                    },
+                    "total": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                    }
+                },
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total"
+                ]
+            },
+            "ManagedSeasonsResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedSeasonsPage"
                     },
                     "code": {
                         "type": "integer",
@@ -3739,6 +3999,89 @@
                     "status"
                 ]
             },
+            "SeasonActivateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedSeason"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "SeasonDraftRequest": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 32,
+                        "pattern": "^[A-Z0-9][A-Z0-9-]{0,31}$"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "format": "date"
+                    }
+                },
+                "required": [
+                    "code",
+                    "end_date",
+                    "name",
+                    "start_date"
+                ],
+                "additionalProperties": false
+            },
+            "SeasonDraftResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedSeason"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
             "SeasonRegistration": {
                 "type": "object",
                 "properties": {
@@ -3912,6 +4255,32 @@
                     "comment"
                 ],
                 "additionalProperties": false
+            },
+            "SeasonSetCurrentResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedSeason"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
             },
             "SeasonStatusEnum": {
                 "enum": [

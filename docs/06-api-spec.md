@@ -148,6 +148,8 @@ v1.1 变更：错误码表补 42205-42208 与 40904、新增发码与公示接�
 
 GET /seasons/current 返回当前赛季；POST /seasons/{id}/set-current 仅 season:set_current（平台），目标须 active，无当前则返回未开放状态。GET /public/competitions 只列当前赛季公开赛事，普通 season_id/season=all 参数拒绝，不修改全局当前值。管理历史接口独立按范围接收 season_id。POST/PATCH /seasons 与 activate/archive 仅平台权限；已有提交的场次不可改挂赛季，归档须无未完成赛事和待审报名。切换不复制队伍许可、不迁移历史或自动归档旧赛季。
 
+已接入的赛季管理接口：`GET /seasons?page=&page_size=` 仅平台分页查看全部状态；`POST /seasons` 接收 `code`（1–32 位大写英文字母、数字或连字符，首位须字母或数字）、`name`（1–64 字符）、`start_date` 和 `end_date`（ISO 日期，起日不晚于止日），返回 201 草稿。`POST /seasons/{id}/activate` 和 `POST /seasons/{id}/set-current` 接受空对象，均返回 `id/code/name/start_date/end_date/status/is_default`；激活不自动选为当前，重复设置同一当前赛季无额外副作用。编辑及安全归档待接入。
+
 GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resubmit：team:request_season_registration + 本单位范围；resubmit 复制关联新申请。POST /{id}/review（approve/reject）与 /revoke 仅 team:review_season_registration（平台，非自审，理由必填）；首次创建审核原子创建队伍及许可。提交/重提校验当前 active 赛季，审批通过校验原报名赛季 active 和对应许可，均不以赛事 allowlist 替代许可。
 
 | 方法 | 路径 | 说明 |

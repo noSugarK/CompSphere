@@ -3,12 +3,19 @@ from rest_framework.permissions import AllowAny
 
 from apps.competitions import serializers as schema
 from apps.competitions.models import Competition, Edition, Season
-from apps.competitions.services import create_competition, managed_competitions
+from apps.competitions.services import (
+    activate_season,
+    create_competition,
+    create_season,
+    managed_competitions,
+    set_current_season,
+)
 from apps.orgs.models import Organization, OrganizationMember
 from apps.rbac.services import org_filter, require_perm
 from core.api import BaseView, page, success, validated
 from core.exceptions import BusinessError
 from core.schema import envelope, listing
+from core.serializers import EmptySerializer
 
 
 def offering_data(item):
@@ -86,6 +93,55 @@ class CurrentSeasonView(BaseView):
             }
             if item
             else None,
+        )
+
+
+class SeasonRegistryView(BaseView):
+    @extend_schema(
+        parameters=[OpenApiParameter("page", int), OpenApiParameter("page_size", int)],
+        responses=listing("ManagedSeasons", schema.ManagedSeason),
+    )
+    def get(self, request):
+        require_perm(request.user, "season:read")
+        return success(
+            request,
+            page(
+                request,
+                Season.objects.order_by("-starts_on", "-id"),
+                lambda item: schema.ManagedSeason(item).data,
+            ),
+        )
+
+    @extend_schema(
+        request=schema.SeasonDraft,
+        responses={201: envelope("SeasonDraftResponse", schema.ManagedSeason)},
+    )
+    def post(self, request):
+        item = create_season(request.user, validated(schema.SeasonDraft, request))
+        return success(request, schema.ManagedSeason(item).data, status=201)
+
+
+class SeasonActivateView(BaseView):
+    @extend_schema(
+        request=EmptySerializer,
+        responses=envelope("SeasonActivateResponse", schema.ManagedSeason),
+    )
+    def post(self, request, pk):
+        validated(EmptySerializer, request)
+        return success(
+            request, schema.ManagedSeason(activate_season(request.user, pk)).data
+        )
+
+
+class SeasonSetCurrentView(BaseView):
+    @extend_schema(
+        request=EmptySerializer,
+        responses=envelope("SeasonSetCurrentResponse", schema.ManagedSeason),
+    )
+    def post(self, request, pk):
+        validated(EmptySerializer, request)
+        return success(
+            request, schema.ManagedSeason(set_current_season(request.user, pk)).data
         )
 
 

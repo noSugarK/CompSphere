@@ -1,13 +1,47 @@
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date
 from threading import Barrier
 
 import pytest
 from django.db import DatabaseError, connection, connections, transaction
 
 from apps.accounts.models import User
+from apps.competitions.models import Season
+from apps.competitions.services import set_current_season
 from apps.registrations.models import RegistrationSubmission
 from apps.registrations.services import create_registration, submit_registration
 from core.exceptions import BusinessError
+
+
+@pytest.mark.django_db(transaction=True)
+def test_postgresql_concurrent_season_switches_keep_one_current(dataset):
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL row locking test")
+    actor_id = dataset["accounts"]["platform"].id
+    targets = [
+        Season.objects.create(
+            code=code,
+            name=code,
+            starts_on=date(2028, 1, 1),
+            ends_on=date(2028, 12, 31),
+            status="active",
+        ).id
+        for code in ("QA-ALPHA", "QA-BETA")
+    ]
+    barrier = Barrier(2)
+
+    def run(season_id):
+        try:
+            actor = User.objects.get(pk=actor_id)
+            barrier.wait(timeout=10)
+            return set_current_season(actor, season_id).id
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        assert list(executor.map(run, targets)) == targets
+    assert Season.objects.get(is_default=True).id in targets
+    assert Season.objects.filter(status="active").count() == 3
 
 
 @pytest.mark.django_db(transaction=True)

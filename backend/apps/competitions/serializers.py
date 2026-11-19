@@ -11,6 +11,27 @@ class Season(serializers.Serializer):
     status = serializers.ChoiceField(choices=["draft", "active", "archived"])
 
 
+class SeasonDraft(StrictSerializer):
+    code = serializers.RegexField(r"\A[A-Z0-9][A-Z0-9-]{0,31}\Z", max_length=32)
+    name = serializers.CharField(max_length=64)
+    start_date = serializers.DateField(source="starts_on")
+    end_date = serializers.DateField(source="ends_on")
+
+    def validate(self, attrs):
+        if attrs["starts_on"] > attrs["ends_on"]:
+            raise serializers.ValidationError(
+                {"end_date": ["End date precedes start date."]}
+            )
+        return attrs
+
+
+class ManagedSeason(Season):
+    code = serializers.CharField(max_length=32)
+    start_date = serializers.DateField(source="starts_on")
+    end_date = serializers.DateField(source="ends_on")
+    is_default = serializers.BooleanField()
+
+
 class Offering(serializers.Serializer):
     id = serializers.IntegerField()
     event_id = serializers.IntegerField()

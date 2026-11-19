@@ -436,6 +436,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/seasons': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['seasons_retrieve'];
+    put?: never;
+    post: operations['seasons_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/seasons/{id}/activate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['seasons_activate_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/seasons/{id}/set-current': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['seasons_set_current_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/seasons/current': {
     parameters: {
       query?: never;
@@ -852,6 +900,30 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    ManagedSeason: {
+      id: number;
+      name: string;
+      /** Format: date */
+      start_date: string;
+      /** Format: date */
+      end_date: string;
+      status: components['schemas']['SeasonStatusEnum'];
+      code: string;
+      is_default: boolean;
+    };
+    ManagedSeasonsPage: {
+      items: components['schemas']['ManagedSeason'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    ManagedSeasonsResponse: {
+      data: components['schemas']['ManagedSeasonsPage'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     Me: {
       user: components['schemas']['UserInfo'];
       profile: components['schemas']['ProfileInfo'] | null;
@@ -1220,6 +1292,28 @@ export interface components {
       end_date: string;
       status: components['schemas']['SeasonStatusEnum'];
     };
+    SeasonActivateResponse: {
+      data: components['schemas']['ManagedSeason'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    SeasonDraftRequest: {
+      code: string;
+      name: string;
+      /** Format: date */
+      start_date: string;
+      /** Format: date */
+      end_date: string;
+    };
+    SeasonDraftResponse: {
+      data: components['schemas']['ManagedSeason'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     SeasonRegistration: {
       id: number;
       team_id: number;
@@ -1268,6 +1362,13 @@ export interface components {
     SeasonReviewRequest: {
       action: components['schemas']['LicenseActionEnum'];
       comment: string;
+    };
+    SeasonSetCurrentResponse: {
+      data: components['schemas']['ManagedSeason'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
     };
     /**
      * @description * `draft` - draft
@@ -2157,6 +2258,101 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RegistrationCancelResponse'];
+        };
+      };
+    };
+  };
+  seasons_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ManagedSeasonsResponse'];
+        };
+      };
+    };
+  };
+  seasons_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SeasonDraftRequest'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SeasonDraftResponse'];
+        };
+      };
+    };
+  };
+  seasons_activate_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SeasonActivateResponse'];
+        };
+      };
+    };
+  };
+  seasons_set_current_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SeasonSetCurrentResponse'];
         };
       };
     };

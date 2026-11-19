@@ -32,6 +32,12 @@ urlpatterns = [
         "api/v1/me/notifications/<int:pk>/read", notifications.ReadNoticeView.as_view()
     ),
     path("api/v1/seasons/current", competitions.CurrentSeasonView.as_view()),
+    path("api/v1/seasons", competitions.SeasonRegistryView.as_view()),
+    path("api/v1/seasons/<int:pk>/activate", competitions.SeasonActivateView.as_view()),
+    path(
+        "api/v1/seasons/<int:pk>/set-current",
+        competitions.SeasonSetCurrentView.as_view(),
+    ),
     path(
         "api/v1/public/competitions", competitions.PublicCompetitionListView.as_view()
     ),

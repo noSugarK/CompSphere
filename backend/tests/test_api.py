@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.audit.models import AuditLog
-from apps.competitions.models import Competition
+from apps.competitions.models import Competition, Season
 from apps.events.models import Offering
 from apps.groups.models import Group
 from apps.notifications.models import AsyncOutbox, RegistrationNotice
@@ -40,6 +40,57 @@ def submit(client, draft, key="test-idempotency-key"):
         format="json",
         HTTP_IDEMPOTENCY_KEY=key,
     )
+
+
+@pytest.mark.django_db
+def test_platform_season_lifecycle_preserves_previous_season(dataset, actor_client):
+    platform = actor_client(dataset["accounts"]["platform"])
+    student = actor_client(dataset["accounts"]["student"])
+    seasons = "/api/v1/seasons"
+    payload = {
+        "code": "QA-NEXT",
+        "name": "Next season",
+        "start_date": "2027-09-01",
+        "end_date": "2028-08-31",
+    }
+    assert student.get(seasons).status_code == 403
+    assert student.post(seasons, payload, format="json").status_code == 403
+    assert (
+        platform.post(
+            seasons, {**payload, "end_date": "2026-08-01"}, format="json"
+        ).status_code
+        == 400
+    )
+    assert (
+        platform.post(
+            seasons, {**payload, "is_default": True}, format="json"
+        ).status_code
+        == 400
+    )
+
+    created = platform.post(seasons, payload, format="json")
+    assert created.status_code == 201, created.data
+    draft = created.data["data"]
+    assert draft["status"] == "draft" and not draft["is_default"]
+    assert platform.post(seasons, payload, format="json").status_code == 409
+    assert platform.get(seasons).data["data"]["items"][0] == draft
+    activate = f"{seasons}/{draft['id']}/activate"
+    switch = f"{seasons}/{draft['id']}/set-current"
+    assert platform.post(switch, {}, format="json").status_code == 409
+    assert student.post(activate, {}, format="json").status_code == 403
+    active = platform.post(activate, {}, format="json").data["data"]
+    assert active["status"] == "active" and not active["is_default"]
+    assert platform.post(activate, {}, format="json").status_code == 409
+    assert student.post(switch, {}, format="json").status_code == 403
+    assert platform.post(switch, {}, format="json").data["data"]["is_default"]
+    assert platform.post(switch, {}, format="json").status_code == 200
+    assert AuditLog.objects.filter(action="season.current_changed").count() == 1
+
+    previous = Season.objects.get(pk=dataset["edition"].season_id)
+    assert previous.status == "active" and not previous.is_default
+    public = APIClient()
+    assert public.get(f"{seasons}/current").data["data"]["id"] == draft["id"]
+    assert public.get("/api/v1/public/competitions").data["data"]["total"] == 0
 
 
 @pytest.mark.django_db
