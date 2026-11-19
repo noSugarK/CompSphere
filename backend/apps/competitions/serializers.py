@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from core.serializers import StrictSerializer
+
 
 class Season(serializers.Serializer):
     id = serializers.IntegerField()
@@ -47,6 +49,19 @@ class Competition(serializers.Serializer):
     summary = serializers.CharField(allow_blank=True)
     status = serializers.ChoiceField(choices=["published"])
     editions = Edition(many=True)
+
+
+class CompetitionDraft(StrictSerializer):
+    name = serializers.CharField(max_length=128)
+    summary = serializers.CharField(max_length=2000, allow_blank=True)
+
+
+class ManagedCompetition(StrictSerializer):
+    id = serializers.IntegerField(min_value=1)
+    public_code = serializers.CharField(max_length=32)
+    name = serializers.CharField(max_length=128)
+    summary = serializers.CharField(allow_blank=True)
+    status = serializers.ChoiceField(choices=["draft", "published", "archived"])
 
 
 class Organization(serializers.Serializer):

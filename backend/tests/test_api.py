@@ -7,6 +7,8 @@ from django.core import mail
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.audit.models import AuditLog
+from apps.competitions.models import Competition
 from apps.events.models import Offering
 from apps.groups.models import Group
 from apps.notifications.models import AsyncOutbox, RegistrationNotice
@@ -38,6 +40,57 @@ def submit(client, draft, key="test-idempotency-key"):
         format="json",
         HTTP_IDEMPOTENCY_KEY=key,
     )
+
+
+@pytest.mark.django_db
+def test_competition_registry_creates_private_draft_and_enforces_scope(
+    dataset, actor_client
+):
+    accounts = dataset["accounts"]
+    endpoint = "/api/v1/competitions"
+    payload = {"name": "New competition", "summary": "Synthetic draft"}
+    platform = actor_client(accounts["platform"])
+    organizer = actor_client(accounts["organizer"])
+    student = actor_client(accounts["student"])
+    assert student.get(endpoint).status_code == 403
+    assert organizer.get(endpoint).status_code == 403
+    assert organizer.post(endpoint, payload, format="json").status_code == 403
+    assert (
+        platform.post(
+            endpoint, {**payload, "status": "published"}, format="json"
+        ).status_code
+        == 400
+    )
+    assert (
+        platform.post(endpoint, {**payload, "name": "  "}, format="json").status_code
+        == 400
+    )
+
+    created = platform.post(endpoint, payload, format="json")
+    assert created.status_code == 201, created.data
+    draft = created.data["data"]
+    assert draft["status"] == "draft" and draft["public_code"].startswith("CMP-")
+    assert draft["name"] == payload["name"]
+    assert not Competition.objects.get(pk=draft["id"]).editions.exists()
+    assert AuditLog.objects.filter(
+        actor=accounts["platform"],
+        action="competition.created",
+        resource_id=str(draft["id"]),
+    ).exists()
+    assert platform.get(endpoint).data["data"]["items"][0] == draft
+
+    competition_id = dataset["edition"].competition_id
+    UserRole.objects.create(
+        user=accounts["organizer"],
+        role=Role.objects.get(code="competition_admin"),
+        scope_type="competition",
+        scope_id=competition_id,
+    )
+    visible = organizer.get(endpoint).data["data"]["items"]
+    assert [item["id"] for item in visible] == [competition_id]
+    assert organizer.post(endpoint, payload, format="json").status_code == 403
+    public = APIClient().get("/api/v1/public/competitions").data["data"]["items"]
+    assert draft["id"] not in {item["id"] for item in public}
 
 
 @pytest.mark.django_db

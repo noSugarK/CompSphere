@@ -132,6 +132,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/competitions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['competitions_retrieve'];
+    put?: never;
+    post: operations['competitions_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/editions/{id}/registrations': {
     parameters: {
       query?: never;
@@ -619,6 +635,17 @@ export interface components {
       status: components['schemas']['CompetitionStatusEnum'];
       editions: components['schemas']['Edition'][];
     };
+    CompetitionDraftRequest: {
+      name: string;
+      summary: string;
+    };
+    CompetitionDraftResponse: {
+      data: components['schemas']['ManagedCompetition'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     /**
      * @description * `published` - published
      * @enum {string}
@@ -793,6 +820,33 @@ export interface components {
     LoginTypeEnum: 'email' | 'document';
     LogoutResponse: {
       data: unknown;
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    ManagedCompetition: {
+      id: number;
+      public_code: string;
+      name: string;
+      summary: string;
+      status: components['schemas']['ManagedCompetitionStatusEnum'];
+    };
+    /**
+     * @description * `draft` - draft
+     *     * `published` - published
+     *     * `archived` - archived
+     * @enum {string}
+     */
+    ManagedCompetitionStatusEnum: 'draft' | 'published' | 'archived';
+    ManagedCompetitionsPage: {
+      items: components['schemas']['ManagedCompetition'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    ManagedCompetitionsResponse: {
+      data: components['schemas']['ManagedCompetitionsPage'];
       code: number;
       message: string;
       /** Format: uuid */
@@ -1611,6 +1665,51 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['VerificationAcceptedResponse'];
+        };
+      };
+    };
+  };
+  competitions_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ManagedCompetitionsResponse'];
+        };
+      };
+    };
+  };
+  competitions_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CompetitionDraftRequest'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CompetitionDraftResponse'];
         };
       };
     };

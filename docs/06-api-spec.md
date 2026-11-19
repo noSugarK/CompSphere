@@ -152,7 +152,9 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET/POST | `/competitions`；GET/PATCH `/competitions/{id}` | `competition:*` |
+| GET | `/competitions?page=&page_size=` | 管理目录：平台读取全部未删除赛事；拥有赛事作用域 `competition:read` 的账号只读该赛事，届次、单位和个人授权不向上扩大。 |
+| POST | `/competitions` | 仅平台 `competition:create`。字段 `name`（1–128 字符）、`summary`（可空字符串，最多 2000 字符）；201 返回 `id/public_code/name/summary/status`，服务端生成编号并固定 `draft`，不建届次、不授权、不发布。 |
+| GET/PATCH | `/competitions/{id}` | `competition:*`（详情及编辑待接入） |
 | POST | `/competitions/{id}/publish` `/archive` | 状态动作 |
 | PUT | `/competitions/{id}/units` | 主办/承办/协办设置（`competition:manage_units`） |
 | GET/POST | `/competitions/{id}/admins`；DELETE `/admins/{user_id}` | `competition:manage_admins` + user:assign_role；仅平台，查询以外操作不得由赛事管理员直接授权 |

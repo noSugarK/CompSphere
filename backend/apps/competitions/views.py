@@ -1,11 +1,12 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import AllowAny
 
 from apps.competitions import serializers as schema
 from apps.competitions.models import Competition, Edition, Season
+from apps.competitions.services import create_competition, managed_competitions
 from apps.orgs.models import Organization, OrganizationMember
 from apps.rbac.services import org_filter, require_perm
-from core.api import BaseView, page, success
+from core.api import BaseView, page, success, validated
 from core.exceptions import BusinessError
 from core.schema import envelope, listing
 
@@ -86,6 +87,34 @@ class CurrentSeasonView(BaseView):
             if item
             else None,
         )
+
+
+class CompetitionRegistryView(BaseView):
+    @extend_schema(
+        parameters=[OpenApiParameter("page", int), OpenApiParameter("page_size", int)],
+        responses=listing("ManagedCompetitions", schema.ManagedCompetition),
+    )
+    def get(self, request):
+        return success(
+            request,
+            page(
+                request,
+                managed_competitions(request.user),
+                lambda item: schema.ManagedCompetition(item).data,
+            ),
+        )
+
+    @extend_schema(
+        request=schema.CompetitionDraft,
+        responses={
+            201: envelope("CompetitionDraftResponse", schema.ManagedCompetition)
+        },
+    )
+    def post(self, request):
+        item = create_competition(
+            request.user, validated(schema.CompetitionDraft, request)
+        )
+        return success(request, schema.ManagedCompetition(item).data, status=201)
 
 
 class PublicCompetitionListView(BaseView):
