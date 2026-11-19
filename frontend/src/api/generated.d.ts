@@ -180,6 +180,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/competitions/{id}/publish': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['competitions_publish_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/editions/{id}': {
     parameters: {
       query?: never;
@@ -254,6 +270,38 @@ export interface paths {
     get: operations['editions_offerings_retrieve'];
     put?: never;
     post: operations['editions_offerings_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/publication-checks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['editions_publication_checks_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/publish': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['editions_publish_create'];
     delete?: never;
     options?: never;
     head?: never;
@@ -902,6 +950,13 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    CompetitionPublishResponse: {
+      data: components['schemas']['ManagedCompetition'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     /**
      * @description * `published` - published
      * @enum {string}
@@ -1013,6 +1068,27 @@ export interface components {
     };
     EditionEventDraftResponse: {
       data: components['schemas']['ManagedEvent'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    EditionPublicationChecks: {
+      active_season: boolean;
+      title_and_venue: boolean;
+      ordered_schedule: boolean;
+      open_offering: boolean;
+      supported_rules: boolean;
+    };
+    EditionPublicationChecksResponse: {
+      data: components['schemas']['EditionPublicationChecks'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    EditionPublishResponse: {
+      data: components['schemas']['ManagedEdition'];
       code: number;
       message: string;
       /** Format: uuid */
@@ -2331,6 +2407,31 @@ export interface operations {
       };
     };
   };
+  competitions_publish_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CompetitionPublishResponse'];
+        };
+      };
+    };
+  };
   editions_retrieve: {
     parameters: {
       query?: never;
@@ -2519,6 +2620,52 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['OfferingDraftResponse'];
+        };
+      };
+    };
+  };
+  editions_publication_checks_retrieve: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EditionPublicationChecksResponse'];
+        };
+      };
+    };
+  };
+  editions_publish_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EditionPublishResponse'];
         };
       };
     };

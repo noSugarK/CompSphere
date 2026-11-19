@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from django.db import transaction
+from django.utils import timezone
 
 from apps.audit.services import audit
 from apps.competitions.models import Competition, Edition, Season
@@ -75,6 +76,104 @@ def configuration_edition(
         raise BusinessError(
             40902, "This configuration can only change on a draft edition"
         )
+    return item
+
+
+def edition_publication_checks(item):
+    offerings = list(
+        item.offerings.filter(
+            status="enabled",
+            is_deleted=False,
+            event__status="enabled",
+            event__is_deleted=False,
+            group__status="enabled",
+            group__is_deleted=False,
+        ).select_related("event", "group")
+    )
+    return {
+        "active_season": item.season.status == "active"
+        and item.competition.status != "archived",
+        "title_and_venue": bool(item.name.strip() and item.venue.strip()),
+        "ordered_schedule": (
+            item.enroll_start < item.enroll_end <= item.start_date < item.end_date
+            and timezone.now() < item.enroll_end
+        ),
+        "open_offering": bool(offerings),
+        "supported_rules": (
+            item.approval_mode == "single"
+            and item.team_entry_mode == "open"
+            and all(
+                not any(
+                    material.get("required")
+                    for material in option.event.material_requirements
+                )
+                and (
+                    option.group.enrollment_type == "team"
+                    or option.event.min_members == 1
+                )
+                for option in offerings
+            )
+        ),
+    }
+
+
+@transaction.atomic
+def publish_edition(actor, edition_id):
+    candidate = configuration_edition(actor, edition_id, "edition:publish")
+    competition = Competition.objects.select_for_update().get(
+        pk=candidate.competition_id, is_deleted=False
+    )
+    edition = configuration_edition(
+        actor, edition_id, "edition:publish", draft_write=True
+    )
+    edition.competition = competition
+    edition.season = Season.objects.select_for_update().get(pk=edition.season_id)
+    if not all(edition_publication_checks(edition).values()):
+        raise BusinessError(
+            40902, "Complete the edition publication checklist before publishing"
+        )
+    transition(edition, "publish", {("draft", "publish"): "published"})
+    edition.save(update_fields=["status", "updated_at"])
+    audit(
+        actor,
+        "edition.published",
+        "edition",
+        edition.id,
+        scope={"competition_id": competition.id, "season_id": edition.season_id},
+    )
+    return edition
+
+
+@transaction.atomic
+def publish_competition(actor, competition_id):
+    require_perm(actor, "competition:publish", competition_id=competition_id)
+    item = Competition.objects.select_for_update().get(
+        pk=competition_id, is_deleted=False
+    )
+    editions = list(
+        item.editions.filter(is_deleted=False, status__in=["draft", "published"])
+        .select_for_update()
+        .order_by("id")
+    )
+    seasons = (
+        Season.objects.select_for_update()
+        .filter(pk__in={edition.season_id for edition in editions})
+        .order_by("id")
+    )
+    season_by_id = {season.pk: season for season in seasons}
+    for edition in editions:
+        edition.season = season_by_id[edition.season_id]
+        edition.competition = item
+    if not any(
+        all(edition_publication_checks(edition).values()) for edition in editions
+    ):
+        raise BusinessError(
+            40902,
+            "Configure at least one edition with an open offering before publishing",
+        )
+    transition(item, "publish", {("draft", "publish"): "published"})
+    item.save(update_fields=["status", "updated_at"])
+    audit(actor, "competition.published", "competition", item.id)
     return item
 
 

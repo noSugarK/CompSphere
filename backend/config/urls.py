@@ -30,6 +30,10 @@ urlpatterns = [
     path("api/v1/me/preferences", accounts.PreferencesView.as_view()),
     path("api/v1/competitions", competitions.CompetitionRegistryView.as_view()),
     path(
+        "api/v1/competitions/<int:pk>/publish",
+        competitions.CompetitionPublishView.as_view(),
+    ),
+    path(
         "api/v1/competitions/<int:pk>/edition-seasons",
         competitions.EditionSeasonListView.as_view(),
     ),
@@ -69,6 +73,11 @@ urlpatterns = [
         groups.GroupStateView.as_view(action="disable"),
     ),
     path("api/v1/editions/<int:pk>", competitions.ManagedEditionDetailView.as_view()),
+    path(
+        "api/v1/editions/<int:pk>/publication-checks",
+        competitions.EditionPublicationChecksView.as_view(),
+    ),
+    path("api/v1/editions/<int:pk>/publish", competitions.EditionPublishView.as_view()),
     path("api/v1/seasons", competitions.SeasonRegistryView.as_view()),
     path("api/v1/seasons/<int:pk>/activate", competitions.SeasonActivateView.as_view()),
     path(

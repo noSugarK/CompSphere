@@ -111,6 +111,14 @@ class ManagedEdition(StrictSerializer):
     end_date = serializers.DateTimeField()
 
 
+class EditionPublicationChecks(StrictSerializer):
+    active_season = serializers.BooleanField()
+    title_and_venue = serializers.BooleanField()
+    ordered_schedule = serializers.BooleanField()
+    open_offering = serializers.BooleanField()
+    supported_rules = serializers.BooleanField()
+
+
 class Offering(serializers.Serializer):
     id = serializers.IntegerField()
     event_id = serializers.IntegerField()

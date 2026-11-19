@@ -9,9 +9,12 @@ from apps.competitions.services import (
     create_competition,
     create_edition,
     create_season,
+    edition_publication_checks,
     edition_seasons,
     managed_competitions,
     managed_editions,
+    publish_competition,
+    publish_edition,
     set_current_season,
 )
 from apps.orgs.models import Organization, OrganizationMember
@@ -224,6 +227,39 @@ class ManagedEditionDetailView(BaseView):
     def get(self, request, pk):
         edition = configuration_edition(request.user, pk, "edition:read")
         return success(request, schema.ManagedEdition(edition).data)
+
+
+class EditionPublicationChecksView(BaseView):
+    @extend_schema(
+        responses=envelope(
+            "EditionPublicationChecksResponse", schema.EditionPublicationChecks
+        )
+    )
+    def get(self, request, pk):
+        edition = configuration_edition(request.user, pk, "edition:read")
+        return success(request, edition_publication_checks(edition))
+
+
+class EditionPublishView(BaseView):
+    @extend_schema(
+        request=EmptySerializer,
+        responses=envelope("EditionPublishResponse", schema.ManagedEdition),
+    )
+    def post(self, request, pk):
+        validated(EmptySerializer, request)
+        item = publish_edition(request.user, pk)
+        return success(request, schema.ManagedEdition(item).data)
+
+
+class CompetitionPublishView(BaseView):
+    @extend_schema(
+        request=EmptySerializer,
+        responses=envelope("CompetitionPublishResponse", schema.ManagedCompetition),
+    )
+    def post(self, request, pk):
+        validated(EmptySerializer, request)
+        item = publish_competition(request.user, pk)
+        return success(request, schema.ManagedCompetition(item).data)
 
 
 class PublicCompetitionListView(BaseView):

@@ -477,6 +477,50 @@
                 }
             }
         },
+        "/api/v1/competitions/{id}/publish": {
+            "post": {
+                "operationId": "competitions_publish_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "competitions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionPublishResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/editions/{id}": {
             "get": {
                 "operationId": "editions_retrieve",
@@ -829,6 +873,85 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/OfferingDraftResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/publication-checks": {
+            "get": {
+                "operationId": "editions_publication_checks_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EditionPublicationChecksResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/publish": {
+            "post": {
+                "operationId": "editions_publish_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EditionPublishResponse"
                                 }
                             }
                         },
@@ -2616,6 +2739,32 @@
                     "request_id"
                 ]
             },
+            "CompetitionPublishResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedCompetition"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
             "CompetitionStatusEnum": {
                 "enum": [
                     "published"
@@ -3033,6 +3182,86 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/ManagedEvent"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "EditionPublicationChecks": {
+                "type": "object",
+                "properties": {
+                    "active_season": {
+                        "type": "boolean"
+                    },
+                    "title_and_venue": {
+                        "type": "boolean"
+                    },
+                    "ordered_schedule": {
+                        "type": "boolean"
+                    },
+                    "open_offering": {
+                        "type": "boolean"
+                    },
+                    "supported_rules": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "active_season",
+                    "open_offering",
+                    "ordered_schedule",
+                    "supported_rules",
+                    "title_and_venue"
+                ],
+                "additionalProperties": false
+            },
+            "EditionPublicationChecksResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/EditionPublicationChecks"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "EditionPublishResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedEdition"
                     },
                     "code": {
                         "type": "integer",

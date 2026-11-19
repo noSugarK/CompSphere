@@ -81,7 +81,7 @@ draft ─submit→ submitted ─org_approve→ org_approved ─final_approve→ 
 
 | 动作 | 迁移 | 角色 | 约束 |
 | --- | --- | --- | --- |
-| publish | draft→published | competition_admin | 至少 1 个届次，且至少 1 个「赛项×组别」组合处于开放状态 |
+| publish | draft→published | competition_admin | 至少 1 个草稿或已发布届次通过发布清单；门户还需该届次已发布且位于当前赛季 |
 | archive | published→archived | competition_admin | 无进行中的报名/审核 |
 | unarchive | archived→published | platform_admin | 应急通道，留审计 |
 
@@ -96,6 +96,8 @@ draft ─submit→ submitted ─org_approve→ org_approved ─final_approve→ 
 | `closed` | 关闭（获奖名单锁定 + 证书发放完成后手动关闭） | 仅从 finished 进入；closed 后业务写入冻结，历史仅管理端按权限读取，普通门户/本人业务历史隐藏；证书补发/作废与必要公示下架仍可进行 |
 
 `enrolling` 等由 `now` 与时间窗计算得出（存储上只有 `draft/published/closed`，派生状态不入库，防止定时器忘推状态）。
+
+已接入届次发布门槛：赛季为 active、赛事未归档、名称与场地齐全、时间有序且报名尚未截止、有实际开放组合、审核/准入/材料规则受当前实现支持。两级发布不隐式修改对方状态。发布写入会在事务中重新校验；清单预览不持锁，不能代替写入校验。
 
 ## 4. 赛项与组别状态机
 

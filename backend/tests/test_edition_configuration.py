@@ -1,8 +1,9 @@
 import pytest
+from rest_framework.test import APIClient
 
 from apps.audit.models import AuditLog
-from apps.competitions.models import Edition
-from apps.events.models import Event
+from apps.competitions.models import Competition, Edition
+from apps.events.models import Event, Offering
 from apps.groups.models import Group
 
 
@@ -250,3 +251,63 @@ def test_offering_disabling_keeps_existing_registration_readable(
     blocked = student.post(registration_url, draft_payload, format="json")
     assert blocked.status_code == 422 and blocked.data["code"] == 42207
     assert student.get(reg_url).data["data"]["status"] == "pending_review"
+
+
+@pytest.mark.django_db
+def test_publication_requires_open_offering_and_both_publication_states(
+    dataset, actor_client, draft_edition
+):
+    platform = actor_client(dataset["accounts"]["platform"])
+    organizer = actor_client(dataset["accounts"]["organizer"])
+    public = APIClient()
+    competition = Competition.objects.create(
+        public_code="QA-PUBLICATION", name="Publication QA"
+    )
+    draft_edition.competition = competition
+    draft_edition.venue = "QA Venue"
+    draft_edition.save(update_fields=["competition", "venue"])
+    endpoint = f"/api/v1/editions/{draft_edition.id}"
+    competition_publish = f"/api/v1/competitions/{competition.id}/publish"
+    public_edition = f"/api/v1/public/editions/{draft_edition.id}"
+    assert organizer.get(f"{endpoint}/publication-checks").status_code == 403
+    assert organizer.post(f"{endpoint}/publish", {}, format="json").status_code == 403
+    assert platform.post(competition_publish, {}, format="json").status_code == 409
+    assert platform.post(f"{endpoint}/publish", {}, format="json").status_code == 409
+
+    event = Event.objects.create(
+        edition=draft_edition,
+        code_id="VURC",
+        name="VURC",
+        material_requirements=[{"key": "student_proof", "required": True}],
+    )
+    division = Group.objects.create(
+        edition=draft_edition, code="U", name="University", school_level="U"
+    )
+    Offering.objects.create(edition=draft_edition, event=event, group=division)
+    checks = platform.get(f"{endpoint}/publication-checks").data["data"]
+    assert checks["open_offering"] and not checks["supported_rules"]
+    assert platform.post(f"{endpoint}/publish", {}, format="json").status_code == 409
+    event.material_requirements = []
+    event.save(update_fields=["material_requirements"])
+    assert all(platform.get(f"{endpoint}/publication-checks").data["data"].values())
+    assert (
+        platform.post(f"{endpoint}/publish", {}, format="json").data["data"]["status"]
+        == "published"
+    )
+    assert public.get(public_edition).status_code == 404
+    assert organizer.post(competition_publish, {}, format="json").status_code == 403
+    assert (
+        platform.post(competition_publish, {}, format="json").data["data"]["status"]
+        == "published"
+    )
+    offerings = public.get(public_edition).data["data"]["offerings"]
+    assert [(item["event_code"], item["school_level"]) for item in offerings] == [
+        ("VURC", "U")
+    ]
+    assert platform.post(f"{endpoint}/publish", {}, format="json").status_code == 409
+    assert AuditLog.objects.filter(
+        action="edition.published", resource_id=str(draft_edition.id)
+    ).exists()
+    assert AuditLog.objects.filter(
+        action="competition.published", resource_id=str(competition.id)
+    ).exists()

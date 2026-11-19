@@ -157,7 +157,7 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | GET | `/competitions?page=&page_size=` | 管理目录：平台读取全部未删除赛事；拥有赛事作用域 `competition:read` 的账号只读该赛事，届次、单位和个人授权不向上扩大。 |
 | POST | `/competitions` | 仅平台 `competition:create`。字段 `name`（1–128 字符）、`summary`（可空字符串，最多 2000 字符）；201 返回 `id/public_code/name/summary/status`，服务端生成编号并固定 `draft`，不建届次、不授权、不发布。 |
 | GET/PATCH | `/competitions/{id}` | `competition:*`（详情及编辑待接入） |
-| POST | `/competitions/{id}/publish` `/archive` | 状态动作 |
+| POST | `/competitions/{id}/publish` | `competition:publish`，空对象；至少一个草稿或已发布届次通过发布清单才可发布赛事，不修改届次状态。归档待实现。 |
 | PUT | `/competitions/{id}/units` | 主办/承办/协办设置（`competition:manage_units`） |
 | GET/POST | `/competitions/{id}/admins`；DELETE `/admins/{user_id}` | `competition:manage_admins` + user:assign_role；仅平台，查询以外操作不得由赛事管理员直接授权 |
 | GET | `/competitions/{id}/editions?page=&page_size=` | 平台与具备 `edition:read` 的赛事级账号可分页查看该赛事全部届次；届次授权只返回其直接获授的届次。无可授权范围时 404。 |
@@ -165,7 +165,8 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | GET | `/competitions/{id}/edition-seasons?page=&page_size=` | 同创建权限；返回可选赛季，平台可选 active/draft，受委派的赛事管理员仅可选 active。 |
 | GET | `/editions/{id}` | 管理详情：作用域 `edition:read`，返回与届次管理列表单项相同的配置摘要。 |
 | PATCH | `/editions/{id}` | `edition:update`（编辑待接入） |
-| POST | `/editions/{id}/publish` `/close`；PUT `/editions/{id}/approval-mode` | 状态与审核模式配置 |
+| GET | `/editions/{id}/publication-checks` | `edition:read`；返回 `active_season/title_and_venue/ordered_schedule/open_offering/supported_rules` 布尔值。 |
+| POST | `/editions/{id}/publish` | `edition:publish`，空对象；服务端重新校验发布清单，失败 40902；不修改赛事状态。关闭与审核模式配置待实现。 |
 | GET | `/editions/{id}/event-types?page=&page_size=` | 赛项类型字典；该届次 `event:create`。 |
 | GET/POST | `/editions/{id}/events` | 作用域 `event:read/create`；仅草稿届次允许创建。创建接收 `event_code`、`name`、`min_members`、`max_members`、`coach_required`，返回这些字段及 `id/status`。编码来自稳定字典，一届不重复；不少于 1 人且下限不大于上限。 |
 | PATCH/DELETE / POST | `/events/{id}` 和 `/events/{id}/enable|disable` | 编辑、删除、状态动作待接入。 |
