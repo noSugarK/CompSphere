@@ -36,6 +36,7 @@ import {
   preferencesSchema,
   registrationNoticeSchema,
   registrationSchema,
+  registrationSubmissionSchema,
   reviewQueueItemSchema,
   reviewQueueOptionSchema,
   type ReviewQueueFilters,
@@ -294,6 +295,12 @@ export const api = {
     ),
   registration: (id: number) =>
     request('GET', `/registrations/${idSchema.parse(id)}`, registrationSchema),
+  registrationSubmissions: (id: number, page: number) =>
+    request(
+      'GET',
+      `/registrations/${idSchema.parse(id)}/submissions?page=${page}`,
+      pageSchema(registrationSubmissionSchema),
+    ),
   createRegistration: (edition: number, body: unknown) =>
     request('POST', `/editions/${idSchema.parse(edition)}/registrations`, registrationSchema, {
       ...draftFieldsSchema.parse(body),

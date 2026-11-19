@@ -7,8 +7,8 @@ import { api } from '../api';
 import type { Edition, Registration, Team } from '../api/schemas';
 import { useSession } from '../stores/session';
 import ErrorNotice from '../components/ErrorNotice.vue';
+import RegistrationHistory from '../components/RegistrationHistory.vue';
 import StatusTag from '../components/StatusTag.vue';
-import { formatEventDateTime } from '../utils/format';
 import { readReviewQueueQuery, writeReviewQueueQuery } from '../utils/reviewQueue';
 
 const { t } = useI18n(),
@@ -226,22 +226,36 @@ async function cancelReview() {
   }
 }
 async function review(action: 'approve' | 'reject' | 'return') {
-  if (!record.value?.current_submission_no) return;
+  const target = record.value;
+  if (!target?.current_submission_no || saving.value || !canReview.value) return;
+  saving.value = true;
+  error.value = null;
   try {
-    const result = await ElMessageBox.prompt(t('reviewConfirm'), t(action), {
-      inputType: 'textarea',
-      inputPlaceholder: t('comment'),
-      inputValidator: (value: string) => action === 'approve' || !!value?.trim() || t('required'),
-      confirmButtonText: t(action),
-      cancelButtonText: t('cancel'),
-    });
-    saving.value = true;
-    error.value = null;
+    const message =
+      target.status === 'approved' ? 'reviewRejectApprovedConfirm' : 'reviewRoundConfirm';
+    const result = await ElMessageBox.prompt(
+      t(message, {
+        batch: target.batch_no,
+        round: target.current_submission_no,
+        action: t(action),
+      }),
+      t(action),
+      {
+        inputType: 'textarea',
+        inputPlaceholder: t('comment'),
+        inputValidator: (value: string) => {
+          if (action !== 'approve' && !value?.trim()) return t('reviewCommentRequired');
+          return (value?.trim().length ?? 0) <= 2000 || t('reviewCommentTooLong');
+        },
+        confirmButtonText: t(action),
+        cancelButtonText: t('cancel'),
+      },
+    );
     assign(
-      await api.reviewRegistration(record.value.id, {
+      await api.reviewRegistration(target.id, {
         action,
         comment: result.value || '',
-        submission_no: record.value.current_submission_no,
+        submission_no: target.current_submission_no,
       }),
     );
     ElMessage.success(t('success'));
@@ -441,25 +455,16 @@ onMounted(load);
           :loading="saving"
           @click="review('approve')"
           >{{ t('approve') }}</el-button
-        ><el-button v-if="record?.status === 'pending_review'" @click="review('return')">{{
-          t('return')
-        }}</el-button
-        ><el-button type="danger" plain @click="review('reject')">{{
+        ><el-button
+          v-if="record?.status === 'pending_review'"
+          :disabled="saving"
+          @click="review('return')"
+          >{{ t('return') }}</el-button
+        ><el-button type="danger" plain :disabled="saving" @click="review('reject')">{{
           t('reject')
         }}</el-button></template
       >
     </div>
-    <section v-if="record?.approval_records.length" class="content-panel">
-      <h2>{{ t('reviewRecord') }}</h2>
-      <el-timeline
-        ><el-timeline-item
-          v-for="item in record.approval_records"
-          :key="item.id"
-          :timestamp="formatEventDateTime(item.created_at)"
-          ><strong>{{ t(item.action) }}</strong>
-          <p>{{ item.comment }}</p></el-timeline-item
-        ></el-timeline
-      >
-    </section>
   </template>
+  <RegistrationHistory v-if="record?.current_submission_no" :record="record" />
 </template>

@@ -294,6 +294,11 @@ const zh = {
   applyLicense: '申请本赛季许可',
   licenseConfirm: '提交本赛季注册申请？',
   reviewConfirm: '确认对这条记录作出该审核决定？',
+  reviewRoundConfirm: '确认对报名 {batch} 的第 {round} 轮执行「{action}」？',
+  reviewRejectApprovedConfirm:
+    '驳回报名 {batch} 的第 {round} 轮将撤销通过结果。修改后仍须在报名时间窗内重新提交。',
+  reviewCommentRequired: '驳回或退回必须填写审核意见。',
+  reviewCommentTooLong: '审核意见不得超过 2000 个字符。',
   selectEdition: '选择赛事场次',
   all: '全部',
   manage: '管理控制台',
@@ -343,6 +348,13 @@ const zh = {
   page: '页',
   passwordMin: '新密码至少12位，服务端还会检查密码安全性。',
   reviewRecord: '审核历史',
+  submissionHistoryHint: '各轮显示当时提交的赛项、组别和成员，不随草稿或队伍档案变动。',
+  submissionDeclaredLevel: '本轮声明学段：{level}',
+  submissionCancelledAt: '已于 {date} 取消审核；本轮提交仍保留。',
+  submissionCancelledAction: '取消审核',
+  submissionFrozenMembers: '查看本轮冻结成员（{count} 人）',
+  submissionCaptain: '队长',
+  submissionMember: '队员',
   recordsHint: '只有实际 API 返回成功后才显示操作完成。',
 };
 const en: typeof zh = {
@@ -655,6 +667,11 @@ const en: typeof zh = {
   applyLicense: 'Request this season’s license',
   licenseConfirm: 'Submit a registration request for this season?',
   reviewConfirm: 'Confirm this review decision for the selected record?',
+  reviewRoundConfirm: 'Confirm “{action}” for round {round} of registration {batch}?',
+  reviewRejectApprovedConfirm:
+    'Rejecting round {round} of registration {batch} revokes its approval. Changes must be resubmitted within the registration window.',
+  reviewCommentRequired: 'Enter a reason for rejecting or returning a registration.',
+  reviewCommentTooLong: 'The review comment must be at most 2,000 characters.',
   selectEdition: 'Select competition edition',
   all: 'All',
   manage: 'Management',
@@ -712,6 +729,14 @@ const en: typeof zh = {
   page: 'Page',
   passwordMin: 'Use at least 12 characters. The server also checks password security.',
   reviewRecord: 'Review history',
+  submissionHistoryHint:
+    'Each round shows the event, division and members as submitted, unchanged by later edits.',
+  submissionDeclaredLevel: 'Declared school level: {level}',
+  submissionCancelledAt: 'Review cancelled at {date}; this submission is retained.',
+  submissionCancelledAction: 'Review cancelled',
+  submissionFrozenMembers: 'View submitted members ({count})',
+  submissionCaptain: 'Captain',
+  submissionMember: 'Member',
   recordsHint: 'Completion is shown only after the actual API succeeds.',
 };
 export const i18n = createI18n({

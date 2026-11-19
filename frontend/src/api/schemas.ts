@@ -265,6 +265,19 @@ export const memberSchema = z
     grade: text.nullable(),
   })
   .strict();
+export const registrationSubmissionSchema = z
+  .object({
+    submission_no: idSchema,
+    offering_id: idSchema,
+    event_name: text,
+    group_name: text,
+    selected_school_level: schoolLevel.nullable(),
+    submitted_at: z.string().datetime({ offset: true }),
+    cancelled_at: z.string().datetime({ offset: true }).nullable(),
+    members: z.array(memberSchema.extend({ user_id: nullableId })),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['Submission']>;
+export type RegistrationSubmission = z.output<typeof registrationSubmissionSchema>;
 export const requestStatusSchema = z.enum([
   'draft',
   'submitted',
