@@ -38,6 +38,16 @@ profile可为null；邮箱仅本人/me返回，公开接口不返回。grants只
 
 `PATCH /me/preferences`：非空对象，只接受locale/theme，返回保存后的两字段。`POST /auth/password/change`：`{old_password,new_password}`，校验密码策略、原子递增token_version并换发会话；改密前受限会话只能访问/me、改密及登出等必要路径。
 
+### 2.1 邮箱验证码、注册与找回
+
+- `POST /auth/verify-code/send`：严格请求`{email,purpose}`，purpose仅register/reset_password，邮箱最长255字符并去首尾空格、转小写。合法且未超限请求统一HTTP202，data=null，message为“如符合条件，验证码将发送，请检查收件箱”。HTTP受理阶段不查询账号存在性，只原子建立verification_codes及outbox记录；不返回验证码、投递状态、账号状态或邮箱是否存在。默认同邮箱同用途60秒一次、IP每小时20次；超限42901并有Retry-After，受理存储不可用统一50301。
+- `POST /auth/register`：严格请求`{email,password,verification_code,real_name}`，verification_code为6位ASCII数字字符串（保留前导零），real_name去首尾空格后1–64字符；密码12–256字符并通过既有Django策略。成功HTTP201，data=`{id,status:"active"}`；创建已验证邮箱账号、最小participant档案及本人基础grants，不接收角色、作用域或单位ID，不自动赋予管理权或归属。注册后显式登录，不能借注册覆盖已有账号。
+- `POST /auth/password/reset`：严格请求`{email,verification_code,new_password}`，密码策略同上。验证码错误、过期、超次、用途不符或已消费均HTTP401/code40102，不返回账号是否存在；有效核验成功统一HTTP202/data=null。对匹配的已验证有效账号原子改密、递增token_version并清除must_change_password，不自动登录，不重置管理角色或单位归属。
+- 验证码默认10分钟有效、最多5次失败、只消费一次；行锁使并发注册/重置只有一次成功。失败计数必须在返回错误后仍持久化，不能因抛异常而回滚。重发使同邮箱同用途旧码失效，注册码不可用于重置，已封禁或删除账号不能通过找回恢复启用。
+- 仅保存验证码hash，供发送重试的明文只以Fernet密文短期保留。outbox payload仅含verification_code_id及locale，不包含验证码、密码或邮箱；发送任务读取记录后判断是否应发送，注册仅向未被占用邮箱发送，找回仅向已验证且有效账号发送；所有条件在异步侧判断，不改变HTTP受理语义。送达、过期、不符合发送条件或消费后清除投递密文。
+- 首批投递器只处理白名单auth.verification主题，使用可过期租约领取、超时重试、有限指数退避和稳定Message-ID；SMTP可能至少一次投递，不承诺邮件恰好一次。只在SMTP/backend实际接受后标记dispatched，未发送且正常结束的无资格/失效请求同样终结且不在匿名接口区分；失败不丢弃pending，耗尽重试后failed并记录脱敏告警。业务报名通知主题尚未接入时保持待处理，不伪造已投递。
+- 邮件采用已配置SMTP，开发/测试可使用仅进程内locmem backend，不提供读取验证码/邮箱内容的公开调试端点，不打印验证码、正文或收件地址。真实发信配置及SPF/DKIM仍需单独验收；前端只显示已受理，不能显示邮件已送达。
+
 ## 3. 公开赛事与作用域内基础查询
 
 - `GET /seasons/current`：data为 `{id,name,start_date,end_date,status}` 或null；无当前赛季不允许新报名。
