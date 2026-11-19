@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aiOutputSchema,
   csrfSchema,
+  editionDraftSchema,
   envelopeSchema,
   idSchema,
   loginSchema,
@@ -12,6 +13,7 @@ import {
 } from '../src/api/schemas';
 import {
   mayCreateCompetition,
+  mayCreateEdition,
   mayEnter,
   mayRenderPrivate,
   mayViewCompetitionRegistry,
@@ -32,6 +34,25 @@ const actor = meSchema.parse({
   theme: 'system',
 });
 describe('untrusted JSON boundaries', () => {
+  it('requires an explicit zone for local edition times', () => {
+    const edition = {
+      season_id: 1,
+      edition_no: 1,
+      year: 2028,
+      name: 'Test edition',
+      venue: 'Test venue',
+      time_zone: 'Asia/Shanghai',
+      enroll_start: '2028-01-01T09:00',
+      enroll_end: '2028-02-01T09:00',
+      start_date: '2028-02-01T10:00',
+      end_date: '2028-02-01T17:00',
+    };
+    expect(editionDraftSchema.parse(edition)).toEqual(edition);
+    expect(editionDraftSchema.safeParse({ ...edition, time_zone: undefined }).success).toBe(false);
+    expect(
+      editionDraftSchema.safeParse({ ...edition, start_date: '2028-02-01T02:00Z' }).success,
+    ).toBe(false);
+  });
   it('keeps cross-year season dates as calendar strings and rejects inverted ranges', () => {
     const season = {
       code: '2027-2028',
@@ -133,6 +154,20 @@ describe('frontend permission gates', () => {
     });
     expect(mayViewCompetitionRegistry(account)).toBe(view);
     expect(mayCreateCompetition(account)).toBe(create);
+  });
+
+  it('does not inherit edition creation up or across a competition', () => {
+    const grant = {
+      role: 'competition_admin',
+      scope_type: 'competition',
+      scope_id: 1,
+      permissions: ['edition:create'],
+    };
+    const competition = meSchema.parse({ ...actor, grants: [grant] });
+    const edition = meSchema.parse({ ...actor, grants: [{ ...grant, scope_type: 'edition' }] });
+    expect(mayCreateEdition(competition, 1)).toBe(true);
+    expect(mayCreateEdition(competition, 2)).toBe(false);
+    expect(mayCreateEdition(edition, 1)).toBe(false);
   });
 
   it('permits only supplied grants and removes access when actor clears', () => {

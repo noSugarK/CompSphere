@@ -60,7 +60,7 @@ const isManager = computed(() =>
 );
 const inAdmin = computed(
   () =>
-    ['competitionRegistry', 'seasonManagement'].includes(String(route.name)) ||
+    ['competitionRegistry', 'editionRegistry', 'seasonManagement'].includes(String(route.name)) ||
     (isManager.value && ['requests', 'licenses', 'reviews'].includes(String(route.name))),
 );
 const links = computed(() =>

@@ -22,6 +22,17 @@ export function mayCreateCompetition(me: Me | null) {
   );
 }
 
+export function mayCreateEdition(me: Me | null, competitionId: number) {
+  return (
+    me?.grants.some(
+      (grant) =>
+        grant.permissions.includes('edition:create') &&
+        ((grant.role === 'platform_admin' && grant.scope_type === 'global') ||
+          (grant.scope_type === 'competition' && grant.scope_id === competitionId)),
+    ) ?? false
+  );
+}
+
 export function hasPermission(me: Me | null, permission: string) {
   return me?.grants.some((grant) => grant.permissions.includes(permission)) ?? false;
 }

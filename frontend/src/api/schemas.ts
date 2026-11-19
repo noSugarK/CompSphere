@@ -123,6 +123,31 @@ export const editionSchema = z
     offerings: z.array(offeringSchema),
   })
   .strict();
+const editionClock = text
+  .datetime({ local: true })
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/);
+export const editionDraftSchema = z
+  .object({
+    season_id: idSchema,
+    edition_no: z.number().int().min(1).max(9999),
+    year: z.number().int().min(1).max(9999),
+    name: text.trim().min(1).max(128),
+    venue: text.trim().min(1).max(255),
+    time_zone: z.literal('Asia/Shanghai'),
+    enroll_start: editionClock,
+    enroll_end: editionClock,
+    start_date: editionClock,
+    end_date: editionClock,
+  })
+  .strict() satisfies z.ZodType<components['schemas']['EditionDraftRequest']>;
+export const managedEditionSchema = editionSchema
+  .omit({ approval_mode: true, offerings: true })
+  .extend({
+    edition_no: z.number().int().positive(),
+    year: z.number().int().positive(),
+  }) satisfies z.ZodType<components['schemas']['ManagedEdition']>;
+export type ManagedEdition = components['schemas']['ManagedEdition'];
+
 export const competitionSchema = z
   .object({
     id: idSchema,

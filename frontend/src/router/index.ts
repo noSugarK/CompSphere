@@ -25,6 +25,12 @@ export const router = createRouter({
       meta: { title: 'competitionRegistry', auth: true, competitionRegistry: true },
     },
     {
+      path: '/competition-registry/:id/editions',
+      name: 'editionRegistry',
+      component: () => import('../views/EditionRegistryView.vue'),
+      meta: { title: 'editionRegistry', auth: true, permissions: ['edition:read'] },
+    },
+    {
       path: '/editions/:id',
       name: 'edition',
       component: () => import('../views/EditionView.vue'),

@@ -105,7 +105,9 @@ onMounted(load);
       <tbody>
         <tr v-for="item in items" :key="item.id">
           <th scope="row">
-            {{ item.name }}
+            <RouterLink :to="{ name: 'editionRegistry', params: { id: item.id } }">{{
+              item.name
+            }}</RouterLink>
             <span class="small muted">{{ item.public_code }}</span>
           </th>
           <td><StatusTag :status="item.status" /></td>

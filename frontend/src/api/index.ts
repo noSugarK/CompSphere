@@ -10,10 +10,12 @@ import {
   competitionDraftSchema,
   competitionSchema,
   draftFieldsSchema,
+  editionDraftSchema,
   editionSchema,
   idSchema,
   loginSchema,
   managedCompetitionSchema,
+  managedEditionSchema,
   managedSeasonSchema,
   meSchema,
   orgMemberSchema,
@@ -83,6 +85,25 @@ export const api = {
     request('GET', `/competitions?page=${page}`, pageSchema(managedCompetitionSchema)),
   createCompetition: (body: unknown) =>
     request('POST', '/competitions', managedCompetitionSchema, competitionDraftSchema.parse(body)),
+  managedEditions: (competition: number, page = 1) =>
+    request(
+      'GET',
+      `/competitions/${idSchema.parse(competition)}/editions?page=${page}`,
+      pageSchema(managedEditionSchema),
+    ),
+  eligibleEditionSeasons: (competition: number, page = 1) =>
+    request(
+      'GET',
+      `/competitions/${idSchema.parse(competition)}/edition-seasons?page=${page}&page_size=100`,
+      pageSchema(managedSeasonSchema),
+    ),
+  createEdition: (competition: number, body: unknown) =>
+    request(
+      'POST',
+      `/competitions/${idSchema.parse(competition)}/editions`,
+      managedEditionSchema,
+      editionDraftSchema.parse(body),
+    ),
   edition: (id: number) => request('GET', `/public/editions/${idSchema.parse(id)}`, editionSchema),
   teams: (page = 1) => request('GET', `/teams?page=${page}`, pageSchema(teamSchema)),
   orgs: () => request('GET', '/orgs', pageSchema(orgSchema)),
