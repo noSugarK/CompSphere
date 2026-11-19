@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { api } from '../api';
-import type { ReviewQueueItem, ReviewQueueOption } from '../api/schemas';
+import { ApiError } from '../api/client';
+import type {
+  BulkReviewResult,
+  ReviewAction,
+  ReviewQueueItem,
+  ReviewQueueOption,
+} from '../api/schemas';
+import BulkReviewDialog from '../components/BulkReviewDialog.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { formatEventDateTime } from '../utils/format';
+import { errorMessage } from '../utils/errors';
 import {
   readReviewQueueQuery,
   reviewDimensions,
@@ -42,6 +50,19 @@ const loading = ref(true);
 const loadingOptions = ref(false);
 const error = ref<unknown>(null);
 const optionsError = ref<unknown>(null);
+const selectedIds = ref<number[]>([]);
+const batch = ref<{ action: ReviewAction; rows: ReviewQueueItem[] }>();
+const receipt = ref<{ rows: ReviewQueueItem[]; results: BulkReviewResult[]; uncertain: boolean }>();
+const receiptTitle = ref<HTMLElement>();
+const reviewActions: ReviewAction[] = ['approve', 'return', 'reject'];
+const selectable = computed(() => items.value.filter((item) => item.can_review).slice(0, 20));
+const selected = computed(() =>
+  selectable.value.filter((item) => selectedIds.value.includes(item.id)),
+);
+const allSelected = computed(
+  () => selectable.value.length > 0 && selected.value.length === selectable.value.length,
+);
+const failures = computed(() => receipt.value?.results.filter((item) => item.code !== 0) ?? []);
 let optionRequest = 0;
 
 async function loadQueue() {
@@ -116,6 +137,25 @@ function resetFilters() {
   void router.replace({ name: 'reviews' });
 }
 
+function togglePage() {
+  selectedIds.value = allSelected.value ? [] : selectable.value.map((item) => item.id);
+}
+
+function openBatch(action: ReviewAction) {
+  if (selected.value.length) batch.value = { action, rows: [...selected.value] };
+}
+
+async function closeBatch(results: BulkReviewResult[] | undefined, uncertain: boolean) {
+  const target = batch.value;
+  batch.value = undefined;
+  if (!target || (!results && !uncertain)) return;
+  receipt.value = { rows: target.rows, results: results ?? [], uncertain };
+  selectedIds.value = [];
+  await nextTick();
+  receiptTitle.value?.focus();
+  await loadQueue();
+}
+
 onMounted(() => {
   void loadQueue();
   void loadOptions();
@@ -175,11 +215,45 @@ onMounted(() => {
       t('retry')
     }}</el-button>
   </section>
+  <section v-if="receipt" class="content-panel" aria-labelledby="bulk-review-receipt">
+    <h2 id="bulk-review-receipt" ref="receiptTitle" tabindex="-1">{{ t('bulkReviewReceipt') }}</h2>
+    <p v-if="receipt.uncertain">{{ t('bulkReviewUncertain') }}</p>
+    <template v-else>
+      <p>
+        {{
+          t('bulkReviewTally', {
+            succeeded: receipt.results.length - failures.length,
+            failed: failures.length,
+          })
+        }}
+      </p>
+      <ul v-if="failures.length">
+        <li v-for="item in failures" :key="item.registration_id">
+          {{ receipt.rows.find((row) => row.id === item.registration_id)?.batch_no }} ·
+          {{ errorMessage(new ApiError(item.code)) }}
+        </li>
+      </ul>
+    </template>
+  </section>
   <ErrorNotice :error="error" />
   <el-button v-if="error" class="retry-button" @click="loadQueue">{{ t('retry') }}</el-button>
   <p v-if="loading" role="status">{{ t('loading') }}</p>
   <section v-else-if="!error" class="content-panel">
     <h2 id="review-results-title">{{ t('reviewResultCount', { count: total }) }}</h2>
+    <p v-if="selectable.length" class="small muted queue-mobile">{{ t('bulkReviewDesktop') }}</p>
+    <div v-if="selected.length" class="bulk-bar queue-desktop">
+      <span role="status">{{ t('bulkReviewSelected', { count: selected.length }) }}</span>
+      <div class="actions">
+        <el-button
+          v-for="action in reviewActions"
+          :key="action"
+          :type="action === 'approve' ? 'primary' : undefined"
+          @click="openBatch(action)"
+        >
+          {{ t('bulkReviewAction', { action: t(action) }) }}
+        </el-button>
+      </div>
+    </div>
     <p v-if="!items.length" class="muted">{{ t('reviewNoResults') }}</p>
     <div
       v-else
@@ -191,7 +265,18 @@ onMounted(() => {
       <table class="queue-table">
         <thead>
           <tr>
-            <th scope="col">{{ t('registrations') }}</th>
+            <th scope="col">
+              <input
+                v-if="selectable.length"
+                class="queue-desktop queue-check"
+                type="checkbox"
+                :aria-label="t('bulkReviewSelectPage')"
+                :checked="allSelected"
+                :indeterminate="selected.length > 0 && !allSelected"
+                @change="togglePage"
+              />
+              {{ t('reviewBatchNumber') }}
+            </th>
             <th scope="col">{{ t('selectEdition') }}</th>
             <th scope="col">{{ t('org') }}</th>
             <th scope="col">{{ t('status') }}</th>
@@ -201,6 +286,14 @@ onMounted(() => {
         <tbody>
           <tr v-for="item in items" :key="item.id">
             <th scope="row">
+              <input
+                v-if="item.can_review && selectable.includes(item)"
+                v-model="selectedIds"
+                class="queue-desktop queue-check"
+                type="checkbox"
+                :aria-label="t('bulkReviewSelectRow', { batch: item.batch_no })"
+                :value="item.id"
+              />
               <RouterLink
                 :to="{
                   path: `/registrations/${item.id}`,
@@ -239,6 +332,7 @@ onMounted(() => {
       @current-change="changePage"
     />
   </section>
+  <BulkReviewDialog v-if="batch" :action="batch.action" :rows="batch.rows" @closed="closeBatch" />
 </template>
 
 <style scoped>
@@ -246,6 +340,29 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: 0 16px;
+}
+.bulk-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-block: 12px;
+}
+.queue-check {
+  margin-inline-end: 8px;
+  vertical-align: middle;
+}
+.queue-mobile {
+  display: none;
+}
+@media (max-width: 767px) {
+  .queue-desktop {
+    display: none;
+  }
+  .queue-mobile {
+    display: block;
+  }
 }
 .content-panel + .content-panel {
   margin-block-start: 16px;

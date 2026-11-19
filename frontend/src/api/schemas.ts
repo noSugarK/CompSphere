@@ -400,6 +400,18 @@ export const registrationStatusSchema = z.enum([
   'approved',
   'withdrawn',
 ]);
+export const bulkReviewResultSchema = z
+  .object({
+    registration_id: idSchema,
+    code: z.number().int().nonnegative(),
+    status: registrationStatusSchema.nullable(),
+  })
+  .strict()
+  .refine((item) => (item.code === 0) === (item.status !== null)) satisfies z.ZodType<
+  components['schemas']['BulkReviewResult']
+>;
+export type BulkReviewResult = components['schemas']['BulkReviewResult'];
+export type ReviewAction = components['schemas']['ReviewActionEnum'];
 export const reviewQueueItemSchema = z
   .object({
     id: idSchema,

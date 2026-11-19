@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   aiOutputSchema,
+  bulkReviewResultSchema,
   csrfSchema,
   editionDetailsSchema,
   editionDraftSchema,
@@ -35,6 +36,21 @@ const actor = meSchema.parse({
   theme: 'system',
 });
 describe('untrusted JSON boundaries', () => {
+  it('does not accept a bulk review failure as a completed status change', () => {
+    expect(
+      bulkReviewResultSchema.safeParse({ registration_id: 1, code: 0, status: 'approved' }).success,
+    ).toBe(true);
+    expect(
+      bulkReviewResultSchema.safeParse({ registration_id: 1, code: 40906, status: null }).success,
+    ).toBe(true);
+    expect(
+      bulkReviewResultSchema.safeParse({ registration_id: 1, code: 40906, status: 'approved' })
+        .success,
+    ).toBe(false);
+    expect(
+      bulkReviewResultSchema.safeParse({ registration_id: 1, code: 0, status: null }).success,
+    ).toBe(false);
+  });
   it('requires an explicit zone for local edition times', () => {
     const edition = {
       season_id: 1,

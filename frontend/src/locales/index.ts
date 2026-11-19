@@ -203,6 +203,24 @@ const zh = {
   reviewNoResults: '没有符合条件的报名。可以调整筛选条件。',
   reviewSubmittedAt: '提交时间',
   reviewRound: '第 {round} 轮',
+  reviewBatchNumber: '报名编号',
+  bulkReviewDesktop: '批量审核请使用桌面设备；当前设备仍可打开单条审核。',
+  bulkReviewSelected: '已选本页 {count} 条',
+  bulkReviewSelectPage: '选择本页可审核的报名',
+  bulkReviewSelectRow: '选择报名 {batch}',
+  bulkReviewAction: '批量{action}',
+  bulkReviewTitle: '批量{action} · {count} 条报名',
+  bulkReviewConfirm: '确认{action}',
+  bulkReviewEffect: {
+    approve: '通过下列待审核轮次并通知提交人。每条分别校验、保存。',
+    return: '退回下列待审核轮次并通知提交人。提交人可在报名时间窗内修改重提。',
+    reject: '将下列待审核轮次标为未通过并通知提交人。不删除原提交，修改后可在报名时间窗内重提。',
+  },
+  bulkReviewReceipt: '批量审核结果',
+  bulkReviewTally: '成功 {succeeded} 条，未处理 {failed} 条。未处理项请核对状态后再操作。',
+  bulkReviewUncertain:
+    '未收到完整结果，部分操作可能已生效。请核对刷新后的状态，不要直接重试原批次。',
+  bulkReviewRefresh: '关闭并刷新队列',
   login: '登录',
   logout: '退出登录',
   skip: '跳转至主要内容',
@@ -574,6 +592,29 @@ const en: typeof zh = {
   reviewNoResults: 'No registrations match. Try adjusting the filters.',
   reviewSubmittedAt: 'Submitted at',
   reviewRound: 'Round {round}',
+  reviewBatchNumber: 'Registration number',
+  bulkReviewDesktop:
+    'Use a desktop for bulk review. You can still open and review individual entries here.',
+  bulkReviewSelected: '{count} selected on this page',
+  bulkReviewSelectPage: 'Select reviewable registrations on this page',
+  bulkReviewSelectRow: 'Select registration {batch}',
+  bulkReviewAction: 'Bulk: {action}',
+  bulkReviewTitle: '{action} in bulk · {count} registrations',
+  bulkReviewConfirm: 'Confirm: {action}',
+  bulkReviewEffect: {
+    approve:
+      'Approve these pending rounds and notify their submitters. Each round is checked and saved separately.',
+    return:
+      'Return these pending rounds and notify their submitters. They can edit and resubmit within the registration window.',
+    reject:
+      'Reject these pending rounds and notify their submitters. The original rounds are retained and can be resubmitted within the registration window.',
+  },
+  bulkReviewReceipt: 'Bulk review results',
+  bulkReviewTally:
+    '{succeeded} succeeded, {failed} not processed. Check their current status before trying again.',
+  bulkReviewUncertain:
+    'A complete result was not received. Some decisions may have been recorded. Check the refreshed queue before trying again.',
+  bulkReviewRefresh: 'Close and refresh queue',
   login: 'Sign in',
   logout: 'Sign out',
   skip: 'Skip to main content',

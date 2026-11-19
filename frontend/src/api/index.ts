@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { request } from './client';
+import { ApiError, request } from './client';
 import {
   registerRequestSchema,
   registerResultSchema,
@@ -7,6 +7,7 @@ import {
   verificationRequestSchema,
 } from './authSchemas';
 import {
+  bulkReviewResultSchema,
   competitionDraftSchema,
   competitionSchema,
   draftFieldsSchema,
@@ -49,6 +50,7 @@ import {
   teamSchema,
   tokenSchema,
 } from './schemas';
+import type { components } from './generated';
 
 const positiveVersion = z.object({ version: z.number().int().positive() }).strict();
 function queryString(parameters: ReviewQueueFilters | ReviewQueueOptionQuery) {
@@ -58,14 +60,27 @@ function queryString(parameters: ReviewQueueFilters | ReviewQueueOptionQuery) {
   }
   return query.toString();
 }
-const reviewSchema = z
+const reviewFieldsSchema = z
   .object({
     action: z.enum(['approve', 'reject', 'return']),
     comment: z.string().max(2000),
-    submission_no: z.number().int().positive(),
   })
-  .strict()
-  .refine((v) => v.action === 'approve' || v.comment.trim().length > 0);
+  .strict();
+const hasRequiredReviewComment = (value: z.output<typeof reviewFieldsSchema>) =>
+  value.action === 'approve' || value.comment.trim().length > 0;
+const reviewSchema = reviewFieldsSchema
+  .extend({ submission_no: idSchema })
+  .refine(hasRequiredReviewComment);
+const bulkReviewSchema = reviewFieldsSchema
+  .extend({
+    items: z
+      .array(z.object({ registration_id: idSchema, submission_no: idSchema }).strict())
+      .min(1)
+      .max(20),
+  })
+  .refine(hasRequiredReviewComment) satisfies z.ZodType<
+  components['schemas']['BulkRegistrationReviewRequest']
+>;
 export const api = {
   login: (body: unknown) => request('POST', '/auth/login', tokenSchema, loginSchema.parse(body)),
   sendVerificationCode: (body: unknown) =>
@@ -338,4 +353,20 @@ export const api = {
       registrationSchema,
       reviewSchema.parse(body),
     ),
+  bulkReviewRegistrations: async (body: unknown) => {
+    const payload = bulkReviewSchema.parse(body);
+    const results = await request(
+      'POST',
+      '/registrations/bulk-approval',
+      z.array(bulkReviewResultSchema).min(1).max(20),
+      payload,
+    );
+    if (
+      results.length !== payload.items.length ||
+      results.some((item, index) => item.registration_id !== payload.items[index]?.registration_id)
+    ) {
+      throw new ApiError(50201);
+    }
+    return results;
+  },
 };
