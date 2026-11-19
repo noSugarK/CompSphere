@@ -119,7 +119,7 @@ compsphere-server/
 
 业务写入与 outbox 记录使用同一事务；on_commit 仅作唤醒优化，不承担可靠投递。dispatcher 用 SKIP LOCKED/租约领取，投递失败按退避保留重试，崩溃租约过期可重领；成功标 dispatched。确认丢失可能重复投递，任务按 business_key/业务状态幂等，不宣称恰好一次。超阈值告警并保留失败记录供重放，定时对账 queued 证书与 outbox。payload 只存 ID、版本、locale，不含敏感正文。
 
-当前验证码投递器只支持`auth.verification`：beat每15秒扫描，每批最多20封；5次尝试、30秒起指数退避，租约至少60秒并大于配置SMTP超时。SMTP在事务之外调用；旧租约持有者不能覆盖新领取结果。过期或已消费验证码的投递密文定期清除；开发/测试使用locmem backend，生产SMTP配置与SPF/DKIM另行验收。其余业务通知尚无消费者，保持pending，不能据此宣称已送达。
+当前邮件投递器白名单为 `auth.verification` 和 `registration.notice_mail`，beat 每 15 秒分别扫描，每主题每批最多 20 封；5 次尝试、30 秒起指数退避，租约至少 60 秒并大于配置 SMTP 超时。SMTP 在事务之外调用；旧租约持有者不能覆盖新领取结果。无资格任务终结但记 `skipped`，不代表送达。过期或已消费验证码的投递密文定期清除；开发/测试使用 locmem，生产 SMTP 配置与 SPF/DKIM 另行验收。旧报名占位事件及其他未接通的主题不消费、不补发。
 
 ### 3.6 高峰与削峰
 

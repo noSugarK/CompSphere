@@ -1,10 +1,17 @@
 import copy
+from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
+from django.core import mail
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.events.models import Offering
 from apps.groups.models import Group
+from apps.notifications.models import AsyncOutbox, RegistrationNotice
+from apps.notifications.services import REGISTRATION_MAIL_TOPIC
+from apps.notifications.tasks import dispatch_registration_mail
 from apps.rbac.models import Role, UserRole
 from apps.registrations.models import (
     Registration,
@@ -162,6 +169,94 @@ def test_complete_submission_return_resubmit_approve(
     assert (
         decrypt(first.snapshot_enc)["form_data"]["project_title"] == "Synthetic project"
     )
+    dispatch_registration_mail()
+    assert sorted(message.subject for message in mail.outbox) == sorted(
+        [
+            "竞云｜报名已提交",
+            "竞云｜报名已提交",
+            "竞云｜报名已退回修改",
+            "竞云｜报名审核通过",
+        ]
+    )
+    assert all(
+        message.to == [dataset["accounts"]["student"].email]
+        and message.body.endswith("http://testserver/notifications")
+        and "Please correct project title" not in message.body
+        for message in mail.outbox
+    )
+
+
+@pytest.mark.django_db
+def test_registration_mail_retries_with_stable_id_and_queued_locale(
+    dataset, actor_client, draft_payload
+):
+    student = dataset["accounts"]["student"]
+    student.locale = "en-US"
+    student.save(update_fields=["locale"])
+    client, draft = create_draft(actor_client, dataset, draft_payload)
+    assert submit(client, draft).status_code == 200
+    assert submit(client, draft).status_code == 200
+    row = AsyncOutbox.objects.get(topic=REGISTRATION_MAIL_TOPIC)
+    assert row.payload == {
+        "notice_id": RegistrationNotice.objects.get().pk,
+        "locale": "en-US",
+    }
+    student.locale = "zh-CN"
+    student.save(update_fields=["locale"])
+    with patch("django.core.mail.EmailMessage.send", autospec=True) as send:
+        send.return_value = 0
+        dispatch_registration_mail()
+        first_message = send.call_args.args[0]
+    row.refresh_from_db()
+    assert row.attempts == 1 and row.status == "pending" and row.lease_until is None
+    assert row.next_attempt_at > timezone.now()
+    AsyncOutbox.objects.filter(pk=row.pk).update(next_attempt_at=timezone.now())
+    dispatch_registration_mail()
+    dispatch_registration_mail()
+    row.refresh_from_db()
+    assert row.attempts == 2 and row.status == "dispatched"
+    (delivered,) = mail.outbox
+    assert delivered.subject == "CompSphere | Registration submitted"
+    assert delivered.to == [student.email]
+    assert (
+        delivered.extra_headers["Message-ID"]
+        == first_message.extra_headers["Message-ID"]
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "ineligible", ["no_email", "unverified", "reverified", "closed"]
+)
+def test_ineligible_registration_mail_is_not_sent(
+    dataset, actor_client, draft_payload, ineligible
+):
+    student = dataset["accounts"]["student"]
+    if ineligible == "no_email":
+        student.email = None
+        student.email_verified_at = None
+        student.save(update_fields=["email", "email_verified_at"])
+    client, draft = create_draft(actor_client, dataset, draft_payload)
+    assert submit(client, draft).status_code == 200
+    assert RegistrationNotice.objects.filter(recipient=student).exists()
+    rows = AsyncOutbox.objects.filter(topic=REGISTRATION_MAIL_TOPIC)
+    if ineligible == "no_email":
+        assert not rows.exists()
+    elif ineligible == "closed":
+        edition = dataset["edition"]
+        edition.status = "closed"
+        edition.save(update_fields=["status"])
+    else:
+        student.email = "different@example.test"
+        student.email_verified_at = (
+            rows.get().created_at + timedelta(seconds=1)
+            if ineligible == "reverified"
+            else None
+        )
+        student.save(update_fields=["email", "email_verified_at"])
+    dispatch_registration_mail()
+    assert not getattr(mail, "outbox", [])
+    assert not rows.exclude(status="dispatched").exists()
 
 
 @pytest.mark.django_db

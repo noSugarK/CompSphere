@@ -119,7 +119,11 @@ CELERY_BEAT_SCHEDULE = {
     "verification-mail": {
         "task": "apps.notifications.tasks.dispatch_verification_mail",
         "schedule": 15.0,
-    }
+    },
+    "registration-mail": {
+        "task": "apps.notifications.tasks.dispatch_registration_mail",
+        "schedule": 15.0,
+    },
 }
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = env("EMAIL_HOST", default="")

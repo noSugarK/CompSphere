@@ -7,15 +7,23 @@ from django.core.mail import EmailMessage
 from django.utils import timezone
 
 from apps.notifications.models import AsyncOutbox
-from apps.notifications.services import queue_event, queue_verification
-from apps.notifications.tasks import claim_delivery, deliver_claim
+from apps.notifications.services import queue_verification
+from apps.notifications.tasks import (
+    claim_delivery,
+    deliver_claim,
+    dispatch_registration_mail,
+)
 
 pytestmark = pytest.mark.django_db
 
 
 def test_supported_delivery_and_secret_free_payload():
     row = queue_verification(17, "zh-CN")
-    queue_event("registration.submitted", 1, 1, 1)
+    legacy = AsyncOutbox.objects.create(
+        topic="registration.submitted",
+        business_key="registration.submitted:1:1",
+        payload={"resource_id": 1, "version": 1, "actor_id": 1},
+    )
     assert row.payload == {"verification_code_id": 17, "locale": "zh-CN"}
     with (
         patch("apps.notifications.tasks.prepare_verification_email") as prepare,
@@ -34,7 +42,9 @@ def test_supported_delivery_and_secret_free_payload():
     assert mail.outbox[-1].extra_headers["Message-ID"] == (
         f"<verification-{row.pk}@compsphere.invalid>"
     )
-    assert AsyncOutbox.objects.get(topic="registration.submitted").status == "pending"
+    dispatch_registration_mail()
+    legacy.refresh_from_db()
+    assert legacy.status == "pending" and legacy.attempts == 0
 
 
 def test_failed_send_retries_without_leaking_exception(capsys):
