@@ -265,6 +265,18 @@ export const registrationSchema = z
     can_edit: z.boolean(),
   })
   .strict();
+export const registrationNoticeSchema = z
+  .object({
+    id: idSchema,
+    registration_id: idSchema,
+    submission_no: z.number().int().positive(),
+    kind: z.enum(['submitted', 'approved', 'rejected', 'returned']),
+    created_at: z.string().datetime({ offset: true }),
+    read_at: z.string().datetime({ offset: true }).nullable(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['RegistrationNotice']>;
+export type RegistrationNotice = components['schemas']['RegistrationNotice'];
+
 export function pageSchema<T extends z.ZodTypeAny>(item: T) {
   return z
     .object({

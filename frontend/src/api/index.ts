@@ -17,6 +17,7 @@ import {
   orgSchema,
   pageSchema,
   preferencesSchema,
+  registrationNoticeSchema,
   registrationSchema,
   seasonRegistrationSchema,
   seasonSchema,
@@ -44,6 +45,10 @@ export const api = {
   resetPassword: (body: unknown) =>
     request('POST', '/auth/password/reset', z.null(), resetPasswordRequestSchema.parse(body)),
   me: () => request('GET', '/me', meSchema),
+  notifications: (page = 1) =>
+    request('GET', `/me/notifications?page=${page}`, pageSchema(registrationNoticeSchema)),
+  readNotification: (id: number) =>
+    request('POST', `/me/notifications/${idSchema.parse(id)}/read`, registrationNoticeSchema, {}),
   preferences: (body: unknown) =>
     request('PATCH', '/me/preferences', preferencesSchema, preferencesSchema.parse(body)),
   changePassword: (body: unknown) =>

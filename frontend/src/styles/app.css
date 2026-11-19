@@ -126,6 +126,20 @@ textarea {
   margin-inline-start: auto;
   flex-shrink: 0;
 }
+.header-inbox {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  color: var(--color-muted);
+  border-radius: 4px;
+  font-size: 18px;
+}
+.header-inbox:hover,
+.header-inbox.router-link-exact-active {
+  color: var(--color-accent);
+  background: var(--color-soft);
+}
 .account-name {
   padding-inline: 8px;
   max-inline-size: 120px;

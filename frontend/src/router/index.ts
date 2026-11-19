@@ -69,6 +69,12 @@ export const router = createRouter({
       },
     },
     {
+      path: '/notifications',
+      name: 'notifications',
+      component: () => import('../views/NotificationsView.vue'),
+      meta: { title: 'notifications', auth: true },
+    },
+    {
       path: '/registrations',
       name: 'registrations',
       component: () => import('../views/RegistrationsView.vue'),

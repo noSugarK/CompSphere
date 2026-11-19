@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import zh from 'element-plus/es/locale/lang/zh-cn';
 import en from 'element-plus/es/locale/lang/en';
-import { Moon, Sunny, Monitor } from '@element-plus/icons-vue';
+import { Bell, Moon, Sunny, Monitor } from '@element-plus/icons-vue';
 import { api } from './api';
 import { ApiError } from './api/client';
 import { useSession } from './stores/session';
@@ -140,11 +140,18 @@ async function logout() {
               ><Moon v-if="theme === 'dark'" /><Sunny v-else-if="theme === 'light'" /><Monitor
                 v-else /></el-icon
           ></el-button>
-          <template v-if="session.authenticated"
-            ><span class="account-name">{{
+          <template v-if="session.authenticated">
+            <router-link
+              :to="{ name: 'notifications' }"
+              class="header-inbox"
+              :aria-label="t('notifications')"
+              :title="t('notifications')"
+            >
+              <el-icon aria-hidden="true"><Bell /></el-icon>
+            </router-link>
+            <span class="account-name">{{
               session.me?.profile?.real_name || session.me?.user.username
-            }}</span
-            ><el-button text @click="logout">{{ t('logout') }}</el-button></template
+            }}</span><el-button text @click="logout">{{ t('logout') }}</el-button></template
           >
           <router-link v-else to="/login" class="login-link">{{ t('login') }}</router-link>
         </div>
