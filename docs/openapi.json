@@ -131,6 +131,39 @@
                 }
             }
         },
+        "/api/v1/auth/password/reset": {
+            "post": {
+                "operationId": "auth_password_reset_create",
+                "tags": [
+                    "auth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PasswordResetRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {}
+                ],
+                "responses": {
+                    "202": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PasswordResetResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/auth/refresh": {
             "post": {
                 "operationId": "auth_refresh_create",
@@ -155,6 +188,72 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/RefreshResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "operationId": "auth_register_create",
+                "tags": [
+                    "auth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {}
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegisterResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/verify-code/send": {
+            "post": {
+                "operationId": "auth_verify_code_send_create",
+                "tags": [
+                    "auth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VerificationRequestRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {}
+                ],
+                "responses": {
+                    "202": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VerificationAcceptedResponse"
                                 }
                             }
                         },
@@ -2339,6 +2438,62 @@
                     "request_id"
                 ]
             },
+            "PasswordResetRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "verification_code": {
+                        "type": "string",
+                        "writeOnly": true,
+                        "minLength": 6,
+                        "maxLength": 6,
+                        "pattern": "^[0-9]{6}$"
+                    },
+                    "new_password": {
+                        "type": "string",
+                        "writeOnly": true,
+                        "minLength": 12,
+                        "maxLength": 256
+                    }
+                },
+                "required": [
+                    "email",
+                    "new_password",
+                    "verification_code"
+                ],
+                "additionalProperties": false
+            },
+            "PasswordResetResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "nullable": true
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
             "PatchedPreferencesRequest": {
                 "type": "object",
                 "properties": {
@@ -2495,6 +2650,14 @@
                 ],
                 "additionalProperties": false
             },
+            "PurposeEnum": {
+                "enum": [
+                    "register",
+                    "reset_password"
+                ],
+                "type": "string",
+                "description": "* `register` - register\n* `reset_password` - reset_password"
+            },
             "RecordedActionEnum": {
                 "enum": [
                     "approve",
@@ -2531,6 +2694,92 @@
                     "message",
                     "request_id"
                 ]
+            },
+            "RegisterRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "password": {
+                        "type": "string",
+                        "writeOnly": true,
+                        "minLength": 12,
+                        "maxLength": 256
+                    },
+                    "verification_code": {
+                        "type": "string",
+                        "writeOnly": true,
+                        "minLength": 6,
+                        "maxLength": 6,
+                        "pattern": "^[0-9]{6}$"
+                    },
+                    "real_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    }
+                },
+                "required": [
+                    "email",
+                    "password",
+                    "real_name",
+                    "verification_code"
+                ],
+                "additionalProperties": false
+            },
+            "RegisterResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/RegisteredAccount"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "RegisteredAccount": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/RegisteredAccountStatusEnum"
+                    }
+                },
+                "required": [
+                    "id",
+                    "status"
+                ]
+            },
+            "RegisteredAccountStatusEnum": {
+                "enum": [
+                    "active"
+                ],
+                "type": "string",
+                "description": "* `active` - active"
             },
             "Registration": {
                 "type": "object",
@@ -3983,6 +4232,51 @@
                     "must_change_password",
                     "username"
                 ]
+            },
+            "VerificationAcceptedResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "nullable": true
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "VerificationRequestRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "purpose": {
+                        "$ref": "#/components/schemas/PurposeEnum"
+                    }
+                },
+                "required": [
+                    "email",
+                    "purpose"
+                ],
+                "additionalProperties": false
             },
             "VersionRequest": {
                 "type": "object",

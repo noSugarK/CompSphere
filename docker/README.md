@@ -9,6 +9,7 @@
 - backend、worker、beat 使用相同 APP_ENV/settings；生产 APP_ENV=prod、DEBUG=false，SMTP 域名完成 SPF/DKIM。
 - S3_ENDPOINT 为容器内部地址，S3_PUBLIC_ENDPOINT 为浏览器可达地址；签名前用独立客户端，不能改写已签名链接。生产使用独立 HTTPS 对象存储域名。
 - Nginx 是直连公网入口，覆盖转发 IP 头；若前置 CDN/负载均衡，先配置可信代理网段再调整真实 IP 解析。/healthz/ 必须覆盖应用依赖就绪状态。
+- 验证码限流只信任`TRUSTED_PROXY_IPS`列出的直接代理IP/CIDR所覆盖的`X-Real-IP`，忽略其他来源的转发头及X-Forwarded-For。部署时为Nginx指定隔离网络内稳定地址并配置此值；禁止信任全网、禁止将backend直接暴露公网。留空会按直接连接IP限流，反代情况下会共享预算；上线前验证两个客户端IP预算相互独立且伪造头无效。生产必须使用prod settings的共享Redis；dev locmem仅用于单进程开发。
 - 当前healthz仅为应用存活检查，尚未覆盖全部依赖。prod启用HTTPS重定向且默认不信任转发协议头；部署TLS终止时须同时落实后端不可公网直连、入口覆盖转发头及显式可信代理配置，再测试不会重定向循环。现有80端口示例不能直接作为生产TLS部署。
 
 ```bash

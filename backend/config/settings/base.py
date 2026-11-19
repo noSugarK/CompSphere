@@ -9,6 +9,7 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = False
 IS_DEVELOPMENT = False
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+TRUSTED_PROXY_IPS = env.list("TRUSTED_PROXY_IPS", default=[])
 SITE_BASE_URL = env("SITE_BASE_URL", default="http://localhost:5173").rstrip("/")
 CSRF_TRUSTED_ORIGINS = [SITE_BASE_URL]
 INSTALLED_APPS = [
@@ -111,6 +112,30 @@ CACHES = {
 }
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/1")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://127.0.0.1:6379/2")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_BEAT_SCHEDULE = {
+    "verification-mail": {
+        "task": "apps.notifications.tasks.dispatch_verification_mail",
+        "schedule": 15.0,
+    }
+}
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = env("EMAIL_FROM", default="noreply@compsphere.example")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=5)
+OUTBOX_MAX_ATTEMPTS = 5
+OUTBOX_BATCH_SIZE = 20
+OUTBOX_LEASE_SECONDS = max(60, EMAIL_TIMEOUT * 4)
+CODE_TTL_SECONDS = env.int("CODE_TTL_SECONDS", default=600)
+CODE_RESEND_INTERVAL_SECONDS = env.int("CODE_RESEND_INTERVAL_SECONDS", default=60)
+CODE_MAX_ATTEMPTS = env.int("CODE_MAX_ATTEMPTS", default=5)
+CODE_IP_HOURLY_LIMIT = env.int("CODE_IP_HOURLY_LIMIT", default=20)
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_ROOT = BASE_DIR / "media"

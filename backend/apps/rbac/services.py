@@ -2,8 +2,19 @@ from django.db.models import Q
 from rest_framework.permissions import BasePermission
 
 from apps.orgs.models import Organization
-from apps.rbac.models import UserRole
+from apps.rbac.models import Role, UserRole
 from core.exceptions import BusinessError
+
+
+def grant_participant(user):
+    role = Role.objects.filter(code="participant").first()
+    if role is None:
+        raise BusinessError(
+            50301, "Account registration is temporarily unavailable", 503
+        )
+    return UserRole.objects.create(
+        user=user, role=role, scope_type="global", scope_id=None
+    )
 
 
 def grants(user):

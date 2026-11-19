@@ -4,6 +4,7 @@ from enum import IntEnum
 class ErrorCode(IntEnum):
     INVALID = 40001
     UNAUTHENTICATED = 40101
+    VERIFICATION_CODE = 40102
     LOGIN_FAILED = 40105
     FORBIDDEN = 40301
     SELF_REVIEW = 40303
@@ -29,6 +30,7 @@ class ErrorCode(IntEnum):
     TEAM_REVIEW = 42211
     ORG = 42213
     RATE_LIMIT = 42901
+    UNAVAILABLE = 50301
 
 
 EDITABLE_STATES = ("draft", "returned", "rejected")

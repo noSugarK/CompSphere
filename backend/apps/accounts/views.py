@@ -7,16 +7,99 @@ from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.accounts import services
+from apps.accounts import services, verification
 from apps.accounts.serializers import (
     LoginSerializer,
     PasswordChangeSerializer,
+    PasswordResetSerializer,
     PreferencesSerializer,
+    RegisterSerializer,
+    VerificationRequestSerializer,
 )
 from apps.rbac.services import grants
 from core.api import BaseView, success, validated
+from core.network import client_ip
 from core.schema import envelope
 from core.serializers import EmptySerializer
+
+
+class RegisteredAccount(serializers.Serializer):
+    id = serializers.IntegerField(min_value=1)
+    status = serializers.ChoiceField(choices=["active"])
+
+
+def accepted_verification(request):
+    response = success(request, status=202)
+    response.data["message"] = (
+        "If eligible, a verification code will be sent. Please check your inbox."
+        if request.headers.get("Accept-Language", "").startswith("en")
+        else "如符合条件，验证码将发送，请检查收件箱"
+    )
+    return response
+
+
+class VerificationRequestView(BaseView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(
+        request=VerificationRequestSerializer,
+        responses={
+            202: envelope(
+                "VerificationAcceptedResponse", serializers.JSONField(allow_null=True)
+            )
+        },
+    )
+    def post(self, request):
+        data = validated(VerificationRequestSerializer, request)
+        locale = (
+            "en-US"
+            if request.headers.get("Accept-Language", "").startswith("en")
+            else "zh-CN"
+        )
+        verification.request_verification(
+            data["email"], data["purpose"], client_ip(request), locale
+        )
+        return accepted_verification(request)
+
+
+class RegisterView(BaseView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(
+        request=RegisterSerializer,
+        responses={201: envelope("RegisterResponse", RegisteredAccount)},
+    )
+    def post(self, request):
+        return success(
+            request,
+            verification.register_account(**validated(RegisterSerializer, request)),
+            status=201,
+        )
+
+
+class PasswordResetView(BaseView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(
+        request=PasswordResetSerializer,
+        responses={
+            202: envelope(
+                "PasswordResetResponse", serializers.JSONField(allow_null=True)
+            )
+        },
+    )
+    def post(self, request):
+        verification.reset_password(**validated(PasswordResetSerializer, request))
+        response = success(request, status=202)
+        response.data["message"] = (
+            "Password reset request accepted. Try signing in with the new password."
+            if request.headers.get("Accept-Language", "").startswith("en")
+            else "密码重置请求已受理，请尝试使用新密码登录。"
+        )
+        return response
 
 
 class TokenPair(serializers.Serializer):

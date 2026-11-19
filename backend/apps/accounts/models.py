@@ -6,6 +6,10 @@ from django.utils import timezone
 
 
 class UserManager(BaseUserManager["User"]):
+    @classmethod
+    def normalize_email(cls, email):
+        return super().normalize_email(email).strip().lower() if email else ""
+
     def create_user(self, email=None, password=None, **extra):
         user = self.model(
             email=self.normalize_email(email) if email else None,
@@ -69,4 +73,31 @@ class User(AbstractBaseUser):
                 condition=models.Q(theme__in=["light", "dark", "system"]),
                 name="user_theme_valid",
             ),
+        ]
+
+
+class VerificationCode(models.Model):
+    channel = models.CharField(max_length=16, default="email")
+    target = models.EmailField(max_length=255)
+    delivery_secret_enc = models.BinaryField(null=True)
+    code_hash = models.CharField(max_length=255)
+    purpose = models.CharField(max_length=24)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveIntegerField(default=0)
+    consumed_at = models.DateTimeField(null=True)
+    client_ip = models.GenericIPAddressField(null=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "verification_codes"
+        indexes = [
+            models.Index(
+                fields=["channel", "target", "purpose", "consumed_at"],
+                name="idx_vcode_lookup",
+            )
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(attempts__lte=5), name="verification_attempts_limit"
+            )
         ]

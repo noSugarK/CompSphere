@@ -1,8 +1,20 @@
+from ipaddress import ip_network
+
 from cryptography.fernet import Fernet
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403
 from .base import env
+
+for proxy in TRUSTED_PROXY_IPS:  # noqa: F405
+    try:
+        network = ip_network(proxy)
+        if network.prefixlen == 0:
+            raise ValueError("An unrestricted proxy network is unsafe")
+    except ValueError as exc:
+        raise ImproperlyConfigured(
+            "TRUSTED_PROXY_IPS must contain restricted IP/CIDR values"
+        ) from exc
 
 for variable in ("SECRET_KEY", "JWT_SIGNING_KEY", "DOC_HASH_PEPPER"):
     value = env(variable, default="")

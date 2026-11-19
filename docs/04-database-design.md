@@ -1098,10 +1098,11 @@ ALTER TABLE certificates
 
 ## 9. 首批ORM实施映射
 
-首批迁移覆盖认证、RBAC、单位基础读取、赛事基础读取、队伍提案/许可及报名审核核心；完整领域设计中的注册验证码、单位申请/交接、证件更正、文件、奖项/证书等表并未全部实现。85项SQL设计约束测试通过不等于ORM已实现全部设计；已实现部分另在真实PG16运行迁移和API/并发反例，未完成清单见backend/README。
+首批迁移覆盖认证、邮箱验证码、RBAC、单位基础读取、赛事基础读取、队伍提案/许可及报名审核核心；完整领域设计中的单位申请/交接、证件更正、文件、奖项/证书等表并未全部实现。85项SQL设计约束测试通过不等于ORM已实现全部设计；已实现部分另在真实PG16运行迁移和API/并发反例，未完成清单见backend/README。
 
 | 位置 | 首批物理实现与原因 |
 | --- | --- |
+| `verification_codes` | accounts/0003按§2建立验证码表及idx_vcode_lookup，另加attempts≤5检查约束；code_hash为带随机salt的HMAC-SHA256，delivery_secret_enc仅短期Fernet密文；消费与失败次数更新使用行锁。outbox payload仅ID和locale |
 | `registrations` | 新增`version`（正整数，初值1，乐观并发控制）、`draft_enc BYTEA NOT NULL`（Fernet加密工作副本）、`selected_school_level VARCHAR(8) NULL`（草稿声明学段）；contact/form/consent旧列保留占位，不写敏感工作副本，服务层从draft_enc投影 |
 | `api_idempotency_records` | 新增id主键、actor_id用户外键、key VARCHAR(128)、action VARCHAR(160)、request_hash VARCHAR(64)、可空result JSONB、created_at；唯一(actor_id,key,action)。result仅存业务对象引用，缓存命中仍重新鉴权，不持有联系人或模型正文 |
 | `role_permissions`、`registration_submissions`、`season_student_team_bindings` | 使用自增bigint代理主键id以适配Django关系；原复合业务键保留唯一约束，复合外键继续引用该唯一键，不能因代理主键取消防重复 |

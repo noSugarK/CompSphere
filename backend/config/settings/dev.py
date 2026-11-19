@@ -27,3 +27,4 @@ REFRESH_COOKIE_SECURE = False
 IS_DEVELOPMENT = True
 CSRF_COOKIE_SECURE = False
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

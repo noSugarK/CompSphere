@@ -49,3 +49,38 @@ class PasswordChangeSerializer(StrictSerializer):
     new_password = serializers.CharField(
         min_length=12, max_length=256, trim_whitespace=False, write_only=True
     )
+
+
+class VerificationRequestSerializer(StrictSerializer):
+    email = serializers.EmailField(max_length=255)
+    purpose = serializers.ChoiceField(choices=["register", "reset_password"])
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+
+class RegisterSerializer(StrictSerializer):
+    email = serializers.EmailField(max_length=255)
+    password = serializers.CharField(
+        min_length=12, max_length=256, trim_whitespace=False, write_only=True
+    )
+    verification_code = serializers.RegexField(
+        r"\A[0-9]{6}\Z", min_length=6, max_length=6, write_only=True
+    )
+    real_name = serializers.CharField(max_length=64)
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+
+class PasswordResetSerializer(StrictSerializer):
+    email = serializers.EmailField(max_length=255)
+    verification_code = serializers.RegexField(
+        r"\A[0-9]{6}\Z", min_length=6, max_length=6, write_only=True
+    )
+    new_password = serializers.CharField(
+        min_length=12, max_length=256, trim_whitespace=False, write_only=True
+    )
+
+    def validate_email(self, value):
+        return value.strip().lower()
