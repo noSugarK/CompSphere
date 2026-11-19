@@ -45,6 +45,7 @@
 | `edition.created` | 创建届次草稿；记录届次、赛事及赛季 ID，不记录表单正文 |
 | `event.created` | 创建届次赛项，记录赛项和届次 ID，不记录表单正文 |
 | `group.created` / `group.updated` / `group.enabled` / `group.disabled` / `group.deleted` | 组别配置与状态变化，记录组别和届次 ID，不记录表单正文 |
+| `offering.created` / `offering.enabled` / `offering.disabled` / `offering.deleted` | 组合配置与状态变化，记录组合和届次 ID |
 | `season.created` / `season.activated` / `season.current_changed` | 平台创建、激活、切换赛季；切换另记原赛季 ID |
 | `registration` | submitted、cancelled、withdrawn、resubmitted、approved、rejected、returned（均带 submission_no） |
 | `org.transfer` / `season` | 交接 submitted/released/accepted/mediated/rejected/withdrawn/completed；记录双方单位、申请、归属版本；赛季创建/激活/归档及当前切换，队伍赛季注册申请/审核/撤销（带 team_id、season_id、申请 ID），绑定事件带 season_id |

@@ -46,7 +46,7 @@ def delete_group(actor, group_id):
     group.refresh_from_db()
     if group.is_deleted:
         raise BusinessError(40401, "Division not found", 404)
-    if group.offering_set.exists():
+    if group.offering_set.filter(is_deleted=False).exists():
         raise BusinessError(
             40902, "Detach the division from all offerings before deleting it"
         )

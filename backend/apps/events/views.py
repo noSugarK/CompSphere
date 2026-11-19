@@ -2,10 +2,16 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 
 from apps.competitions.services import configuration_edition
 from apps.events import serializers as schema
-from apps.events.models import Event, EventType
-from apps.events.services import create_event
+from apps.events.models import Event, EventType, Offering
+from apps.events.services import (
+    change_offering_state,
+    create_event,
+    create_offering,
+    delete_offering,
+)
 from core.api import BaseView, page, success, validated
 from core.schema import envelope, listing
+from core.serializers import EmptySerializer
 
 
 class EditionEventTypeListView(BaseView):
@@ -50,3 +56,53 @@ class EditionEventListView(BaseView):
             request.user, pk, validated(schema.EditionEventDraft, request)
         )
         return success(request, schema.ManagedEvent(item).data, status=201)
+
+
+class EditionOfferingListView(BaseView):
+    @extend_schema(
+        parameters=[OpenApiParameter("page", int), OpenApiParameter("page_size", int)],
+        responses=listing("ManagedOfferings", schema.ManagedOffering),
+    )
+    def get(self, request, pk):
+        edition = configuration_edition(request.user, pk, "edition:read")
+        offerings = (
+            Offering.objects.filter(edition=edition, is_deleted=False)
+            .select_related("event", "group")
+            .order_by("id")
+        )
+        return success(
+            request,
+            page(request, offerings, lambda item: schema.ManagedOffering(item).data),
+        )
+
+    @extend_schema(
+        request=schema.OfferingDraft,
+        responses={201: envelope("OfferingDraftResponse", schema.ManagedOffering)},
+    )
+    def post(self, request, pk):
+        item = create_offering(
+            request.user, pk, validated(schema.OfferingDraft, request)
+        )
+        return success(request, schema.ManagedOffering(item).data, status=201)
+
+
+class OfferingStateView(BaseView):
+    action = ""
+
+    @extend_schema(
+        request=EmptySerializer,
+        responses=envelope("OfferingStateResponse", schema.ManagedOffering),
+    )
+    def post(self, request, pk):
+        validated(EmptySerializer, request)
+        item = change_offering_state(request.user, pk, self.action)
+        return success(request, schema.ManagedOffering(item).data)
+
+
+class OfferingDetailView(BaseView):
+    @extend_schema(
+        responses=envelope("OfferingDeleteResponse", EmptySerializer, nullable=True)
+    )
+    def delete(self, request, pk):
+        delete_offering(request.user, pk)
+        return success(request)

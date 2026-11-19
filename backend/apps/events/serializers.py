@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from core.constants import CONFIGURATION_STATES
 from core.serializers import StrictSerializer
 
 
@@ -28,4 +29,18 @@ class EditionEventDraft(StrictSerializer):
 class ManagedEvent(EditionEventDraft):
     id = serializers.IntegerField(min_value=1)
     event_code = serializers.CharField(source="code_id", max_length=16)
-    status = serializers.ChoiceField(choices=["enabled", "disabled"])
+    status = serializers.ChoiceField(choices=CONFIGURATION_STATES)
+
+
+class OfferingDraft(StrictSerializer):
+    event_id = serializers.IntegerField(min_value=1)
+    group_id = serializers.IntegerField(min_value=1)
+
+
+class ManagedOffering(OfferingDraft):
+    id = serializers.IntegerField(min_value=1)
+    status = serializers.ChoiceField(choices=CONFIGURATION_STATES)
+    is_enabled = serializers.SerializerMethodField()
+
+    def get_is_enabled(self, item) -> bool:
+        return item.status == item.event.status == item.group.status == "enabled"

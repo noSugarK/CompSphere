@@ -59,7 +59,9 @@ def edition_data(item):
         "venue": item.venue,
         "offerings": [
             offering_data(x)
-            for x in item.offerings.filter(is_deleted=False)
+            for x in item.offerings.filter(
+                is_deleted=False, event__is_deleted=False, group__is_deleted=False
+            )
             .select_related("event", "group")
             .order_by("id")
         ],

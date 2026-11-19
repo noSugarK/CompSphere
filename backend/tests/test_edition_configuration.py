@@ -2,6 +2,7 @@ import pytest
 
 from apps.audit.models import AuditLog
 from apps.competitions.models import Edition
+from apps.events.models import Event
 from apps.groups.models import Group
 
 
@@ -159,3 +160,93 @@ def test_existing_group_can_close_registration_without_overwriting_rules(
     group.edition.status = "closed"
     group.edition.save(update_fields=["status"])
     assert organizer.post(f"{detail}/disable", {}, format="json").status_code == 409
+
+
+@pytest.mark.django_db
+def test_offerings_require_same_edition_and_only_open_selected_cell(
+    dataset, actor_client, draft_edition
+):
+    student = actor_client(dataset["accounts"]["student"])
+    platform = actor_client(dataset["accounts"]["platform"])
+    organizer = actor_client(dataset["accounts"]["organizer"])
+    event = Event.objects.create(edition=draft_edition, code_id="VURC", name="VURC")
+    university = Group.objects.create(
+        edition=draft_edition, code="U", name="University", school_level="U"
+    )
+    Group.objects.create(
+        edition=draft_edition, code="ES", name="Elementary", school_level="ES"
+    )
+    endpoint = f"/api/v1/editions/{draft_edition.id}/offerings"
+    payload = {"event_id": event.id, "group_id": university.id}
+    assert organizer.post(endpoint, payload, format="json").status_code == 403
+    assert student.get(endpoint).status_code == 403
+    assert (
+        platform.post(
+            endpoint,
+            {**payload, "group_id": dataset["offering"].group_id},
+            format="json",
+        ).status_code
+        == 404
+    )
+    created = platform.post(endpoint, payload, format="json")
+    assert created.status_code == 201, created.data
+    combination = created.data["data"]
+    assert platform.get(endpoint).data["data"]["items"] == [combination]
+    assert platform.post(endpoint, payload, format="json").status_code == 409
+    detail = f"/api/v1/offerings/{combination['id']}"
+    assert platform.delete(f"/api/v1/groups/{university.id}").status_code == 409
+    assert organizer.delete(detail).status_code == 403
+    assert platform.delete(detail).data["data"] is None
+    assert platform.get(endpoint).data["data"]["items"] == []
+    assert (
+        platform.post(endpoint, payload, format="json").data["data"]["id"]
+        == combination["id"]
+    )
+
+    draft_edition.status = "published"
+    draft_edition.save(update_fields=["status"])
+    public_url = f"/api/v1/public/editions/{draft_edition.id}"
+    offerings = student.get(public_url).data["data"]["offerings"]
+    assert [(option["school_level"], option["is_enabled"]) for option in offerings] == [
+        ("U", True)
+    ]
+    assert platform.delete(detail).status_code == 409
+    assert platform.post(f"{detail}/disable", {}, format="json").status_code == 200
+    assert not student.get(public_url).data["data"]["offerings"][0]["is_enabled"]
+    assert (
+        platform.post(
+            f"/api/v1/groups/{university.id}/disable", {}, format="json"
+        ).status_code
+        == 200
+    )
+    assert platform.post(f"{detail}/enable", {}, format="json").status_code == 409
+
+
+@pytest.mark.django_db
+def test_offering_disabling_keeps_existing_registration_readable(
+    dataset, actor_client, draft_payload
+):
+    student = actor_client(dataset["accounts"]["student"])
+    organizer = actor_client(dataset["accounts"]["organizer"])
+    edition = dataset["edition"]
+    registration_url = f"/api/v1/editions/{edition.id}/registrations"
+    draft = student.post(registration_url, draft_payload, format="json").data["data"]
+    reg_url = f"/api/v1/registrations/{draft['id']}"
+    assert (
+        student.post(
+            f"{reg_url}/submit",
+            {"version": draft["version"]},
+            format="json",
+            HTTP_IDEMPOTENCY_KEY="offering-test",
+        ).status_code
+        == 200
+    )
+    assert (
+        organizer.post(
+            f"/api/v1/offerings/{dataset['offering'].id}/disable", {}, format="json"
+        ).status_code
+        == 200
+    )
+    blocked = student.post(registration_url, draft_payload, format="json")
+    assert blocked.status_code == 422 and blocked.data["code"] == 42207
+    assert student.get(reg_url).data["data"]["status"] == "pending_review"

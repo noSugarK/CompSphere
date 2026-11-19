@@ -171,6 +171,8 @@ def validate_offering(offering, edition_id):
         or offering.event.edition_id != edition_id
         or offering.group.edition_id != edition_id
         or offering.is_deleted
+        or offering.event.is_deleted
+        or offering.group.is_deleted
         or offering.status != "enabled"
         or offering.event.status != "enabled"
         or offering.group.status != "enabled"

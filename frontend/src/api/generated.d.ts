@@ -244,6 +244,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/editions/{id}/offerings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['editions_offerings_retrieve'];
+    put?: never;
+    post: operations['editions_offerings_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/editions/{id}/registrations': {
     parameters: {
       query?: never;
@@ -370,6 +386,54 @@ export interface paths {
     options?: never;
     head?: never;
     patch: operations['me_preferences_partial_update'];
+    trace?: never;
+  };
+  '/api/v1/offerings/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations['offerings_destroy'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/offerings/{id}/disable': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['offerings_disable_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/offerings/{id}/enable': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['offerings_enable_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   '/api/v1/orgs': {
@@ -1227,6 +1291,26 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    ManagedOffering: {
+      event_id: number;
+      group_id: number;
+      id: number;
+      status: components['schemas']['ConfigurationStateEnum'];
+      readonly is_enabled: boolean;
+    };
+    ManagedOfferingsPage: {
+      items: components['schemas']['ManagedOffering'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    ManagedOfferingsResponse: {
+      data: components['schemas']['ManagedOfferingsPage'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     ManagedSeason: {
       id: number;
       name: string;
@@ -1288,6 +1372,24 @@ export interface components {
       require_coach: boolean;
       required_materials: string[];
       is_enabled: boolean;
+    };
+    OfferingDraftRequest: {
+      event_id: number;
+      group_id: number;
+    };
+    OfferingDraftResponse: {
+      data: components['schemas']['ManagedOffering'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    OfferingStateResponse: {
+      data: components['schemas']['ManagedOffering'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
     };
     Organization: {
       id: number;
@@ -2372,6 +2474,55 @@ export interface operations {
       };
     };
   };
+  editions_offerings_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ManagedOfferingsResponse'];
+        };
+      };
+    };
+  };
+  editions_offerings_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['OfferingDraftRequest'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OfferingDraftResponse'];
+        };
+      };
+    };
+  };
   editions_registrations_retrieve: {
     parameters: {
       query?: never;
@@ -2598,6 +2749,76 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['PreferencesResponse'];
+        };
+      };
+    };
+  };
+  offerings_destroy: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No response body */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  offerings_disable_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OfferingStateResponse'];
+        };
+      };
+    };
+  };
+  offerings_enable_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OfferingStateResponse'];
         };
       };
     };

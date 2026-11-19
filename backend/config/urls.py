@@ -48,6 +48,18 @@ urlpatterns = [
     ),
     path("api/v1/editions/<int:pk>/events", events.EditionEventListView.as_view()),
     path("api/v1/editions/<int:pk>/groups", groups.GroupListView.as_view()),
+    path(
+        "api/v1/editions/<int:pk>/offerings", events.EditionOfferingListView.as_view()
+    ),
+    path("api/v1/offerings/<int:pk>", events.OfferingDetailView.as_view()),
+    path(
+        "api/v1/offerings/<int:pk>/enable",
+        events.OfferingStateView.as_view(action="enable"),
+    ),
+    path(
+        "api/v1/offerings/<int:pk>/disable",
+        events.OfferingStateView.as_view(action="disable"),
+    ),
     path("api/v1/groups/<int:pk>", groups.GroupDetailView.as_view()),
     path(
         "api/v1/groups/<int:pk>/enable", groups.GroupStateView.as_view(action="enable")
