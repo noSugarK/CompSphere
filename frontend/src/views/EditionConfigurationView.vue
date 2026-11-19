@@ -6,6 +6,7 @@ import { Plus } from '@element-plus/icons-vue';
 import { api } from '../api';
 import type { EventTypeSummary, ManagedEdition, ManagedEvent } from '../api/schemas';
 import ErrorNotice from '../components/ErrorNotice.vue';
+import GroupConfiguration from '../components/GroupConfiguration.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { useSession } from '../stores/session';
 import { hasEditionPermission, mayViewCompetitionRegistry } from '../utils/permissions';
@@ -177,6 +178,12 @@ onMounted(load);
       "
     />
   </div>
+  <GroupConfiguration
+    v-if="
+      edition && hasEditionPermission(session.me, 'group:read', edition.id, edition.competition_id)
+    "
+    :edition="edition"
+  />
   <el-dialog
     v-model="open"
     :title="t('eventAdd')"

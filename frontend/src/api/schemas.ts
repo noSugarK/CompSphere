@@ -175,6 +175,22 @@ export const managedEventSchema = editionEventFields.extend({
 export type ManagedEvent = components['schemas']['ManagedEvent'];
 export type EventTypeSummary = components['schemas']['EventTypeSummary'];
 
+export const groupDraftSchema = z
+  .object({
+    code: text.trim().regex(/^[A-Z0-9][A-Z0-9-]{0,7}$/),
+    name: text.trim().min(1).max(64),
+    school_level: schoolLevel.nullable(),
+    enrollment_type: z.enum(['individual', 'team', 'both']),
+    grade_limits: z.array(text.trim().min(1).max(32)).max(32),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['GroupDraftRequest']>;
+export const managedGroupSchema = groupDraftSchema.extend({
+  id: idSchema,
+  code: text.min(1).max(8),
+  status: z.enum(['enabled', 'disabled']),
+}) satisfies z.ZodType<components['schemas']['ManagedGroup']>;
+export type ManagedGroup = components['schemas']['ManagedGroup'];
+
 export const competitionSchema = z
   .object({
     id: idSchema,

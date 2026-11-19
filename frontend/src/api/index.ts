@@ -14,11 +14,13 @@ import {
   editionEventDraftSchema,
   editionSchema,
   eventTypeSummarySchema,
+  groupDraftSchema,
   idSchema,
   loginSchema,
   managedCompetitionSchema,
   managedEditionSchema,
   managedEventSchema,
+  managedGroupSchema,
   managedSeasonSchema,
   meSchema,
   orgMemberSchema,
@@ -115,6 +117,29 @@ export const api = {
       managedEventSchema,
       editionEventDraftSchema.parse(body),
     ),
+  editionGroups: (id: number, page = 1, pageSize = 20) =>
+    request(
+      'GET',
+      `/editions/${idSchema.parse(id)}/groups?page=${page}&page_size=${pageSize}`,
+      pageSchema(managedGroupSchema),
+    ),
+  createGroup: (id: number, body: unknown) =>
+    request(
+      'POST',
+      `/editions/${idSchema.parse(id)}/groups`,
+      managedGroupSchema,
+      groupDraftSchema.parse(body),
+    ),
+  updateGroup: (id: number, body: unknown) =>
+    request(
+      'PATCH',
+      `/groups/${idSchema.parse(id)}`,
+      managedGroupSchema,
+      groupDraftSchema.parse(body),
+    ),
+  deleteGroup: (id: number) => request('DELETE', `/groups/${idSchema.parse(id)}`, z.null()),
+  setGroupState: (id: number, action: 'enable' | 'disable') =>
+    request('POST', `/groups/${idSchema.parse(id)}/${action}`, managedGroupSchema, {}),
   eligibleEditionSeasons: (competition: number, page = 1) =>
     request(
       'GET',
