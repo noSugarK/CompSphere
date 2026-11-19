@@ -30,6 +30,7 @@ import {
   orgMemberSchema,
   offeringDraftSchema,
   offeringOverridesSchema,
+  offeringSchema,
   orgSchema,
   pageSchema,
   preferencesSchema,
@@ -210,6 +211,16 @@ export const api = {
       editionDraftSchema.parse(body),
     ),
   edition: (id: number) => request('GET', `/public/editions/${idSchema.parse(id)}`, editionSchema),
+  availableOfferings: async (edition: number, team?: number) => {
+    const path = `/editions/${idSchema.parse(edition)}/available-offerings?page_size=100${team === undefined ? '' : `&team_id=${idSchema.parse(team)}`}`;
+    const schema = pageSchema(offeringSchema);
+    const first = await request('GET', `${path}&page=1`, schema);
+    const items = [...first.items];
+    for (let page = 2; page <= Math.ceil(first.total / first.page_size); page += 1) {
+      items.push(...(await request('GET', `${path}&page=${page}`, schema)).items);
+    }
+    return items;
+  },
   teams: (page = 1) => request('GET', `/teams?page=${page}`, pageSchema(teamSchema)),
   orgs: () => request('GET', '/orgs', pageSchema(orgSchema)),
   orgMembers: (id: number) =>

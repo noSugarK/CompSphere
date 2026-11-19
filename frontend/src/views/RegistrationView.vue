@@ -9,7 +9,6 @@ import { useSession } from '../stores/session';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { formatEventDateTime } from '../utils/format';
-import { isOfferingOpen } from '../utils/offerings';
 
 const { t } = useI18n(),
   route = useRoute(),
@@ -22,6 +21,10 @@ const form = ref<FormInstance>(),
   loading = ref(true),
   saving = ref(false),
   error = ref<unknown>(null);
+const available = ref<Edition['offerings']>([]);
+const loadingOfferings = ref(false);
+const offeringsError = ref<unknown>(null);
+let offeringsRequest = 0;
 const fields = reactive({
   offering_id: undefined as number | undefined,
   enrollment_kind: 'team' as 'team' | 'individual',
@@ -34,12 +37,16 @@ const fields = reactive({
   project_title: '',
   document_usage: false,
 });
-const offering = computed(() => edition.value?.offerings.find((o) => o.id === fields.offering_id));
-const selectableOfferings = computed(
-  () =>
-    edition.value?.offerings.filter(
-      (item) => item.id === record.value?.offering_id || isOfferingOpen(item),
-    ) ?? [],
+const needsTeam = computed(() => fields.enrollment_kind === 'team' && !fields.team_id);
+const selectableOfferings = computed(() => {
+  const options = available.value.filter((item) =>
+    ['both', fields.enrollment_kind].includes(item.enrollment_type),
+  );
+  const saved = edition.value?.offerings.find((item) => item.id === record.value?.offering_id);
+  return saved && !options.some((item) => item.id === saved.id) ? [saved, ...options] : options;
+});
+const offering = computed(() =>
+  selectableOfferings.value.find((item) => item.id === fields.offering_id),
 );
 const coachChoices = computed(() => {
   const choices = new Map<number, string>();
@@ -83,10 +90,9 @@ async function load() {
       edition.value = await api.edition(value.edition_id);
     } else {
       edition.value = await api.edition(Number(route.params.editionId));
-      fields.offering_id = selectableOfferings.value[0]?.id;
-      selectOffering();
     }
     if (session.hasAny('registration:create')) teams.value = (await api.teams()).items;
+    await loadOfferings();
   } catch (e) {
     error.value = e;
   } finally {
@@ -95,14 +101,43 @@ async function load() {
 }
 function selectOffering() {
   fields.selected_school_level = offering.value?.school_level ?? null;
-  if (offering.value?.enrollment_type === 'individual') {
-    fields.enrollment_kind = 'individual';
-    fields.team_id = undefined;
-  } else fields.enrollment_kind = 'team';
+  form.value?.clearValidate('offering_id');
 }
+
+async function loadOfferings() {
+  const sequence = ++offeringsRequest;
+  offeringsError.value = null;
+  loadingOfferings.value = false;
+  available.value = [];
+  if (
+    !edition.value ||
+    !editable.value ||
+    needsTeam.value ||
+    !session.hasAny('registration:create')
+  )
+    return;
+  loadingOfferings.value = true;
+  try {
+    const options = await api.availableOfferings(edition.value.id, fields.team_id);
+    if (sequence === offeringsRequest) available.value = options;
+  } catch (error) {
+    if (sequence === offeringsRequest) offeringsError.value = error;
+  } finally {
+    if (sequence === offeringsRequest) loadingOfferings.value = false;
+  }
+}
+
 function selectTeam() {
   fields.coach_user_id =
     teams.value.find((team) => team.id === fields.team_id)?.coach_id ?? undefined;
+  fields.offering_id = undefined;
+  selectOffering();
+  void loadOfferings();
+}
+
+function selectEnrollmentKind() {
+  fields.team_id = undefined;
+  selectTeam();
 }
 function body() {
   return {
@@ -117,7 +152,13 @@ function body() {
   };
 }
 async function save() {
-  if (!(await form.value?.validate().catch(() => false)) || !edition.value) return false;
+  if (
+    saving.value ||
+    loadingOfferings.value ||
+    !(await form.value?.validate().catch(() => false)) ||
+    !edition.value
+  )
+    return false;
   saving.value = true;
   error.value = null;
   try {
@@ -169,6 +210,7 @@ async function cancelReview() {
     });
     saving.value = true;
     assign(await api.registrationAction(record.value.id, 'cancel-review', record.value.version));
+    await loadOfferings();
   } catch (e) {
     if (e !== 'cancel' && e !== 'close') error.value = e;
   } finally {
@@ -223,10 +265,7 @@ onMounted(load);
   <ErrorNotice :error="error" @retry="load" /><el-skeleton v-if="loading" :rows="9" animated />
   <template v-else-if="edition">
     <el-alert v-if="!editable" :title="t('frozen')" type="info" :closable="false" show-icon />
-    <p v-if="!record && !selectableOfferings.length" class="content-panel">
-      {{ t('offerings.noCurrentWindow') }}
-    </p>
-    <section v-else class="content-panel">
+    <section class="content-panel">
       <el-form
         ref="form"
         :model="fields"
@@ -236,40 +275,71 @@ onMounted(load);
         :scroll-to-error="true"
       >
         <h2>{{ t('group') }}</h2>
+        <el-form-item :label="t('enrollmentType')">
+          <el-radio-group
+            v-model="fields.enrollment_kind"
+            :disabled="!!record"
+            @change="selectEnrollmentKind"
+          >
+            <el-radio value="team">{{ t('team') }}</el-radio>
+            <el-radio value="individual">{{ t('individualEnrollment') }}</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item
+          v-if="fields.enrollment_kind === 'team'"
+          prop="team_id"
+          :label="t('team')"
+          :rules="[{ required: true, message: t('required'), trigger: 'change' }]"
+        >
+          <el-select v-model="fields.team_id" :disabled="!!record" @change="selectTeam">
+            <el-option
+              v-for="team in teams"
+              :key="team.id"
+              :value="team.id"
+              :label="`${team.team_code} · ${team.name}`"
+            />
+            <el-option
+              v-if="record?.team_id && !teams.some((team) => team.id === record?.team_id)"
+              :value="record.team_id"
+              :label="t('registrationCurrentTeam')"
+            />
+          </el-select>
+        </el-form-item>
+        <ErrorNotice :error="offeringsError" />
+        <el-button v-if="offeringsError" class="retry-button" @click="loadOfferings">{{
+          t('retry')
+        }}</el-button>
         <div class="form-grid">
           <el-form-item
             prop="offering_id"
             :label="t('group')"
             :rules="[{ required: true, message: t('required'), trigger: 'change' }]"
-            ><el-select v-model="fields.offering_id" @change="selectOffering"
+            ><el-select
+              v-model="fields.offering_id"
+              :loading="loadingOfferings"
+              :validate-event="false"
+              :disabled="needsTeam || loadingOfferings"
+              aria-describedby="registration-offering-hint"
+              @change="selectOffering"
               ><el-option
                 v-for="option in selectableOfferings"
                 :key="option.id"
                 :value="option.id"
-                :label="`${option.event_name} · ${option.group_name}`" /></el-select></el-form-item
+                :label="`${option.event_name} · ${option.group_name}`"
+            /></el-select>
+            <div id="registration-offering-hint" class="small muted" role="status">
+              <template v-if="needsTeam">{{ t('registrationChooseTeamFirst') }}</template>
+              <template v-else-if="loadingOfferings">{{ t('loading') }}</template>
+              <template v-else-if="!selectableOfferings.length && !offeringsError">{{
+                t('offerings.noCurrentWindow')
+              }}</template>
+            </div> </el-form-item
           ><el-form-item :label="t('schoolLevel')"
             ><el-input :model-value="fields.selected_school_level || '—'" readonly
           /></el-form-item>
         </div>
-        <el-form-item v-if="offering?.enrollment_type === 'both'" :label="t('enrollmentType')"
-          ><el-radio-group v-model="fields.enrollment_kind"
-            ><el-radio value="team">{{ t('team') }}</el-radio
-            ><el-radio value="individual">{{ t('individualEnrollment') }}</el-radio></el-radio-group
-          ></el-form-item
-        >
         <div class="form-grid">
-          <el-form-item
-            v-if="fields.enrollment_kind === 'team'"
-            prop="team_id"
-            :label="t('team')"
-            :rules="[{ required: true, message: t('required'), trigger: 'change' }]"
-            ><el-select v-model="fields.team_id" @change="selectTeam"
-              ><el-option
-                v-for="team in teams"
-                :key="team.id"
-                :value="team.id"
-                :label="`${team.team_code} · ${team.name}`" /></el-select></el-form-item
-          ><el-form-item :label="t('coach')"
+          <el-form-item :label="t('coach')"
             ><el-select v-model="fields.coach_user_id" clearable
               ><el-option
                 v-for="coach in coachChoices"
