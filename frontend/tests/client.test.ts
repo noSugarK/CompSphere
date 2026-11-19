@@ -34,6 +34,49 @@ beforeEach(() => {
   mock.get.mockResolvedValue(ok({ csrf_token: 'csrf' }));
 });
 describe('session isolation', () => {
+  it('carries only validated real Retry-After feedback from a 429 response', async () => {
+    const client = await import('../src/api/client');
+    mock.request.mockRejectedValueOnce({
+      isAxiosError: true,
+      response: {
+        status: 429,
+        headers: { 'retry-after': '72' },
+        data: { code: 42901, message: 'rate limited', data: null, request_id: 'request-test' },
+      },
+    });
+    await expect(
+      client.request('POST', '/auth/verify-code/send', z.null(), {}),
+    ).rejects.toMatchObject({ code: 42901, retryAfterSeconds: 72 });
+    expect(mock.post).not.toHaveBeenCalled();
+  });
+  it('keeps failed verification separate from an expired session', async () => {
+    const client = await import('../src/api/client');
+    const expired = vi.fn();
+    client.onSessionExpired(expired);
+    mock.request.mockRejectedValueOnce({
+      isAxiosError: true,
+      response: {
+        status: 401,
+        data: { code: 40102, message: 'invalid code', data: null, request_id: 'request-test' },
+      },
+    });
+    await expect(
+      client.request('POST', '/auth/password/reset', z.null(), {}),
+    ).rejects.toMatchObject({ code: 40102 });
+    expect(expired).not.toHaveBeenCalled();
+    expect(mock.post).not.toHaveBeenCalled();
+  });
+  it('rejects malformed Retry-After and converts explicit HTTP dates', async () => {
+    const { parseRetryAfter } = await import('../src/api/client');
+    expect(parseRetryAfter('30')).toBe(30);
+    expect(
+      parseRetryAfter('Wed, 18 Nov 2026 10:01:00 GMT', Date.parse('2026-11-18T10:00:00Z')),
+    ).toBe(60);
+    expect(parseRetryAfter('-1')).toBeUndefined();
+    expect(parseRetryAfter('tomorrow')).toBeUndefined();
+    expect(parseRetryAfter(30)).toBeUndefined();
+    expect(parseRetryAfter('Infinity')).toBeUndefined();
+  });
   it('shares one refresh across simultaneous 401 responses', async () => {
     const client = await import('../src/api/client');
     const token = deferred<ReturnType<typeof ok>>();
@@ -63,6 +106,27 @@ describe('session isolation', () => {
     expect(await pending).toBeInstanceOf(client.ApiError);
     expect(mock.post).not.toHaveBeenCalled();
     expect(mock.request).toHaveBeenCalledTimes(1);
+  });
+  it('does not replay an old mutation if another refresh waiter changes account first', async () => {
+    const client = await import('../src/api/client');
+    const token = deferred<ReturnType<typeof ok>>();
+    mock.post.mockReturnValueOnce(token.promise);
+    client.setSessionToken('actor-a');
+    const switchActor = client.refreshSession().then(() => {
+      client.clearSessionToken();
+      client.setSessionToken('actor-b');
+    });
+    await vi.waitFor(() => expect(mock.post).toHaveBeenCalledOnce());
+    mock.request.mockRejectedValueOnce(unauthorized()).mockResolvedValue(ok(null));
+    const pending = client
+      .request('PATCH', '/registrations/1', z.null(), { version: 1 })
+      .catch((e: unknown) => e);
+    await vi.waitFor(() => expect(mock.request).toHaveBeenCalledOnce());
+    token.resolve(ok({ access: 'refreshed-actor-a', expires_in: 1800 }));
+    await switchActor;
+    expect(await pending).toMatchObject({ code: 40101 });
+    expect(mock.request).toHaveBeenCalledOnce();
+    expect(mock.post).toHaveBeenCalledOnce();
   });
   it('does not let an obsolete refresh failure clear a new login', async () => {
     const client = await import('../src/api/client');

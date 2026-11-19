@@ -9,6 +9,7 @@ export function errorMessage(error: unknown) {
   const messages: Record<number, string> = {
     40001: 'fieldError',
     40101: 'unauthorized',
+    40102: 'verificationInvalid',
     40105: 'loginInvalid',
     40301: 'noAccess',
     40303: 'selfReview',

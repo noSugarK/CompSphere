@@ -68,6 +68,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/auth/password/reset': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['auth_password_reset_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/auth/refresh': {
     parameters: {
       query?: never;
@@ -78,6 +94,38 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations['auth_refresh_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/register': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['auth_register_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/verify-code/send': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['auth_verify_code_send_create'];
     delete?: never;
     options?: never;
     head?: never;
@@ -799,6 +847,19 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    PasswordResetRequest: {
+      /** Format: email */
+      email: string;
+      verification_code: string;
+      new_password: string;
+    };
+    PasswordResetResponse: {
+      data: unknown;
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     PatchedPreferencesRequest: {
       locale?: components['schemas']['LocaleEnum'];
       theme?: components['schemas']['ThemeEnum'];
@@ -840,6 +901,12 @@ export interface components {
       role: components['schemas']['RoleEnum'];
     };
     /**
+     * @description * `register` - register
+     *     * `reset_password` - reset_password
+     * @enum {string}
+     */
+    PurposeEnum: 'register' | 'reset_password';
+    /**
      * @description * `approve` - approve
      *     * `reject` - reject
      *     * `return` - return
@@ -855,6 +922,29 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    RegisterRequest: {
+      /** Format: email */
+      email: string;
+      password: string;
+      verification_code: string;
+      real_name: string;
+    };
+    RegisterResponse: {
+      data: components['schemas']['RegisteredAccount'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    RegisteredAccount: {
+      id: number;
+      status: components['schemas']['RegisteredAccountStatusEnum'];
+    };
+    /**
+     * @description * `active` - active
+     * @enum {string}
+     */
+    RegisteredAccountStatusEnum: 'active';
     Registration: {
       id: number;
       batch_no: string;
@@ -1251,6 +1341,18 @@ export interface components {
       email: string | null;
       must_change_password: boolean;
     };
+    VerificationAcceptedResponse: {
+      data: unknown;
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    VerificationRequestRequest: {
+      /** Format: email */
+      email: string;
+      purpose: components['schemas']['PurposeEnum'];
+    };
     VersionRequest: {
       version: number;
     };
@@ -1351,6 +1453,29 @@ export interface operations {
       };
     };
   };
+  auth_password_reset_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PasswordResetRequest'];
+      };
+    };
+    responses: {
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PasswordResetResponse'];
+        };
+      };
+    };
+  };
   auth_refresh_create: {
     parameters: {
       query?: never;
@@ -1370,6 +1495,52 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RefreshResponse'];
+        };
+      };
+    };
+  };
+  auth_register_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RegisterRequest'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RegisterResponse'];
+        };
+      };
+    };
+  };
+  auth_verify_code_send_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['VerificationRequestRequest'];
+      };
+    };
+    responses: {
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['VerificationAcceptedResponse'];
         };
       };
     };

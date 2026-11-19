@@ -25,9 +25,23 @@ export class ApiError extends Error {
     public code: number,
     public requestId = '',
     public fields: Record<string, string[]> = {},
+    public retryAfterSeconds?: number,
   ) {
     super(`API ${code}`);
   }
+}
+export function parseRetryAfter(value: unknown, now = Date.now()): number | undefined {
+  if (typeof value !== 'string' || !value.trim()) return;
+  const trimmed = value.trim();
+  if (/^[0-9]+$/.test(trimmed)) {
+    const seconds = Number(trimmed);
+    return Number.isSafeInteger(seconds) ? seconds : undefined;
+  }
+  // HTTP-date is accepted only with an explicit GMT timezone, never a browser-local date.
+  if (!/^[A-Z][a-z]{2}, [0-9]{2} [A-Z][a-z]{2} [0-9]{4} [0-9:]{8} GMT$/.test(trimmed)) return;
+  const target = Date.parse(trimmed);
+  if (!Number.isFinite(target)) return;
+  return Math.max(0, Math.ceil((target - now) / 1000));
 }
 export function decode<T extends z.ZodTypeAny>(input: unknown, schema: T): z.infer<T> {
   const parsed = envelopeSchema(z.unknown()).safeParse(input);
@@ -97,6 +111,7 @@ export async function request<T extends z.ZodTypeAny>(
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 401 && retry && !url.startsWith('/auth/')) {
         await refreshSession();
+        if (epoch !== generation) throw new ApiError(40101);
         return request(method, url, schema, data, headers, false);
       }
       const failure = errorSchema.safeParse(error.response?.data);
@@ -105,7 +120,14 @@ export async function request<T extends z.ZodTypeAny>(
           clearSessionToken();
           onExpired();
         }
-        throw new ApiError(failure.data.code, failure.data.request_id, failure.data.errors);
+        throw new ApiError(
+          failure.data.code,
+          failure.data.request_id,
+          failure.data.errors,
+          error.response?.status === 429
+            ? parseRetryAfter(error.response.headers?.['retry-after'])
+            : undefined,
+        );
       }
     }
     throw new ApiError(50301);

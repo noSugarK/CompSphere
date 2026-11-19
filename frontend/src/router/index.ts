@@ -31,6 +31,18 @@ export const router = createRouter({
       meta: { title: 'changePassword', auth: true },
     },
     {
+      path: '/register',
+      name: 'register',
+      component: () => import('../views/EmailAccountView.vue'),
+      meta: { title: 'register' },
+    },
+    {
+      path: '/password-reset',
+      name: 'password-reset',
+      component: () => import('../views/EmailAccountView.vue'),
+      meta: { title: 'forgotPassword' },
+    },
+    {
       path: '/teams',
       name: 'teams',
       component: () => import('../views/TeamsView.vue'),

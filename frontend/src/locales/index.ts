@@ -1,6 +1,25 @@
 import { createI18n } from 'vue-i18n';
 
 const zh = {
+  register: '创建账号',
+  forgotPassword: '找回密码',
+  resetPassword: '重置密码',
+  accountHelp: '账号帮助',
+  realName: '姓名',
+  registerHint: '验证邮箱后创建个人账号。单位与赛事管理权限由平台另行授予。',
+  resetHint: '使用已验证邮箱找回密码；没有邮箱的账号请联系所属单位管理员。',
+  verificationCode: '邮箱验证码',
+  sendVerification: '获取验证码',
+  verificationAccepted: '如符合条件，验证码将发送，请检查收件箱。',
+  verificationInvalid: '验证码无效或已失效，请核对或重新获取。',
+  verificationFormat: '请输入6位数字验证码。',
+  retryInSeconds: '{seconds} 秒后重试',
+  emailInvalid: '请输入有效的邮箱地址。',
+  nameInvalid: '姓名不能为空，且不能超过64个字符。',
+  passwordPolicy: '密码不符合安全要求，请使用至少12位且不常见的密码。',
+  registered: '账号已创建',
+  passwordReset: '密码重置已受理',
+  signInExplicitly: '请使用邮箱和密码登录。',
   app: '竞云',
   discover: '赛事中心',
   discoverHint: '查看开放赛事，选择赛项与组别，开始报名。',
@@ -151,6 +170,29 @@ const zh = {
 };
 const en: Record<keyof typeof zh, string> = {
   ...zh,
+  register: 'Create account',
+  forgotPassword: 'Forgot password',
+  resetPassword: 'Reset password',
+  accountHelp: 'Account help',
+  realName: 'Full name',
+  registerHint:
+    'Verify your email to create a personal account. Organization and competition permissions are granted separately.',
+  resetHint:
+    'Use your verified email to reset your password. For accounts without email, contact your organization administrator.',
+  verificationCode: 'Email verification code',
+  sendVerification: 'Get code',
+  verificationAccepted: 'If eligible, a verification code will be sent. Please check your inbox.',
+  verificationInvalid:
+    'The verification code is invalid or expired. Check it or request a new code.',
+  verificationFormat: 'Enter the 6-digit verification code.',
+  retryInSeconds: 'Retry in {seconds}s',
+  emailInvalid: 'Enter a valid email address.',
+  nameInvalid: 'Enter a name of up to 64 characters.',
+  passwordPolicy:
+    'Use an uncommon password of at least 12 characters that meets the security requirements.',
+  registered: 'Account created',
+  passwordReset: 'Password reset accepted',
+  signInExplicitly: 'Sign in with your email and password.',
   app: 'CompSphere',
   discover: 'Competitions',
   discoverHint: 'Explore open competitions, choose an event and group, and register.',

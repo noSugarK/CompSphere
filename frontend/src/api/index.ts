@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { request } from './client';
 import {
+  registerRequestSchema,
+  registerResultSchema,
+  resetPasswordRequestSchema,
+  verificationRequestSchema,
+} from './authSchemas';
+import {
   competitionSchema,
   draftFieldsSchema,
   editionSchema,
@@ -31,6 +37,12 @@ const reviewSchema = z
   .refine((v) => v.action === 'approve' || v.comment.trim().length > 0);
 export const api = {
   login: (body: unknown) => request('POST', '/auth/login', tokenSchema, loginSchema.parse(body)),
+  sendVerificationCode: (body: unknown) =>
+    request('POST', '/auth/verify-code/send', z.null(), verificationRequestSchema.parse(body)),
+  register: (body: unknown) =>
+    request('POST', '/auth/register', registerResultSchema, registerRequestSchema.parse(body)),
+  resetPassword: (body: unknown) =>
+    request('POST', '/auth/password/reset', z.null(), resetPasswordRequestSchema.parse(body)),
   me: () => request('GET', '/me', meSchema),
   preferences: (body: unknown) =>
     request('PATCH', '/me/preferences', preferencesSchema, preferencesSchema.parse(body)),

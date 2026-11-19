@@ -139,6 +139,10 @@ async function submit() {
           t('login')
         }}</el-button>
       </el-form>
+      <nav class="auth-links" :aria-label="t('accountHelp')">
+        <router-link to="/register">{{ t('register') }}</router-link>
+        <router-link to="/password-reset">{{ t('forgotPassword') }}</router-link>
+      </nav>
     </div>
   </div>
 </template>
