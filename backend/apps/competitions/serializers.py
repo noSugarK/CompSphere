@@ -52,6 +52,31 @@ class EditionTimeField(serializers.DateTimeField):
         raise serializers.ValidationError("Provide an ISO date and time.")
 
 
+def normalize_edition_times(attrs, fields):
+    zone = attrs.pop("time_zone", None)
+    for field in fields:
+        instant = attrs.get(field)
+        if instant is None:
+            continue
+        if is_aware(instant) == (zone is not None):
+            raise serializers.ValidationError(
+                {field: ["Use an explicit offset or a local time with time_zone."]}
+            )
+        if zone is not None:
+            instant = instant.replace(tzinfo=ZoneInfo(zone), fold=0)
+            if instant.utcoffset() != instant.replace(fold=1).utcoffset():
+                raise serializers.ValidationError(
+                    {field: ["Local time is ambiguous or does not exist."]}
+                )
+        try:
+            attrs[field] = instant.astimezone(UTC)
+        except OverflowError as exc:
+            raise serializers.ValidationError(
+                {field: ["Date and time is out of range."]}
+            ) from exc
+    return attrs
+
+
 class EditionDraft(StrictSerializer):
     season_id = serializers.IntegerField(min_value=1)
     edition_no = serializers.IntegerField(min_value=1, max_value=9999)
@@ -65,25 +90,9 @@ class EditionDraft(StrictSerializer):
     end_date = EditionTimeField()
 
     def validate(self, attrs):
-        zone = attrs.pop("time_zone", None)
-        for field in ("enroll_start", "enroll_end", "start_date", "end_date"):
-            instant = attrs[field]
-            if is_aware(instant) == (zone is not None):
-                raise serializers.ValidationError(
-                    {field: ["Use an explicit offset or a local time with time_zone."]}
-                )
-            if zone is not None:
-                instant = instant.replace(tzinfo=ZoneInfo(zone), fold=0)
-                if instant.utcoffset() != instant.replace(fold=1).utcoffset():
-                    raise serializers.ValidationError(
-                        {field: ["Local time is ambiguous or does not exist."]}
-                    )
-            try:
-                attrs[field] = instant.astimezone(UTC)
-            except OverflowError as exc:
-                raise serializers.ValidationError(
-                    {field: ["Date and time is out of range."]}
-                ) from exc
+        normalize_edition_times(
+            attrs, ("enroll_start", "enroll_end", "start_date", "end_date")
+        )
         if (
             not attrs["enroll_start"]
             < attrs["enroll_end"]
@@ -131,6 +140,9 @@ class Offering(serializers.Serializer):
     min_members = serializers.IntegerField()
     max_members = serializers.IntegerField()
     require_coach = serializers.BooleanField()
+    enroll_start = serializers.DateTimeField()
+    enroll_end = serializers.DateTimeField()
+    quota = serializers.IntegerField(allow_null=True)
     required_materials = serializers.ListField(child=serializers.CharField())
     is_enabled = serializers.BooleanField()
 

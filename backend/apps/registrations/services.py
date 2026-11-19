@@ -364,11 +364,8 @@ def check_submission(item, actor):
     ):
         raise BusinessError(40911, "Current active season is required")
     now = timezone.now()
-    if (
-        not (offering.enroll_start or edition.enroll_start)
-        <= now
-        <= (offering.enroll_end or edition.enroll_end)
-    ):
+    start, end = offering.registration_window(edition)
+    if not start <= now <= end:
         raise BusinessError(42203, "Registration window is closed", 422)
     if edition.approval_mode != "single" or edition.team_entry_mode != "open":
         raise BusinessError(40902, "This approval or entry mode is not enabled")
@@ -617,11 +614,8 @@ def cancel_or_withdraw(actor, pk, version, action):
             cancelled_at=now
         )
     else:
-        if (
-            not (item.offering.enroll_start or item.edition.enroll_start)
-            <= now
-            <= (item.offering.enroll_end or item.edition.enroll_end)
-        ):
+        start, end = item.offering.registration_window(item.edition)
+        if not start <= now <= end:
             raise BusinessError(42203, "Registration window is closed", 422)
         if item.status not in ["draft", "pending_review", "returned", "rejected"]:
             raise BusinessError(40902, "This submission cannot be withdrawn")

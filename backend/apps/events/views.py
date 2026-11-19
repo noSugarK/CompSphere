@@ -11,6 +11,7 @@ from apps.events.services import (
     delete_event,
     delete_offering,
     update_event,
+    update_offering,
 )
 from core.api import BaseView, page, success, validated
 from core.schema import envelope, listing
@@ -137,6 +138,16 @@ class OfferingStateView(BaseView):
 
 
 class OfferingDetailView(BaseView):
+    @extend_schema(
+        request=schema.OfferingOverrides,
+        responses=envelope("OfferingUpdateResponse", schema.ManagedOffering),
+    )
+    def patch(self, request, pk):
+        item = update_offering(
+            request.user, pk, validated(schema.OfferingOverrides, request)
+        )
+        return success(request, schema.ManagedOffering(item).data)
+
     @extend_schema(
         responses=envelope("OfferingDeleteResponse", EmptySerializer, nullable=True)
     )

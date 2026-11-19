@@ -47,6 +47,12 @@ class Offering(BusinessModel):
     enroll_end = models.DateTimeField(null=True)
     status = models.CharField(max_length=16, default="enabled")
 
+    def registration_window(self, edition):
+        return (
+            self.enroll_start or edition.enroll_start,
+            self.enroll_end or edition.enroll_end,
+        )
+
     class Meta:
         db_table = "competition_offerings"
         constraints = [

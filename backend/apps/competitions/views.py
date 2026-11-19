@@ -25,7 +25,8 @@ from core.schema import envelope, listing
 from core.serializers import EmptySerializer
 
 
-def offering_data(item):
+def offering_data(item, edition):
+    start, end = item.registration_window(edition)
     return {
         "id": item.id,
         "event_id": item.event_id,
@@ -38,6 +39,9 @@ def offering_data(item):
         "min_members": item.event.min_members,
         "max_members": item.event.max_members,
         "require_coach": item.event.coach_required,
+        "enroll_start": start.isoformat(),
+        "enroll_end": end.isoformat(),
+        "quota": item.quota,
         "required_materials": [
             m["key"] for m in item.event.material_requirements if m.get("required")
         ],
@@ -61,8 +65,8 @@ def edition_data(item):
         "end_date": item.end_date.isoformat(),
         "venue": item.venue,
         "offerings": [
-            offering_data(x)
-            for x in item.offerings.filter(
+            offering_data(option, item)
+            for option in item.offerings.filter(
                 is_deleted=False, event__is_deleted=False, group__is_deleted=False
             )
             .select_related("event", "group")

@@ -1,4 +1,8 @@
+from datetime import timedelta
+from zoneinfo import ZoneInfo
+
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.audit.models import AuditLog
@@ -241,6 +245,41 @@ def test_offerings_require_same_edition_and_only_open_selected_cell(
     assert platform.get(endpoint).data["data"]["items"] == [combination]
     assert platform.post(endpoint, payload, format="json").status_code == 409
     detail = f"/api/v1/offerings/{combination['id']}"
+    later_start = (draft_edition.enroll_start + timedelta(hours=1)).isoformat()
+    changes = {"enroll_start": later_start, "quota": 30}
+    assert organizer.patch(detail, changes, format="json").status_code == 403
+    assert (
+        platform.patch(
+            detail, {"enroll_start": "2026-11-19T12:00"}, format="json"
+        ).status_code
+        == 400
+    )
+    assert platform.patch(detail, {"quota": -1}, format="json").status_code == 400
+    assert (
+        platform.patch(
+            detail, {"enroll_end": draft_edition.end_date.isoformat()}, format="json"
+        ).status_code
+        == 422
+    )
+    local_start = draft_edition.enroll_start.astimezone(ZoneInfo("Asia/Shanghai"))
+    updated = platform.patch(
+        detail,
+        {
+            "enroll_start": local_start.replace(tzinfo=None).isoformat(),
+            "time_zone": "Asia/Shanghai",
+            "quota": 30,
+        },
+        format="json",
+    )
+    assert updated.status_code == 200, updated.data
+    assert updated.data["data"]["enroll_end"] is None
+    assert updated.data["data"]["quota"] == 30
+    assert (
+        platform.patch(detail, {"enroll_start": None}, format="json").data["data"][
+            "enroll_start"
+        ]
+        is None
+    )
     assert platform.delete(f"/api/v1/groups/{university.id}").status_code == 409
     assert organizer.delete(detail).status_code == 403
     assert platform.delete(detail).data["data"] is None
@@ -258,6 +297,8 @@ def test_offerings_require_same_edition_and_only_open_selected_cell(
         ("U", True)
     ]
     assert platform.delete(detail).status_code == 409
+    assert platform.patch(detail, changes, format="json").status_code == 409
+    assert offerings[0]["quota"] is None
     assert platform.post(f"{detail}/disable", {}, format="json").status_code == 200
     assert not student.get(public_url).data["data"]["offerings"][0]["is_enabled"]
     assert (
@@ -279,6 +320,19 @@ def test_offering_disabling_keeps_existing_registration_readable(
     registration_url = f"/api/v1/editions/{edition.id}/registrations"
     draft = student.post(registration_url, draft_payload, format="json").data["data"]
     reg_url = f"/api/v1/registrations/{draft['id']}"
+    offering = dataset["offering"]
+    offering.quota = 0
+    offering.enroll_start = timezone.now() + timedelta(hours=1)
+    offering.save(update_fields=["quota", "enroll_start"])
+    blocked = student.post(
+        f"{reg_url}/submit",
+        {"version": draft["version"]},
+        format="json",
+        HTTP_IDEMPOTENCY_KEY="offering-future-window",
+    )
+    assert blocked.status_code == 422 and blocked.data["code"] == 42203
+    offering.enroll_start = None
+    offering.save(update_fields=["enroll_start"])
     assert (
         student.post(
             f"{reg_url}/submit",
@@ -329,7 +383,16 @@ def test_publication_requires_open_offering_and_both_publication_states(
     division = Group.objects.create(
         edition=draft_edition, code="U", name="University", school_level="U"
     )
-    Offering.objects.create(edition=draft_edition, event=event, group=division)
+    cutoff = timezone.now() - timedelta(minutes=1)
+    offering = Offering.objects.create(
+        edition=draft_edition, event=event, group=division, enroll_end=cutoff
+    )
+    assert not platform.get(f"{endpoint}/publication-checks").data["data"][
+        "open_offering"
+    ]
+    assert platform.post(f"{endpoint}/publish", {}, format="json").status_code == 409
+    offering.enroll_end = draft_edition.enroll_end - timedelta(minutes=1)
+    offering.save(update_fields=["enroll_end"])
     checks = platform.get(f"{endpoint}/publication-checks").data["data"]
     assert checks["open_offering"] and not checks["supported_rules"]
     assert platform.post(f"{endpoint}/publish", {}, format="json").status_code == 409
@@ -347,6 +410,8 @@ def test_publication_requires_open_offering_and_both_publication_states(
         == "published"
     )
     offerings = public.get(public_edition).data["data"]["offerings"]
+    assert offerings[0]["enroll_start"] == draft_edition.enroll_start.isoformat()
+    assert offerings[0]["enroll_end"] == offering.enroll_end.isoformat()
     assert [(item["event_code"], item["school_level"]) for item in offerings] == [
         ("VURC", "U")
     ]

@@ -1499,6 +1499,48 @@
             }
         },
         "/api/v1/offerings/{id}": {
+            "patch": {
+                "operationId": "offerings_partial_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "offerings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedOfferingOverridesRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OfferingUpdateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
             "delete": {
                 "operationId": "offerings_destroy",
                 "parameters": [
@@ -4534,16 +4576,35 @@
                     "status": {
                         "$ref": "#/components/schemas/ConfigurationStateEnum"
                     },
+                    "enroll_start": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "enroll_end": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "quota": {
+                        "type": "integer",
+                        "nullable": true,
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
                     "is_enabled": {
                         "type": "boolean",
                         "readOnly": true
                     }
                 },
                 "required": [
+                    "enroll_end",
+                    "enroll_start",
                     "event_id",
                     "group_id",
                     "id",
                     "is_enabled",
+                    "quota",
                     "status"
                 ],
                 "additionalProperties": false
@@ -4848,6 +4909,20 @@
                     "require_coach": {
                         "type": "boolean"
                     },
+                    "enroll_start": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "enroll_end": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "quota": {
+                        "type": "integer",
+                        "nullable": true,
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
                     "required_materials": {
                         "type": "array",
                         "items": {
@@ -4859,6 +4934,8 @@
                     }
                 },
                 "required": [
+                    "enroll_end",
+                    "enroll_start",
                     "enrollment_type",
                     "event_code",
                     "event_id",
@@ -4869,6 +4946,7 @@
                     "is_enabled",
                     "max_members",
                     "min_members",
+                    "quota",
                     "require_coach",
                     "required_materials",
                     "school_level"
@@ -4921,6 +4999,32 @@
                 ]
             },
             "OfferingStateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedOffering"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "OfferingUpdateResponse": {
                 "type": "object",
                 "properties": {
                     "data": {
@@ -5288,6 +5392,29 @@
                             "maxLength": 32
                         },
                         "maxItems": 32
+                    }
+                },
+                "additionalProperties": false
+            },
+            "PatchedOfferingOverridesRequest": {
+                "type": "object",
+                "properties": {
+                    "time_zone": {
+                        "$ref": "#/components/schemas/TimeZoneEnum"
+                    },
+                    "enroll_start": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "enroll_end": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "quota": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "nullable": true
                     }
                 },
                 "additionalProperties": false

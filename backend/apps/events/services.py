@@ -108,7 +108,18 @@ def create_offering(actor, edition_id, data):
         item.is_deleted = False
         item.deleted_at = None
         item.status = "enabled"
-        item.save(update_fields=["is_deleted", "deleted_at", "status", "updated_at"])
+        item.enroll_start = item.enroll_end = item.quota = None
+        item.save(
+            update_fields=[
+                "is_deleted",
+                "deleted_at",
+                "status",
+                "enroll_start",
+                "enroll_end",
+                "quota",
+                "updated_at",
+            ]
+        )
     audit(
         actor, "offering.created", "offering", item.pk, scope={"edition_id": edition.id}
     )
@@ -122,11 +133,36 @@ def locked_offering(actor, offering_id, *, draft_write=False):
     edition = configuration_edition(
         actor, edition_id, "edition:update", draft_write=draft_write, lock=True
     )
-    item = Offering.objects.select_related("event", "group").get(
+    item = Offering.objects.select_related("event", "group", "edition").get(
         pk=offering_id, is_deleted=False
     )
     if edition.status == "closed":
         raise BusinessError(40902, "Closed editions are read-only")
+    return item
+
+
+@transaction.atomic
+def update_offering(actor, offering_id, data):
+    item = locked_offering(actor, offering_id, draft_write=True)
+    if not data:
+        return item
+    for field, value in data.items():
+        setattr(item, field, value)
+    start, end = item.registration_window(item.edition)
+    if not start < end <= item.edition.start_date:
+        raise BusinessError(
+            42203,
+            "Registration must open before it closes and close before the event starts",
+            422,
+        )
+    item.save(update_fields=[*data, "updated_at"])
+    audit(
+        actor,
+        "offering.updated",
+        "offering",
+        item.pk,
+        scope={"edition_id": item.edition_id},
+    )
     return item
 
 

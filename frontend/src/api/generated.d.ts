@@ -497,7 +497,7 @@ export interface paths {
     delete: operations['offerings_destroy'];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations['offerings_partial_update'];
     trace?: never;
   };
   '/api/v1/offerings/{id}/disable': {
@@ -1434,6 +1434,11 @@ export interface components {
       group_id: number;
       id: number;
       status: components['schemas']['ConfigurationStateEnum'];
+      /** Format: date-time */
+      enroll_start: string | null;
+      /** Format: date-time */
+      enroll_end: string | null;
+      quota: number | null;
       readonly is_enabled: boolean;
     };
     ManagedOfferingsPage: {
@@ -1508,6 +1513,11 @@ export interface components {
       min_members: number;
       max_members: number;
       require_coach: boolean;
+      /** Format: date-time */
+      enroll_start: string;
+      /** Format: date-time */
+      enroll_end: string;
+      quota: number | null;
       required_materials: string[];
       is_enabled: boolean;
     };
@@ -1523,6 +1533,13 @@ export interface components {
       request_id: string;
     };
     OfferingStateResponse: {
+      data: components['schemas']['ManagedOffering'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    OfferingUpdateResponse: {
       data: components['schemas']['ManagedOffering'];
       code: number;
       message: string;
@@ -1607,6 +1624,12 @@ export interface components {
         | null;
       enrollment_type?: components['schemas']['EnrollmentTypeEnum'];
       grade_limits?: string[];
+    };
+    PatchedOfferingOverridesRequest: {
+      time_zone?: components['schemas']['TimeZoneEnum'];
+      enroll_start?: string | null;
+      enroll_end?: string | null;
+      quota?: number | null;
     };
     PatchedPreferencesRequest: {
       locale?: components['schemas']['LocaleEnum'];
@@ -3080,6 +3103,31 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  offerings_partial_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['PatchedOfferingOverridesRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OfferingUpdateResponse'];
+        };
       };
     };
   };

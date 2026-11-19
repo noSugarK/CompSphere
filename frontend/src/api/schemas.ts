@@ -102,6 +102,9 @@ export const offeringSchema = z
     min_members: z.number().int().nonnegative(),
     max_members: z.number().int().nonnegative(),
     require_coach: z.boolean(),
+    enroll_start: z.string().datetime({ offset: true }),
+    enroll_end: z.string().datetime({ offset: true }),
+    quota: z.number().int().nonnegative().nullable(),
     required_materials: z.array(text),
     is_enabled: z.boolean(),
   })
@@ -213,6 +216,9 @@ export const managedOfferingSchema = offeringDraftSchema.extend({
   id: idSchema,
   status: z.enum(['enabled', 'disabled']),
   is_enabled: z.boolean(),
+  enroll_start: z.string().datetime({ offset: true }).nullable(),
+  enroll_end: z.string().datetime({ offset: true }).nullable(),
+  quota: z.number().int().nonnegative().nullable(),
 }) satisfies z.ZodType<components['schemas']['ManagedOffering']>;
 export type ManagedOffering = components['schemas']['ManagedOffering'];
 

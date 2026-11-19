@@ -174,13 +174,14 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | GET/POST | `/editions/{id}/groups` | 届次作用域 `group:read/create`，仅草稿可创建。接收 `code`（1–8 位大写字母、数字或连字符）、`name`、`school_level`（ES/MS/HS/U 或 null）、`enrollment_type`（individual/team/both）及 `grade_limits`（唯一的年级原文字符串列表；空列表不限），返回这些字段及 `id/status`。不接受年龄字段。 |
 | PATCH/DELETE | `/groups/{id}` | `group:update`，仅草稿可部分更新或软删除；已被组合引用不得删，删除后不复用同届编码。 |
 | POST | `/groups/{id}/enable`、`/groups/{id}/disable` | 届次作用域 `group:enable_disable`，请求空对象；允许草稿及已发布届次，关闭后只读。组合实际可报名状态还取决于赛项和组合本身。 |
-| GET/POST | `/editions/{id}/offerings` | 届次作用域 `edition:read/update`。仅草稿可新增；显式提交同届且已启用的 `event_id`、`group_id`。返回 `id/event_id/group_id/status/is_enabled`；三者均启用时实际开放。 |
-| POST/DELETE | `/offerings/{id}/enable`、`/offerings/{id}/disable`、`DELETE /offerings/{id}` | 届次作用域 `edition:update`。启停可用于草稿和已发布届次；删除仅限无报名记录的草稿，移除后重新添加保留组合 ID。停用不会改写存量报名。组合级时间与名额覆盖配置尚未接入。 |
+| GET/POST | `/editions/{id}/offerings` | 届次作用域 `edition:read/update`。仅草稿可新增；显式提交同届且已启用的 `event_id`、`group_id`。返回 `id/event_id/group_id/status/is_enabled` 和可空的 `enroll_start/enroll_end/quota`；`is_enabled` 表示赛项、组别和组合均启用，不代表当前已到报名时间。 |
+| PATCH | `/offerings/{id}` | 届次作用域 `edition:update`，仅草稿。可部分更新 `enroll_start`、`enroll_end`、`quota`，省略保留原值，明确传 `null` 清除覆盖。非空时间统一使用显式 UTC 偏移，或使用本地时间并提供 `time_zone: "Asia/Shanghai"`。空边界独立继承届次；生效开始须早于结束，结束不得晚于比赛开始（否则 42203）。`quota` 是非负软名额提示，`null` 为不限，不拒绝超额报名。 |
+| POST/DELETE | `/offerings/{id}/enable`、`/offerings/{id}/disable`、`DELETE /offerings/{id}` | 届次作用域 `edition:update`。启停可用于草稿和已发布届次；删除仅限无报名记录的草稿，移除后重新添加保留组合 ID，但清除旧覆盖值。停用不会改写存量报名。 |
 | GET/PUT | `/editions/{id}/team-access` | 查看/设置 team_entry_mode 与 team_access_version；写入须带当前版本，权限 edition:manage_team_access（里程碑 2） |
 | GET/POST | `/editions/{id}/team-allowlist`；DELETE `/editions/{id}/team-allowlist/{team_id}` | 名单查询/增补/撤销（标 revoked）；edition:manage_team_access，不公开全量 |
 | POST | `/editions/{id}/team-allowlist/import-preview` / `/import-confirm` | 按队号+稳定赛项代码预览匹配与错误，返回预览令牌及 team_access_version；确认校验版本并事务写入，只导入已明确匹配的队伍，不自动创建队伍；权限同上 |
 | GET | `/editions/{id}/available-offerings?team_id=` | 按赛项/开放组合返回可选学段组别，用户选择；不按全队最高学段自动筛选，提交仍须校验组别已配置条件 |
-| GET | `/public/competitions` `/public/editions/{id}` | 门户公开列表/详情 |
+| GET | `/public/competitions` `/public/editions/{id}` | 门户公开列表/详情；届次详情的 `offerings` 返回继承后的有效报名时间与软名额。 |
 | GET | `/public/editions/{id}/roster?event=&group=` | 通过名单公示页（`AllowAny`；判定顺序见 02 §4.7） |
 | POST | `/editions/{id}/roster/publish` `/unpublish` | 发布/下架公示名单（发布用 `roster:publish`，下架用 `roster:unpublish`，v1.1） |
 | PATCH | `/editions/{id}/roster-publication` | 设置公示档位与字段白名单（`roster:publish`） |

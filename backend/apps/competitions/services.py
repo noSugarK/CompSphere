@@ -80,6 +80,7 @@ def configuration_edition(
 
 
 def edition_publication_checks(item):
+    now = timezone.now()
     offerings = list(
         item.offerings.filter(
             status="enabled",
@@ -96,9 +97,11 @@ def edition_publication_checks(item):
         "title_and_venue": bool(item.name.strip() and item.venue.strip()),
         "ordered_schedule": (
             item.enroll_start < item.enroll_end <= item.start_date < item.end_date
-            and timezone.now() < item.enroll_end
         ),
-        "open_offering": bool(offerings),
+        "open_offering": any(
+            start < end <= item.start_date and now < end
+            for start, end in (option.registration_window(item) for option in offerings)
+        ),
         "supported_rules": (
             item.approval_mode == "single"
             and item.team_entry_mode == "open"
