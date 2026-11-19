@@ -2,7 +2,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import AllowAny
 
 from apps.competitions import serializers as schema
-from apps.competitions.models import Competition, Edition, Season
+from apps.competitions.models import Competition, Season
 from apps.competitions.services import (
     activate_season,
     configuration_edition,
@@ -15,6 +15,7 @@ from apps.competitions.services import (
     managed_editions,
     publish_competition,
     publish_edition,
+    published_editions,
     set_current_season,
     update_edition_details,
 )
@@ -24,32 +25,6 @@ from core.api import BaseView, page, success, validated
 from core.exceptions import BusinessError
 from core.schema import envelope, listing
 from core.serializers import EmptySerializer
-
-
-def offering_data(item, edition):
-    start, end = item.registration_window(edition)
-    return {
-        "id": item.id,
-        "event_id": item.event_id,
-        "event_code": item.event.code_id,
-        "event_name": item.event.name,
-        "group_id": item.group_id,
-        "group_name": item.group.name,
-        "school_level": item.group.school_level,
-        "enrollment_type": item.group.enrollment_type,
-        "min_members": item.event.min_members,
-        "max_members": item.event.max_members,
-        "require_coach": item.event.coach_required,
-        "enroll_start": start.isoformat(),
-        "enroll_end": end.isoformat(),
-        "quota": item.quota,
-        "required_materials": [
-            m["key"] for m in item.event.material_requirements if m.get("required")
-        ],
-        "is_enabled": item.status == "enabled"
-        and item.event.status == "enabled"
-        and item.group.status == "enabled",
-    }
 
 
 def edition_data(item):
@@ -66,7 +41,7 @@ def edition_data(item):
         "end_date": item.end_date.isoformat(),
         "venue": item.venue,
         "offerings": [
-            offering_data(option, item)
+            schema.offering_data(option, item)
             for option in item.offerings.filter(
                 is_deleted=False, event__is_deleted=False, group__is_deleted=False
             )
@@ -74,18 +49,6 @@ def edition_data(item):
             .order_by("id")
         ],
     }
-
-
-def published_editions():
-    return Edition.objects.filter(
-        status="published",
-        is_deleted=False,
-        competition__status="published",
-        competition__is_deleted=False,
-        season__is_default=True,
-        season__status="active",
-        approval_mode="single",
-    )
 
 
 class CurrentSeasonView(BaseView):

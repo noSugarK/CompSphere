@@ -180,7 +180,7 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | GET/PUT | `/editions/{id}/team-access` | 查看/设置 team_entry_mode 与 team_access_version；写入须带当前版本，权限 edition:manage_team_access（里程碑 2） |
 | GET/POST | `/editions/{id}/team-allowlist`；DELETE `/editions/{id}/team-allowlist/{team_id}` | 名单查询/增补/撤销（标 revoked）；edition:manage_team_access，不公开全量 |
 | POST | `/editions/{id}/team-allowlist/import-preview` / `/import-confirm` | 按队号+稳定赛项代码预览匹配与错误，返回预览令牌及 team_access_version；确认校验版本并事务写入，只导入已明确匹配的队伍，不自动创建队伍；权限同上 |
-| GET | `/editions/{id}/available-offerings?team_id=` | 按赛项/开放组合返回可选学段组别，用户选择；不按全队最高学段自动筛选，提交仍须校验组别已配置条件 |
+| GET | `/editions/{id}/available-offerings?team_id=&page=&page_size=` | `registration:create`；只返回当前赛季、赛事与届次均已发布、赛项/组别/组合均启用且在生效时间窗内的选项。未选队伍时同时返回个人和团队选项；提供队伍时仅返回其稳定赛项的团队选项，须有本队代报权、已审核队伍版本及本季许可。无权队伍与不存在均返回 404，许可未通过返回 40910。不从档案推导学段；成员、年级和材料等条件仍在提交时校验。 |
 | GET | `/public/competitions` `/public/editions/{id}` | 门户公开列表/详情；届次详情的 `offerings` 返回继承后的有效报名时间与软名额。 |
 | GET | `/public/editions/{id}/roster?event=&group=` | 通过名单公示页（`AllowAny`；判定顺序见 02 §4.7） |
 | POST | `/editions/{id}/roster/publish` `/unpublish` | 发布/下架公示名单（发布用 `roster:publish`，下架用 `roster:unpublish`，v1.1） |

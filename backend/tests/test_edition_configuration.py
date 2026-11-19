@@ -9,6 +9,7 @@ from apps.audit.models import AuditLog
 from apps.competitions.models import Competition, Edition
 from apps.events.models import Event, Offering
 from apps.groups.models import Group
+from apps.teams.models import SeasonRegistration
 
 
 @pytest.fixture
@@ -364,6 +365,84 @@ def test_offerings_require_same_edition_and_only_open_selected_cell(
         == 200
     )
     assert platform.post(f"{detail}/enable", {}, format="json").status_code == 409
+
+
+@pytest.mark.django_db
+def test_available_offerings_filter_effective_windows_and_scoped_team(
+    dataset, actor_client, draft_edition
+):
+    edition = dataset["edition"]
+    team = dataset["team"]
+    original = dataset["offering"]
+    student = actor_client(dataset["accounts"]["student"])
+    coach = actor_client(dataset["accounts"]["coach"])
+    outsider = actor_client(dataset["accounts"]["outsider"])
+    organizer = actor_client(dataset["accounts"]["organizer"])
+    endpoint = f"/api/v1/editions/{edition.id}/available-offerings"
+    university = Group.objects.create(
+        edition=edition, code="U", name="University", school_level="U"
+    )
+    other_event = Event.objects.create(edition=edition, code_id="VURC", name="VURC")
+    other_offering = Offering.objects.create(
+        edition=edition, event=other_event, group=university
+    )
+    other_level = Offering.objects.create(
+        edition=edition, event=original.event, group=university, quota=0
+    )
+    solo = Group.objects.create(
+        edition=edition, code="SOLO", name="Individual", enrollment_type="individual"
+    )
+    solo_offering = Offering.objects.create(
+        edition=edition, event=original.event, group=solo
+    )
+    future = Group.objects.create(edition=edition, code="LATER", name="Future")
+    Offering.objects.create(
+        edition=edition,
+        event=original.event,
+        group=future,
+        enroll_start=timezone.now() + timedelta(hours=1),
+    )
+    expired = Group.objects.create(edition=edition, code="PAST", name="Expired")
+    Offering.objects.create(
+        edition=edition,
+        event=original.event,
+        group=expired,
+        enroll_end=timezone.now() - timedelta(hours=1),
+    )
+    disabled = Group.objects.create(
+        edition=edition, code="OFF", name="Disabled", status="disabled"
+    )
+    Offering.objects.create(edition=edition, event=original.event, group=disabled)
+
+    assert APIClient().get(endpoint).status_code == 401
+    assert organizer.get(endpoint).status_code == 403
+    assert student.get(endpoint, {"team_id": "-1"}).status_code == 400
+    assert (
+        student.get(
+            f"/api/v1/editions/{draft_edition.id}/available-offerings"
+        ).status_code
+        == 404
+    )
+    result = student.get(endpoint).data["data"]
+    assert [item["id"] for item in result["items"]] == [
+        original.id,
+        other_offering.id,
+        other_level.id,
+        solo_offering.id,
+    ]
+    assert result["items"][0]["enroll_start"] == edition.enroll_start.isoformat()
+    assert outsider.get(endpoint, {"team_id": team.id}).status_code == 404
+    assert outsider.get(endpoint, {"team_id": team.id + 1000}).status_code == 404
+    result = student.get(endpoint, {"team_id": team.id}).data["data"]
+    assert [item["id"] for item in result["items"]] == [original.id, other_level.id]
+    assert result["items"][1]["school_level"] == "U"
+    page = coach.get(endpoint, {"team_id": team.id, "page": 2, "page_size": 1}).data[
+        "data"
+    ]
+    assert page["total"] == 2 and page["items"][0]["id"] == other_level.id
+    SeasonRegistration.objects.filter(team=team).update(status="rejected")
+    unlicensed = student.get(endpoint, {"team_id": team.id})
+    assert unlicensed.status_code == 409 and unlicensed.data["code"] == 40910
 
 
 @pytest.mark.django_db

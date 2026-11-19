@@ -4,10 +4,12 @@ import uuid
 
 from django.db import transaction
 from django.db.models import Q
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.audit.services import audit
+from apps.competitions.services import published_editions
 from apps.events.models import Offering
 from apps.notifications.models import RegistrationNotice
 from apps.notifications.services import record_registration_notice
@@ -180,14 +182,55 @@ def validate_offering(offering, edition_id):
         raise BusinessError(42207, "Offering is not available", 422)
 
 
-def require_team_actor(actor, team):
+def can_register_team(actor, team):
     own = team.captain_id == actor.id or team.coach_id == actor.id
-    if not own or not has_perm(
-        actor, "registration:create", org_id=team.org_id, own=True
-    ):
-        # Platform may submit only through an explicit global business grant.
-        if not has_perm(actor, "registration:create", org_id=team.org_id):
-            raise BusinessError(40301, "Permission denied", 403)
+    return has_perm(actor, "registration:create", org_id=team.org_id, own=own)
+
+
+def require_team_actor(actor, team):
+    if not can_register_team(actor, team):
+        raise BusinessError(40301, "Permission denied", 403)
+
+
+def available_offerings(actor, edition_id, team_id=None):
+    edition = published_editions().get(pk=edition_id, team_entry_mode="open")
+    now = timezone.now()
+    options = (
+        edition.offerings.alias(
+            effective_start=Coalesce("enroll_start", "edition__enroll_start"),
+            effective_end=Coalesce("enroll_end", "edition__enroll_end"),
+        )
+        .filter(
+            effective_start__lte=now,
+            effective_end__gte=now,
+            is_deleted=False,
+            status="enabled",
+            event__edition_id=edition.id,
+            event__status="enabled",
+            event__is_deleted=False,
+            group__edition_id=edition.id,
+            group__status="enabled",
+            group__is_deleted=False,
+            group__age_min__isnull=True,
+            group__age_max__isnull=True,
+        )
+        .select_related("event", "group")
+        .order_by("id")
+    )
+    if team_id is None:
+        return edition, options
+    team = Team.objects.get(pk=team_id, is_deleted=False)
+    if not can_register_team(actor, team):
+        raise BusinessError(40401, "Team not found", 404)
+    if team.status != "active" or not team.approved_revision_id:
+        raise BusinessError(42211, "Team is not approved", 422)
+    if not SeasonRegistration.objects.filter(
+        team=team, season_id=edition.season_id, status="approved"
+    ).exists():
+        raise BusinessError(40910, "Team season registration is not approved")
+    return edition, options.filter(
+        event__code_id=team.event_code_id, group__enrollment_type__in=["team", "both"]
+    )
 
 
 def lock_registration_team(actor, pk, reviewing=False):

@@ -128,6 +128,10 @@ urlpatterns = [
     ),
     path("api/v1/registrations", registrations.RegistrationListView.as_view()),
     path(
+        "api/v1/editions/<int:pk>/available-offerings",
+        registrations.AvailableOfferingListView.as_view(),
+    ),
+    path(
         "api/v1/registrations/<int:pk>", registrations.RegistrationDetailView.as_view()
     ),
     path(

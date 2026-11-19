@@ -1,6 +1,8 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import serializers
 
 from apps.competitions.models import Edition
+from apps.competitions.serializers import Offering, offering_data
 from apps.rbac.services import require_perm
 from apps.registrations import serializers as schema
 from apps.registrations import services
@@ -8,6 +10,33 @@ from apps.registrations.models import RegistrationMember
 from core.api import BaseView, page, success, validated
 from core.schema import envelope, listing
 from core.serializers import VersionSerializer
+
+
+class AvailableOfferingListView(BaseView):
+    required_perm = "registration:create"
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("team_id", int),
+            OpenApiParameter("page", int),
+            OpenApiParameter("page_size", int),
+        ],
+        responses=listing("AvailableOfferings", Offering),
+    )
+    def get(self, request, pk):
+        raw_team_id = request.query_params.get("team_id")
+        team_id = (
+            None
+            if raw_team_id is None
+            else serializers.IntegerField(
+                min_value=1, max_value=2**53 - 1
+            ).run_validation(raw_team_id)
+        )
+        edition, options = services.available_offerings(request.user, pk, team_id)
+        return success(
+            request,
+            page(request, options, lambda option: offering_data(option, edition)),
+        )
 
 
 class EditionRegistrationListView(BaseView):

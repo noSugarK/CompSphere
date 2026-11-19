@@ -212,6 +212,22 @@ export interface paths {
     patch: operations['editions_partial_update'];
     trace?: never;
   };
+  '/api/v1/editions/{id}/available-offerings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['editions_available_offerings_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/editions/{id}/event-types': {
     parameters: {
       query?: never;
@@ -974,6 +990,19 @@ export interface components {
     };
     ApprovalRecordsResponse: {
       data: components['schemas']['ApprovalRecordsPage'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    AvailableOfferingsPage: {
+      items: components['schemas']['Offering'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    AvailableOfferingsResponse: {
+      data: components['schemas']['AvailableOfferingsPage'];
       code: number;
       message: string;
       /** Format: uuid */
@@ -2581,6 +2610,31 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['EditionUpdateResponse'];
+        };
+      };
+    };
+  };
+  editions_available_offerings_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+        team_id?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AvailableOfferingsResponse'];
         };
       };
     };

@@ -134,6 +134,35 @@ class EditionPublicationChecks(StrictSerializer):
     supported_rules = serializers.BooleanField()
 
 
+def offering_data(item, edition):
+    start, end = item.registration_window(edition)
+    return {
+        "id": item.id,
+        "event_id": item.event_id,
+        "event_code": item.event.code_id,
+        "event_name": item.event.name,
+        "group_id": item.group_id,
+        "group_name": item.group.name,
+        "school_level": item.group.school_level,
+        "enrollment_type": item.group.enrollment_type,
+        "min_members": item.event.min_members,
+        "max_members": item.event.max_members,
+        "require_coach": item.event.coach_required,
+        "enroll_start": start.isoformat(),
+        "enroll_end": end.isoformat(),
+        "quota": item.quota,
+        "required_materials": [
+            material["key"]
+            for material in item.event.material_requirements
+            if material.get("required")
+        ],
+        "is_enabled": item.status
+        == item.event.status
+        == item.group.status
+        == "enabled",
+    }
+
+
 class Offering(serializers.Serializer):
     id = serializers.IntegerField()
     event_id = serializers.IntegerField()

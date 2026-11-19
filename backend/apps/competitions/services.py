@@ -10,6 +10,18 @@ from core.exceptions import BusinessError
 from core.state import transition
 
 
+def published_editions():
+    return Edition.objects.filter(
+        status="published",
+        is_deleted=False,
+        competition__status="published",
+        competition__is_deleted=False,
+        season__is_default=True,
+        season__status="active",
+        approval_mode="single",
+    )
+
+
 def managed_competitions(user):
     queryset = Competition.objects.filter(is_deleted=False).order_by("-id")
     competition_ids = []
