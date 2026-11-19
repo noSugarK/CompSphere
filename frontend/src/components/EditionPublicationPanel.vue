@@ -15,7 +15,6 @@ const session = useSession();
 const checks = ref<EditionPublicationChecks>();
 const loading = ref(false);
 const publishing = ref(false);
-const published = ref(false);
 const loadError = ref<unknown>(null);
 const publishError = ref<unknown>(null);
 const checklist = [
@@ -74,7 +73,6 @@ async function publish() {
     }
     publishError.value = null;
     const edition = await api.publishEdition(props.edition.id);
-    published.value = true;
     emit('published', edition);
   } catch (error) {
     publishError.value = error;
@@ -94,11 +92,7 @@ watch(
 </script>
 
 <template>
-  <section
-    v-if="edition.status === 'draft' || published"
-    class="content-panel"
-    aria-labelledby="edition-publication-title"
-  >
+  <section class="content-panel" aria-labelledby="edition-publication-title">
     <div class="publication-header">
       <div>
         <h2 id="edition-publication-title">{{ t('publication.title') }}</h2>
@@ -114,12 +108,13 @@ watch(
       >
     </div>
     <div role="status">
-      <p v-if="published">{{ t('publication.editionDone') }}</p>
+      <p v-if="edition.status === 'published'">{{ t('publication.editionDone') }}</p>
+      <p v-else-if="edition.status === 'closed'">{{ t('publication.editionClosed') }}</p>
     </div>
     <ErrorNotice v-if="publishError" :error="publishError" />
     <p v-if="loading">{{ t('loading') }}</p>
     <ErrorNotice v-else-if="loadError" :error="loadError" @retry="load" />
-    <ul v-else-if="checks && !published" class="publication-list">
+    <ul v-else-if="checks && edition.status === 'draft'" class="publication-list">
       <li v-for="key in checklist" :key="key">
         <span>{{ t(`publication.${key}`) }}</span>
         <el-tag :type="checks[key] ? 'success' : 'warning'" effect="light">{{

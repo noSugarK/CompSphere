@@ -12,12 +12,20 @@ import OfferingMatrix from '../components/OfferingMatrix.vue';
 import EditionPublicationPanel from '../components/EditionPublicationPanel.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { useSession } from '../stores/session';
+import { formatEventDateTime } from '../utils/format';
 import { hasEditionPermission, mayViewCompetitionRegistry } from '../utils/permissions';
 
 const { t } = useI18n();
 const session = useSession();
 const editionId = Number(useRoute().params.id);
 const edition = ref<ManagedEdition>();
+const section = ref('basics');
+const dateFields = [
+  ['enroll_start', 'editionEnrollStart'],
+  ['enroll_end', 'editionEnrollEnd'],
+  ['start_date', 'editionEventStart'],
+  ['end_date', 'editionEventEnd'],
+] as const;
 const events = ref<ManagedEvent[]>([]);
 const eventTypes = ref<EventTypeSummary[]>([]);
 const page = ref(1);
@@ -195,102 +203,154 @@ onMounted(load);
         :to="{ name: 'editionRegistry', params: { id: edition.competition_id } }"
         >{{ t('editionRegistry') }}</RouterLink
       >
-      <h1 id="page-title" tabindex="-1">{{ t('editionConfiguration') }}</h1>
-      <p v-if="edition">{{ edition.name }} <StatusTag :status="edition.status" /></p>
+      <h1 id="page-title" tabindex="-1">{{ edition?.name ?? t('editionConfiguration') }}</h1>
+      <p v-if="edition">
+        <StatusTag :status="edition.status" />
+        {{ t('editionIdentity', { year: edition.year, number: edition.edition_no }) }}
+      </p>
     </div>
   </div>
   <div role="status">
     <p v-if="feedback">{{ feedback }}</p>
   </div>
-  <div class="content-panel">
-    <div class="event-heading">
-      <div>
-        <h2>{{ t('eventSettings') }}</h2>
-        <p v-if="edition && edition.status !== 'draft'" class="muted">
-          {{ t('eventPublishedReadOnly') }}
-        </p>
-        <p v-else class="muted">{{ t('eventSettingsHint') }}</p>
-      </div>
-      <el-button
-        v-if="mayCreate"
-        :icon="Plus"
-        type="primary"
-        :disabled="saving"
-        @click="startDraft()"
-        >{{ t('eventAdd') }}</el-button
-      >
-    </div>
-    <ErrorNotice v-if="saveError && !open" :error="saveError" />
+  <template v-if="!edition">
     <p v-if="loading">{{ t('loading') }}</p>
     <ErrorNotice v-else-if="loadError" :error="loadError" @retry="load" />
-    <p v-else-if="!events.length" class="muted">{{ t('none') }}</p>
-    <ul v-else class="event-list">
-      <li v-for="item in events" :key="item.id" class="event-row">
-        <div>
-          <h3>{{ item.name }}</h3>
-          <p class="small muted">{{ item.event_code }}</p>
-        </div>
-        <div>
-          <p>{{ t('eventMemberRange', { min: item.min_members, max: item.max_members }) }}</p>
-          <p v-if="item.coach_required" class="small muted">{{ t('eventCoachRequired') }}</p>
-        </div>
-        <div class="event-actions">
-          <StatusTag :status="item.status" />
-          <template v-if="mayEdit">
-            <el-button link type="primary" :disabled="saving" @click="startDraft(item)">{{
-              t('eventEdit')
-            }}</el-button>
-            <el-button link :disabled="saving" @click="changeEvent(item, 'remove')">{{
-              t('eventRemove')
-            }}</el-button>
-          </template>
+  </template>
+  <el-tabs
+    v-else
+    v-model="section"
+    class="edition-sections"
+    :aria-label="t('editionConfiguration')"
+  >
+    <el-tab-pane :label="t('editionBasics')" name="basics">
+      <section class="content-panel" aria-labelledby="edition-basics-title">
+        <h2 id="edition-basics-title">{{ t('editionBasics') }}</h2>
+        <dl class="edition-facts">
+          <div>
+            <dt>{{ t('editionVenue') }}</dt>
+            <dd>{{ edition.venue }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('editionSeason') }}</dt>
+            <dd>#{{ edition.season_id }}</dd>
+          </div>
+        </dl>
+      </section>
+      <section class="content-panel" aria-labelledby="edition-dates-title">
+        <h2 id="edition-dates-title">{{ t('editionDates') }}</h2>
+        <p class="muted">{{ t('editionDisplayedTimeZone') }}</p>
+        <dl class="edition-facts">
+          <div v-for="[field, label] in dateFields" :key="field">
+            <dt>{{ t(label) }}</dt>
+            <dd>
+              <time :datetime="edition[field]">{{ formatEventDateTime(edition[field]) }}</time>
+            </dd>
+          </div>
+        </dl>
+      </section>
+    </el-tab-pane>
+    <el-tab-pane :label="t('editionRegistrationRules')" name="rules">
+      <section class="content-panel" aria-labelledby="edition-rules-title">
+        <h2 id="edition-rules-title">{{ t('editionReviewWorkflow') }}</h2>
+        <p>{{ t('editionSingleReview') }}</p>
+      </section>
+    </el-tab-pane>
+    <el-tab-pane :label="t('editionEventsAndGroups')" name="offerings" lazy>
+      <div class="content-panel">
+        <div class="event-heading">
+          <div>
+            <h2>{{ t('eventSettings') }}</h2>
+            <p v-if="edition && edition.status !== 'draft'" class="muted">
+              {{ t('eventPublishedReadOnly') }}
+            </p>
+            <p v-else class="muted">{{ t('eventSettingsHint') }}</p>
+          </div>
           <el-button
-            v-if="mayToggle"
-            link
+            v-if="mayCreate"
+            :icon="Plus"
+            type="primary"
             :disabled="saving"
-            @click="changeEvent(item, item.status === 'enabled' ? 'disable' : 'enable')"
-            >{{ t(item.status === 'enabled' ? 'eventDisable' : 'eventEnable') }}</el-button
+            @click="startDraft()"
+            >{{ t('eventAdd') }}</el-button
           >
         </div>
-      </li>
-    </ul>
-    <el-pagination
-      v-if="total > pageSize"
-      :current-page="page"
-      :page-size="pageSize"
-      :total="total"
-      :disabled="loading || saving"
-      :pager-count="5"
-      layout="prev, pager, next"
-      @update:current-page="
-        (value: number) => {
-          page = value;
-          load();
-        }
-      "
-    />
-  </div>
-  <GroupConfiguration
-    v-if="
-      edition && hasEditionPermission(session.me, 'group:read', edition.id, edition.competition_id)
-    "
-    :edition="edition"
-    @changed="configurationChanged"
-  />
-  <OfferingMatrix
-    v-if="
-      edition && hasEditionPermission(session.me, 'group:read', edition.id, edition.competition_id)
-    "
-    :key="matrixRevision"
-    :edition="edition"
-    @changed="publicationRevision += 1"
-  />
-  <EditionPublicationPanel
-    v-if="edition"
-    :edition="edition"
-    :revision="publicationRevision"
-    @published="edition = $event"
-  />
+        <ErrorNotice v-if="saveError && !open" :error="saveError" />
+        <p v-if="loading">{{ t('loading') }}</p>
+        <ErrorNotice v-else-if="loadError" :error="loadError" @retry="load" />
+        <p v-else-if="!events.length" class="muted">{{ t('none') }}</p>
+        <ul v-else class="event-list">
+          <li v-for="item in events" :key="item.id" class="event-row">
+            <div>
+              <h3>{{ item.name }}</h3>
+              <p class="small muted">{{ item.event_code }}</p>
+            </div>
+            <div>
+              <p>{{ t('eventMemberRange', { min: item.min_members, max: item.max_members }) }}</p>
+              <p v-if="item.coach_required" class="small muted">{{ t('eventCoachRequired') }}</p>
+            </div>
+            <div class="event-actions">
+              <StatusTag :status="item.status" />
+              <template v-if="mayEdit">
+                <el-button link type="primary" :disabled="saving" @click="startDraft(item)">{{
+                  t('eventEdit')
+                }}</el-button>
+                <el-button link :disabled="saving" @click="changeEvent(item, 'remove')">{{
+                  t('eventRemove')
+                }}</el-button>
+              </template>
+              <el-button
+                v-if="mayToggle"
+                link
+                :disabled="saving"
+                @click="changeEvent(item, item.status === 'enabled' ? 'disable' : 'enable')"
+                >{{ t(item.status === 'enabled' ? 'eventDisable' : 'eventEnable') }}</el-button
+              >
+            </div>
+          </li>
+        </ul>
+        <el-pagination
+          v-if="total > pageSize"
+          :current-page="page"
+          :page-size="pageSize"
+          :total="total"
+          :disabled="loading || saving"
+          :pager-count="5"
+          layout="prev, pager, next"
+          @update:current-page="
+            (value: number) => {
+              page = value;
+              load();
+            }
+          "
+        />
+      </div>
+      <GroupConfiguration
+        v-if="
+          edition &&
+          hasEditionPermission(session.me, 'group:read', edition.id, edition.competition_id)
+        "
+        :edition="edition"
+        @changed="configurationChanged"
+      />
+      <OfferingMatrix
+        v-if="
+          edition &&
+          hasEditionPermission(session.me, 'group:read', edition.id, edition.competition_id)
+        "
+        :key="matrixRevision"
+        :edition="edition"
+        @changed="publicationRevision += 1"
+      />
+    </el-tab-pane>
+    <el-tab-pane :label="t('publication.title')" name="publish" lazy>
+      <EditionPublicationPanel
+        :edition="edition"
+        :revision="publicationRevision"
+        @published="edition = $event"
+      />
+    </el-tab-pane>
+  </el-tabs>
   <el-dialog
     v-model="open"
     :title="t(editingId ? 'eventEdit' : 'eventAdd')"
@@ -364,6 +424,29 @@ onMounted(load);
 </template>
 
 <style scoped>
+.edition-sections :deep(.el-tabs__item) {
+  padding-inline: 12px;
+}
+.edition-sections :deep(.el-tabs__item.is-active) {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.edition-sections :deep(.el-tab-pane > .content-panel + .content-panel) {
+  margin-block-start: 16px;
+}
+.edition-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+  margin-block-end: 0;
+}
+.edition-facts dt {
+  color: var(--color-muted);
+}
+.edition-facts dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
 .event-heading,
 .event-row {
   display: flex;

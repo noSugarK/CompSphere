@@ -25,6 +25,13 @@ const zh = {
   competitionRegistry: '赛事管理',
   editionRegistry: '届次管理',
   editionConfiguration: '届次配置',
+  editionBasics: '基本信息',
+  editionDates: '报名与比赛时间',
+  editionDisplayedTimeZone: '以下时间均为北京时间（Asia/Shanghai）。',
+  editionRegistrationRules: '报名规则',
+  editionReviewWorkflow: '报名审核方式',
+  editionSingleReview: '单级审核：提交报名后，由赛事审核人员审核。',
+  editionEventsAndGroups: '赛项与组别',
   publication: {
     title: '发布检查',
     editionAction: '发布届次',
@@ -32,6 +39,7 @@ const zh = {
     competitionLabel: '发布赛事：{name}',
     competitionDone: '赛事「{name}」已发布。',
     editionDone: '届次已发布。',
+    editionClosed: '届次已关闭，不再接受新报名。',
     competitionConfirm:
       '发布「{name}」？至少需要一个配置完整的届次；门户只显示当前赛季中已发布的届次。',
     editionConfirm:
@@ -345,6 +353,13 @@ const en: typeof zh = {
   competitionRegistry: 'Competition management',
   editionRegistry: 'Edition management',
   editionConfiguration: 'Edition configuration',
+  editionBasics: 'Overview',
+  editionDates: 'Dates and deadlines',
+  editionDisplayedTimeZone: 'All times are shown in Asia/Shanghai.',
+  editionRegistrationRules: 'Registration rules',
+  editionReviewWorkflow: 'Review workflow',
+  editionSingleReview: 'Single-stage review: competition reviewers review submitted registrations.',
+  editionEventsAndGroups: 'Events and divisions',
   publication: {
     title: 'Publication checklist',
     editionAction: 'Publish edition',
@@ -352,6 +367,7 @@ const en: typeof zh = {
     competitionLabel: 'Publish competition: {name}',
     competitionDone: 'Competition {name} published.',
     editionDone: 'Edition published.',
+    editionClosed: 'This edition is closed and no longer accepts registrations.',
     competitionConfirm:
       'Publish {name}? Configure at least one edition first. The portal only lists published editions in the current season.',
     editionConfirm:
