@@ -3,6 +3,8 @@ from pathlib import Path
 
 import environ
 
+from core.constants import REGISTRATION_STATES
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 env = environ.Env()
 SECRET_KEY = env("SECRET_KEY")
@@ -88,6 +90,7 @@ SPECTACULAR_SETTINGS = {
         "SelectedSchoolLevelEnum": ["ES", "MS", "HS", "U"],
         "EditionStatusEnum": ["draft", "published", "closed"],
         "SeasonStatusEnum": ["draft", "active", "archived"],
+        "RegistrationStatusEnum": REGISTRATION_STATES,
         "ReviewActionEnum": ["approve", "reject", "return"],
         "LicenseActionEnum": ["approve", "reject"],
         "RecordedActionEnum": [

@@ -756,6 +756,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/registrations/filter-options': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['registrations_filter_options_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/seasons': {
     parameters: {
       query?: never;
@@ -1866,15 +1882,15 @@ export interface components {
     };
     /**
      * @description * `draft` - draft
-     *     * `pending_review` - pending_review
      *     * `returned` - returned
      *     * `rejected` - rejected
+     *     * `pending_review` - pending_review
      *     * `approved` - approved
      *     * `withdrawn` - withdrawn
      * @enum {string}
      */
     RegistrationStatusEnum:
-      'draft' | 'pending_review' | 'returned' | 'rejected' | 'approved' | 'withdrawn';
+      'draft' | 'returned' | 'rejected' | 'pending_review' | 'approved' | 'withdrawn';
     RegistrationSubmitResponse: {
       data: components['schemas']['Registration'];
       code: number;
@@ -1890,7 +1906,7 @@ export interface components {
       request_id: string;
     };
     RegistrationsPage: {
-      items: components['schemas']['Registration'][];
+      items: components['schemas']['ReviewQueueItem'][];
       page: number;
       page_size: number;
       total: number;
@@ -1915,6 +1931,36 @@ export interface components {
      * @enum {string}
      */
     ReviewActionEnum: 'approve' | 'reject' | 'return';
+    ReviewQueueItem: {
+      id: number;
+      batch_no: string;
+      team_code: string | null;
+      edition_name: string;
+      event_name: string;
+      group_name: string;
+      org_name: string;
+      status: components['schemas']['RegistrationStatusEnum'];
+      submission_no: number;
+      /** Format: date-time */
+      submitted_at: string;
+    };
+    ReviewQueueOption: {
+      id: number;
+      name: string;
+    };
+    ReviewQueueOptionsPage: {
+      items: components['schemas']['ReviewQueueOption'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    ReviewQueueOptionsResponse: {
+      data: components['schemas']['ReviewQueueOptionsPage'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     ReviewRequest: {
       action: components['schemas']['ReviewActionEnum'];
       comment: string;
@@ -3358,7 +3404,24 @@ export interface operations {
   };
   registrations_list: {
     parameters: {
-      query?: never;
+      query?: {
+        edition?: number;
+        event?: number;
+        group?: number;
+        org?: number;
+        page?: number;
+        page_size?: number;
+        q?: string;
+        /**
+         * @description * `draft` - draft
+         *     * `returned` - returned
+         *     * `rejected` - rejected
+         *     * `pending_review` - pending_review
+         *     * `approved` - approved
+         *     * `withdrawn` - withdrawn
+         */
+        status?: 'draft' | 'returned' | 'rejected' | 'pending_review' | 'approved' | 'withdrawn';
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -3584,6 +3647,36 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RegistrationCancelResponse'];
+        };
+      };
+    };
+  };
+  registrations_filter_options_retrieve: {
+    parameters: {
+      query: {
+        /**
+         * @description * `edition` - edition
+         *     * `event` - event
+         *     * `group` - group
+         *     * `org` - org
+         */
+        dimension: 'edition' | 'event' | 'group' | 'org';
+        edition?: number;
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReviewQueueOptionsResponse'];
         };
       };
     };

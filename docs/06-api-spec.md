@@ -198,7 +198,8 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | POST | `/registrations/{id}/submit` `/resubmit` `/withdraw` `/cancel-review` | 状态动作（03 §1）；cancel-review 仅本轮未审，保留并标记取消旧提交，回同一报名的可编辑草稿 | 提交人 |
 | DELETE | `/registrations/{id}` | 软删除草稿，不删除已有提交/成员/材料历史 | `delete_draft` |
 | POST | `/registrations/{id}/files` | 上传暂存材料（multipart → upload_id），归属/过期校验后在 submit/resubmit 建本轮文件引用 | 提交人 |
-| GET | `/registrations?edition=&group=&org=&status=` | 管理列表 | `registration:read` |
+| GET | `/registrations?edition=&event=&group=&org=&status=&q=&page=&page_size=` | 分页管理队列，仅出业务摘要与当前提交轮次；`q` 按报名编号或队号包含匹配。成员、联系方式及审核详情单独请求 `GET /registrations/{id}`。 | `registration:read`（历史按 `registration:read_history`） |
+| GET | `/registrations/filter-options?dimension=&edition=&page=&page_size=` | 分页返回当前权限范围内已提交记录使用的筛选项 `{id,name}`；`dimension` 为 `edition`、`event`、`group` 或 `org`，可限定届次。 | 同管理队列 |
 | POST | `/registrations/{id}/approval` | body: `{action: approve|reject|return, comment, submission_no}`；已 approved 执行 reject 额外需 approval:reject_approved，并受名单锁定/证书限制；所有审核动作禁止本轮学生成员及提交人自审 | `approval:review_*` |
 | POST | `/registrations/batch-approval` | body: `{items:[{id,submission_no}], action, comment}`；逐项检查版本与权限，已通过报名的批量驳回也需 reject_approved | `approval:batch_review` |
 | GET | `/registrations/{id}/team-review-context` | 本场快照、关联队伍资料版本、分页历届各提交轮次摘要与历史队员；仅团队报名，按 02 历史上下文规则鉴权并审计 | registration:read + approval:review_* + team:read_review_history |
@@ -216,7 +217,7 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | `competition_admin` / `reviewer`（scoped） | 该届次全部完整快照 | 末四位，需 `registration:read` |
 | `platform_admin` | 管理范围内的字段白名单 | 最多末四位，无明文例外 |
 
-`GET /registrations?edition=&event=&group=&org=&status=`：管理列表新增 `event` 与 `group` 两个筛选参数（v1.1，原先只有 group）。
+管理队列的赛项、组别与筛选项按当前已提交轮次的冻结组合引用查询；退回后修改工作副本不会影响查询结果，重提新轮次后才切换。超出作用域的筛选值不返回其他届次或单位的记录。
 
 ### 奖项 / 名单 / 证书
 

@@ -34,6 +34,7 @@ class ErrorCode(IntEnum):
 
 
 EDITABLE_STATES = ("draft", "returned", "rejected")
+REGISTRATION_STATES = (*EDITABLE_STATES, "pending_review", "approved", "withdrawn")
 REVIEW_ACTIONS = ("approve", "reject", "return")
 SCHOOL_LEVELS = ("ES", "MS", "HS", "U")
 CONFIGURATION_STATES = ("enabled", "disabled")

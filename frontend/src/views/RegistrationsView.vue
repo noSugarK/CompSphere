@@ -3,18 +3,18 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { api } from '../api';
-import type { Edition, Registration } from '../api/schemas';
+import type { Edition, Registration, ReviewQueueFilters, ReviewQueueItem } from '../api/schemas';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import StatusTag from '../components/StatusTag.vue';
 const route = useRoute(),
   { t } = useI18n();
 const reviewing = computed(() => route.name === 'reviews');
-const items = ref<Registration[]>([]),
+const items = ref<(Registration | ReviewQueueItem)[]>([]),
   editions = ref<Edition[]>([]),
   editionId = ref<number>(),
   page = ref(1),
   total = ref(0),
-  status = ref(''),
+  status = ref<ReviewQueueFilters['status'] | ''>(''),
   loading = ref(true),
   error = ref<unknown>(null);
 async function load() {
@@ -22,7 +22,11 @@ async function load() {
   error.value = null;
   try {
     const data = reviewing.value
-      ? await api.registrations(editionId.value, page.value, status.value)
+      ? await api.registrations({
+          edition: editionId.value,
+          page: page.value,
+          status: status.value || undefined,
+        })
       : editionId.value
         ? await api.myRegistrations(editionId.value, page.value)
         : null;
@@ -99,9 +103,10 @@ onMounted(async () => {
         prop="batch_no"
         :label="t('registrations')"
         min-width="170"
-      /><el-table-column prop="team_id" :label="t('team')" /><el-table-column
-        :label="t('status')"
-        min-width="120"
+      /><el-table-column
+        :prop="reviewing ? 'team_code' : 'team_id'"
+        :label="t('team')"
+      /><el-table-column :label="t('status')" min-width="120"
         ><template #default="{ row }"><StatusTag :status="row.status" /></template></el-table-column
       ><el-table-column :label="t('details')" min-width="110"
         ><template #default="{ row }"

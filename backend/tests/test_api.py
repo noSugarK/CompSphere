@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 
 from apps.audit.models import AuditLog
 from apps.competitions.models import Competition, Edition, Season
-from apps.events.models import Offering
+from apps.events.models import Event, Offering
 from apps.groups.models import Group
 from apps.notifications.models import AsyncOutbox, RegistrationNotice
 from apps.notifications.services import REGISTRATION_MAIL_TOPIC
@@ -590,8 +590,11 @@ def test_returned_draft_changes_do_not_leak_into_current_submission(
         school_level="MS",
         enrollment_type="team",
     )
+    other_event = Event.objects.create(
+        edition=dataset["edition"], code_id="VURC", name="VURC"
+    )
     new_offering = Offering.objects.create(
-        edition=dataset["edition"], event=dataset["offering"].event, group=new_group
+        edition=dataset["edition"], event=other_event, group=new_group
     )
     response = student.patch(
         f"/api/v1/registrations/{draft['id']}",
@@ -614,6 +617,73 @@ def test_returned_draft_changes_do_not_leak_into_current_submission(
     assert current["selected_school_level"] == "HS"
     assert current["coach_user_id"] == dataset["accounts"]["coach"].id
     assert current["contact"]["name"] == "Synthetic contact"
+    old_offering = dataset["offering"]
+    queue = "/api/v1/registrations"
+    filters = {
+        "edition": draft["edition_id"],
+        "event": old_offering.event_id,
+        "group": old_offering.group_id,
+        "org": draft["org_id"],
+        "status": "returned",
+        "q": dataset["team"].team_number.code,
+    }
+    listed = reviewer.get(queue, filters)
+    assert listed.status_code == 200, listed.data
+    (row,) = listed.data["data"]["items"]
+    assert row["id"] == draft["id"] and row["submission_no"] == 1
+    assert (
+        row["event_name"] == old_offering.event.name
+        and row["group_name"] == old_offering.group.name
+    )
+    assert not {"contact", "members", "consents", "approval_records"}.intersection(row)
+    for field, value in (
+        ("event", other_event.id),
+        ("group", new_group.id),
+        ("q", "DOES-NOT-EXIST"),
+    ):
+        assert reviewer.get(queue, {**filters, field: value}).data["data"]["total"] == 0
+    assert reviewer.get(queue, {"group": "-2"}).status_code == 400
+    assert reviewer.get(queue, {"status": "bad"}).status_code == 400
+    facets = f"{queue}/filter-options"
+    assert reviewer.get(facets, {"dimension": "group"}).data["data"]["items"] == [
+        {"id": old_offering.group_id, "name": old_offering.group.name}
+    ]
+    assert (
+        reviewer.get(
+            facets, {"dimension": "event", "edition": draft["edition_id"] + 100}
+        ).data["data"]["total"]
+        == 0
+    )
+    assert reviewer.get(facets, {"dimension": "unknown"}).status_code == 400
+    outsider = actor_client(dataset["accounts"]["outsider"])
+    assert outsider.get(facets, {"dimension": "group"}).data["data"]["total"] == 0
+    assert outsider.get(queue, filters).data["data"]["total"] == 0
+
+    revised_offering = Offering.objects.create(
+        edition=dataset["edition"], event=old_offering.event, group=new_group
+    )
+    patched = student.patch(
+        f"/api/v1/registrations/{draft['id']}",
+        {
+            "version": response.data["data"]["version"],
+            "offering_id": revised_offering.id,
+            "coach_user_id": dataset["accounts"]["coach"].id,
+        },
+        format="json",
+    )
+    assert patched.status_code == 200, patched.data
+    resubmitted = student.post(
+        f"/api/v1/registrations/{draft['id']}/resubmit",
+        {"version": patched.data["data"]["version"]},
+        format="json",
+        HTTP_IDEMPOTENCY_KEY="review-queue-resubmit",
+    )
+    assert resubmitted.status_code == 200, resubmitted.data
+    assert (
+        reviewer.get(queue, {"group": old_offering.group_id}).data["data"]["total"] == 0
+    )
+    (row,) = reviewer.get(queue, {"group": new_group.id}).data["data"]["items"]
+    assert row["group_name"] == new_group.name and row["submission_no"] == 2
 
 
 @pytest.mark.django_db

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.teams.serializers import Member
+from core.constants import REGISTRATION_STATES
 from core.serializers import ReviewSerializer, StrictSerializer
 
 
@@ -57,6 +58,38 @@ class RegistrationReview(ReviewSerializer):
     submission_no = serializers.IntegerField(min_value=1)
 
 
+class ReviewQueueFilters(serializers.Serializer):
+    edition = serializers.IntegerField(min_value=1, max_value=2**53 - 1, required=False)
+    event = serializers.IntegerField(min_value=1, max_value=2**53 - 1, required=False)
+    group = serializers.IntegerField(min_value=1, max_value=2**53 - 1, required=False)
+    org = serializers.IntegerField(min_value=1, max_value=2**53 - 1, required=False)
+    status = serializers.ChoiceField(choices=REGISTRATION_STATES, required=False)
+    q = serializers.CharField(max_length=80, allow_blank=True, required=False)
+
+
+class ReviewQueueFacetQuery(serializers.Serializer):
+    dimension = serializers.ChoiceField(choices=["edition", "event", "group", "org"])
+    edition = serializers.IntegerField(min_value=1, max_value=2**53 - 1, required=False)
+
+
+class ReviewQueueOption(StrictSerializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
+class ReviewQueueItem(StrictSerializer):
+    id = serializers.IntegerField()
+    batch_no = serializers.CharField()
+    team_code = serializers.CharField(allow_null=True)
+    edition_name = serializers.CharField()
+    event_name = serializers.CharField()
+    group_name = serializers.CharField()
+    org_name = serializers.CharField()
+    status = serializers.ChoiceField(choices=REGISTRATION_STATES)
+    submission_no = serializers.IntegerField()
+    submitted_at = serializers.DateTimeField()
+
+
 class ApprovalRecord(serializers.Serializer):
     id = serializers.IntegerField()
     submission_no = serializers.IntegerField()
@@ -78,16 +111,7 @@ class Registration(serializers.Serializer):
     individual_user_id = serializers.IntegerField(allow_null=True)
     org_id = serializers.IntegerField()
     submitted_by = serializers.IntegerField()
-    status = serializers.ChoiceField(
-        choices=[
-            "draft",
-            "pending_review",
-            "returned",
-            "rejected",
-            "approved",
-            "withdrawn",
-        ]
-    )
+    status = serializers.ChoiceField(choices=REGISTRATION_STATES)
     current_submission_no = serializers.IntegerField(allow_null=True)
     approved_submission_no = serializers.IntegerField(allow_null=True)
     version = serializers.IntegerField()

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { components } from './generated';
+import type { components, operations } from './generated';
 
 export const idSchema = z.number().int().positive().safe();
 const nullableId = idSchema.nullable();
@@ -379,6 +379,40 @@ export const approvalSchema = z
     created_at: z.string().datetime({ offset: true }),
   })
   .strict();
+export const registrationStatusSchema = z.enum([
+  'draft',
+  'pending_review',
+  'returned',
+  'rejected',
+  'approved',
+  'withdrawn',
+]);
+export const reviewQueueItemSchema = z
+  .object({
+    id: idSchema,
+    batch_no: text,
+    team_code: text.nullable(),
+    edition_name: text,
+    event_name: text,
+    group_name: text,
+    org_name: text,
+    status: registrationStatusSchema,
+    submission_no: z.number().int().positive(),
+    submitted_at: z.string().datetime({ offset: true }),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['ReviewQueueItem']>;
+export const reviewQueueOptionSchema = z
+  .object({ id: idSchema, name: text })
+  .strict() satisfies z.ZodType<components['schemas']['ReviewQueueOption']>;
+export type ReviewQueueItem = components['schemas']['ReviewQueueItem'];
+export type ReviewQueueFilters = NonNullable<
+  operations['registrations_list']['parameters']['query']
+>;
+export type ReviewQueueOptionQuery = NonNullable<
+  operations['registrations_filter_options_retrieve']['parameters']['query']
+>;
+export type ReviewQueueOption = components['schemas']['ReviewQueueOption'];
+
 export const registrationSchema = z
   .object({
     id: idSchema,
@@ -391,7 +425,7 @@ export const registrationSchema = z
     org_id: idSchema,
     submitted_by: idSchema,
     coach_user_id: nullableId,
-    status: z.enum(['draft', 'pending_review', 'returned', 'rejected', 'approved', 'withdrawn']),
+    status: registrationStatusSchema,
     current_submission_no: z.number().int().positive().nullable(),
     approved_submission_no: z.number().int().positive().nullable(),
     version: z.number().int().positive(),

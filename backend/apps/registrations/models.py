@@ -72,6 +72,7 @@ class RegistrationSubmission(models.Model):
         Registration, on_delete=models.PROTECT, related_name="submissions"
     )
     submission_no = models.PositiveIntegerField()
+    offering = models.ForeignKey("events.Offering", on_delete=models.PROTECT)
     team = models.ForeignKey("teams.Team", on_delete=models.PROTECT, null=True)
     team_revision = models.ForeignKey(
         "teams.TeamChangeRequest", on_delete=models.PROTECT, null=True

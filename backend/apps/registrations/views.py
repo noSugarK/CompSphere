@@ -78,26 +78,46 @@ class EditionRegistrationListView(BaseView):
 class RegistrationListView(BaseView):
     @extend_schema(
         operation_id="registrations_list",
-        responses=listing("Registrations", schema.Registration),
+        parameters=[
+            schema.ReviewQueueFilters,
+            OpenApiParameter("page", int),
+            OpenApiParameter("page_size", int),
+        ],
+        responses=listing("Registrations", schema.ReviewQueueItem),
     )
     def get(self, request):
-        queryset = services.visible_registrations(request.user, managed=True)
-        for name in ("edition", "org"):
-            if name in request.query_params:
-                raw = request.query_params[name]
-                if not raw.isdigit() or int(raw) < 1:
-                    from core.exceptions import BusinessError
-
-                    raise BusinessError(40001, "Invalid filter", 400)
-                queryset = queryset.filter(**{name + "_id": int(raw)})
-        if request.query_params.get("status"):
-            queryset = queryset.filter(status=request.query_params["status"])
+        filters = schema.ReviewQueueFilters(data=request.query_params)
+        filters.is_valid(raise_exception=True)
+        queryset = services.review_queue_items(request.user, filters.validated_data)
         return success(
             request,
             page(
                 request,
-                queryset.order_by("-id"),
-                lambda x: services.serialize_registration(x, request.user),
+                queryset,
+                lambda item: schema.ReviewQueueItem(item).data,
+            ),
+        )
+
+
+class ReviewQueueOptionsView(BaseView):
+    @extend_schema(
+        parameters=[
+            schema.ReviewQueueFacetQuery,
+            OpenApiParameter("page", int),
+            OpenApiParameter("page_size", int),
+        ],
+        responses=listing("ReviewQueueOptions", schema.ReviewQueueOption),
+    )
+    def get(self, request):
+        filters = schema.ReviewQueueFacetQuery(data=request.query_params)
+        filters.is_valid(raise_exception=True)
+        options = services.review_queue_options(request.user, **filters.validated_data)
+        return success(
+            request,
+            page(
+                request,
+                options,
+                lambda item: {"id": item["option_id"], "name": item["name"]},
             ),
         )
 

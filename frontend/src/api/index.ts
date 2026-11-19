@@ -36,6 +36,10 @@ import {
   preferencesSchema,
   registrationNoticeSchema,
   registrationSchema,
+  reviewQueueItemSchema,
+  reviewQueueOptionSchema,
+  type ReviewQueueFilters,
+  type ReviewQueueOptionQuery,
   seasonRegistrationSchema,
   seasonDraftSchema,
   seasonSchema,
@@ -46,6 +50,13 @@ import {
 } from './schemas';
 
 const positiveVersion = z.object({ version: z.number().int().positive() }).strict();
+function queryString(parameters: ReviewQueueFilters | ReviewQueueOptionQuery) {
+  const query = new URLSearchParams();
+  for (const [name, value] of Object.entries(parameters)) {
+    if (value !== undefined && value !== '') query.set(name, String(value));
+  }
+  return query.toString();
+}
 const reviewSchema = z
   .object({
     action: z.enum(['approve', 'reject', 'return']),
@@ -267,11 +278,13 @@ export const api = {
         .strict()
         .parse({ action, comment }),
     ),
-  registrations: (edition?: number, page = 1, status = '') =>
+  registrations: (filters: ReviewQueueFilters) =>
+    request('GET', `/registrations?${queryString(filters)}`, pageSchema(reviewQueueItemSchema)),
+  reviewQueueOptions: (query: ReviewQueueOptionQuery) =>
     request(
       'GET',
-      `/registrations?page=${page}${edition ? `&edition=${idSchema.parse(edition)}` : ''}${status ? `&status=${encodeURIComponent(status)}` : ''}`,
-      pageSchema(registrationSchema),
+      `/registrations/filter-options?${queryString(query)}`,
+      pageSchema(reviewQueueOptionSchema),
     ),
   myRegistrations: (edition: number, page = 1) =>
     request(

@@ -3,7 +3,7 @@ import json
 import uuid
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, FilteredRelation, Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -69,6 +69,64 @@ def visible_registrations(actor, managed=False):
     return queryset.filter(
         (own & ~Q(edition__status="closed")) | normal | historical
     ).distinct()
+
+
+REVIEW_QUEUE_DIMENSIONS = {
+    "edition": ("edition_id", "edition__name"),
+    "event": ("frozen__offering__event_id", "frozen__offering__event__name"),
+    "group": ("frozen__offering__group_id", "frozen__offering__group__name"),
+    "org": ("org_id", "org__name"),
+}
+
+
+def review_queue(actor):
+    return (
+        visible_registrations(actor, managed=True)
+        .annotate(
+            frozen=FilteredRelation(
+                "submissions",
+                condition=Q(submissions__submission_no=F("current_submission_no")),
+            )
+        )
+        .filter(frozen__isnull=False)
+    )
+
+
+def review_queue_items(actor, filters):
+    items = review_queue(actor)
+    for dimension, (id_field, _) in REVIEW_QUEUE_DIMENSIONS.items():
+        if dimension in filters:
+            items = items.filter(**{id_field: filters[dimension]})
+    if "status" in filters:
+        items = items.filter(status=filters["status"])
+    if search := filters.get("q"):
+        items = items.filter(
+            Q(batch_no__icontains=search) | Q(team__team_number__code__icontains=search)
+        )
+    return items.values(
+        "id",
+        "batch_no",
+        "status",
+        "submitted_at",
+        submission_no=F("current_submission_no"),
+        team_code=F("team__team_number__code"),
+        **{
+            f"{dimension}_name": F(name_field)
+            for dimension, (_, name_field) in REVIEW_QUEUE_DIMENSIONS.items()
+        },
+    ).order_by("-id")
+
+
+def review_queue_options(actor, dimension, edition=None):
+    items = review_queue(actor)
+    if edition is not None:
+        items = items.filter(edition_id=edition)
+    id_field, name_field = REVIEW_QUEUE_DIMENSIONS[dimension]
+    return (
+        items.annotate(option_id=F(id_field), name=F(name_field))
+        .values("option_id", "name")
+        .order_by("name", "option_id")
+    )
 
 
 def can_edit(actor, item):
@@ -586,6 +644,7 @@ def submit_registration(actor, pk, version, key, action="submit", request_data=N
     RegistrationSubmission.objects.create(
         registration=item,
         submission_no=number,
+        offering_id=item.offering_id,
         team=item.team,
         team_revision_id=item.team.approved_revision_id if item.team else None,
         selected_school_level=item.selected_school_level,
