@@ -9,7 +9,8 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.audit.services import audit
 from apps.events.models import Offering
-from apps.notifications.services import queue_event
+from apps.notifications.models import RegistrationNotice
+from apps.notifications.services import queue_event, record_registration_notice
 from apps.orgs.models import OrganizationMember
 from apps.profiles.models import Profile
 from apps.rbac.services import (
@@ -584,6 +585,7 @@ def submit_registration(actor, pk, version, key, action="submit", request_data=N
         {"submission_no": number},
     )
     queue_event("registration.submitted", item.id, number, actor.id)
+    record_registration_notice(item, number, RegistrationNotice.Kind.SUBMITTED)
     return item
 
 
@@ -747,4 +749,5 @@ def review_registration(actor, pk, data):
     queue_event(
         "registration." + item.status, item.id, item.current_submission_no, actor.id
     )
+    record_registration_notice(item, number, item.status)
     return item

@@ -4,6 +4,7 @@ from drf_spectacular.views import SpectacularAPIView
 
 from apps.accounts import views as accounts
 from apps.competitions import views as competitions
+from apps.notifications import views as notifications
 from apps.registrations import views as registrations
 from apps.teams import views as teams
 
@@ -25,6 +26,10 @@ urlpatterns = [
     path("api/v1/auth/password/change", accounts.PasswordChangeView.as_view()),
     path("api/v1/me", accounts.MeView.as_view()),
     path("api/v1/me/preferences", accounts.PreferencesView.as_view()),
+    path("api/v1/me/notifications", notifications.InboxView.as_view()),
+    path(
+        "api/v1/me/notifications/<int:pk>/read", notifications.ReadNoticeView.as_view()
+    ),
     path("api/v1/seasons/current", competitions.CurrentSeasonView.as_view()),
     path(
         "api/v1/public/competitions", competitions.PublicCompetitionListView.as_view()

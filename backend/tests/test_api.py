@@ -181,6 +181,51 @@ def test_idempotency_replay_and_revocation(dataset, actor_client, draft_payload)
 
 
 @pytest.mark.django_db
+def test_registration_inbox_is_private_and_read_is_idempotent(
+    dataset, actor_client, draft_payload
+):
+    client, draft = create_draft(actor_client, dataset, draft_payload)
+    reviewer = actor_client(dataset["accounts"]["reviewer"])
+    inbox_url = "/api/v1/me/notifications"
+    assert APIClient().get(inbox_url).status_code == 401
+    assert client.get(inbox_url).data["data"]["total"] == 0
+    assert submit(client, draft).status_code == 200
+    assert submit(client, draft).status_code == 200
+
+    result = reviewer.post(
+        f"/api/v1/registrations/{draft['id']}/approval",
+        {"action": "return", "comment": "Private review comment", "submission_no": 1},
+        format="json",
+    )
+    assert result.status_code == 200, result.data
+    inbox_page = client.get(f"{inbox_url}?page_size=1").data["data"]
+    assert inbox_page["total"] == 2
+    (returned,) = inbox_page["items"]
+    assert returned["kind"] == "returned"
+    assert returned["registration_id"] == draft["id"]
+    assert returned["submission_no"] == 1 and returned["read_at"] is None
+    assert "Private review comment" not in str(returned)
+    (submitted,) = client.get(f"{inbox_url}?page_size=1&page=2").data["data"]["items"]
+    assert submitted["kind"] == "submitted"
+
+    read_url = f"{inbox_url}/{returned['id']}/read"
+    assert reviewer.get(inbox_url).data["data"]["total"] == 0
+    unauthorized = reviewer.post(read_url, {}, format="json")
+    assert unauthorized.status_code == 404 and unauthorized.data["code"] == 40401
+    assert client.post(read_url, {"read_at": None}, format="json").status_code == 400
+    marked = client.post(read_url, {}, format="json")
+    assert marked.status_code == 200 and marked.data["data"]["read_at"]
+    assert client.post(read_url, {}, format="json").data["data"] == marked.data["data"]
+    assert client.get(inbox_url).data["data"]["items"][0] == marked.data["data"]
+
+    edition = dataset["edition"]
+    edition.status = "closed"
+    edition.save(update_fields=["status"])
+    assert client.get(inbox_url).data["data"]["total"] == 0
+    assert client.post(read_url, {}, format="json").status_code == 404
+
+
+@pytest.mark.django_db
 def test_create_and_submit_idempotent(dataset, actor_client, draft_payload):
     client = actor_client(dataset["accounts"]["student"])
     payload = {**draft_payload, "submit": True}

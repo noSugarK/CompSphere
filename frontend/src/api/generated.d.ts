@@ -164,6 +164,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/me/notifications': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['me_notifications_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/me/notifications/{id}/read': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['me_notifications_read_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/me/preferences': {
     parameters: {
       query?: never;
@@ -718,6 +750,14 @@ export interface components {
       permissions: string[];
     };
     /**
+     * @description * `submitted` - Submitted
+     *     * `approved` - Approved
+     *     * `rejected` - Rejected
+     *     * `returned` - Returned
+     * @enum {string}
+     */
+    KindEnum: 'submitted' | 'approved' | 'rejected' | 'returned';
+    /**
      * @description * `approve` - approve
      *     * `reject` - reject
      * @enum {string}
@@ -906,6 +946,13 @@ export interface components {
      * @enum {string}
      */
     PurposeEnum: 'register' | 'reset_password';
+    ReadNoticeResponse: {
+      data: components['schemas']['RegistrationNotice'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     /**
      * @description * `approve` - approve
      *     * `reject` - reject
@@ -1001,6 +1048,29 @@ export interface components {
     };
     RegistrationCreateResponse: {
       data: components['schemas']['Registration'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    RegistrationNotice: {
+      id: number;
+      registration_id: number;
+      submission_no: number;
+      kind: components['schemas']['KindEnum'];
+      /** Format: date-time */
+      created_at: string;
+      /** Format: date-time */
+      read_at: string | null;
+    };
+    RegistrationNoticeListPage: {
+      items: components['schemas']['RegistrationNotice'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    RegistrationNoticeListResponse: {
+      data: components['schemas']['RegistrationNoticeListPage'];
       code: number;
       message: string;
       /** Format: uuid */
@@ -1606,6 +1676,53 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['MeResponse'];
+        };
+      };
+    };
+  };
+  me_notifications_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RegistrationNoticeListResponse'];
+        };
+      };
+    };
+  };
+  me_notifications_read_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReadNoticeResponse'];
         };
       };
     };

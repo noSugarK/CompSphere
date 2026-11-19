@@ -960,6 +960,8 @@ CREATE UNIQUE INDEX uniq_cert_reissue_once ON certificates(reissue_of) WHERE rei
 
 ## 7. 通知与日志
 
+实施说明：自动报名消息先落地为 `registration_notices`，独立于下方规划的通用公告/阅读表。每条关联 `users`（接收人）与 `registrations`，保存轮次、事件种类、创建时间及可空已读时间；接收人 × 报名 × 轮次 × 种类唯一，按接收人及创建时间倒序索引。没有自由文本、审核意见或报名快照。
+
 ```sql
 CREATE TABLE notices (
   id             BIGSERIAL PRIMARY KEY,
