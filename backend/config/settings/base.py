@@ -84,6 +84,7 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
     "ENUM_NAME_OVERRIDES": {
+        "EditionStatusEnum": ["draft", "published", "closed"],
         "SeasonStatusEnum": ["draft", "active", "archived"],
         "ReviewActionEnum": ["approve", "reject", "return"],
         "LicenseActionEnum": ["approve", "reject"],

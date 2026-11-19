@@ -160,7 +160,10 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | POST | `/competitions/{id}/publish` `/archive` | 状态动作 |
 | PUT | `/competitions/{id}/units` | 主办/承办/协办设置（`competition:manage_units`） |
 | GET/POST | `/competitions/{id}/admins`；DELETE `/admins/{user_id}` | `competition:manage_admins` + user:assign_role；仅平台，查询以外操作不得由赛事管理员直接授权 |
-| GET/POST | `/competitions/{id}/editions`；GET/PATCH `/editions/{id}` | `edition:*` |
+| GET | `/competitions/{id}/editions?page=&page_size=` | 平台与具备 `edition:read` 的赛事级账号可分页查看该赛事全部届次；届次授权只返回其直接获授的届次。无可授权范围时 404。 |
+| POST | `/competitions/{id}/editions` | 平台或具有该赛事作用域 `edition:create` 的账号创建草稿；届次授权不能创建其他届次。 |
+| GET | `/competitions/{id}/edition-seasons?page=&page_size=` | 同创建权限；返回可选赛季，平台可选 active/draft，受委派的赛事管理员仅可选 active。 |
+| GET/PATCH | `/editions/{id}` | `edition:*`（详情及编辑待接入） |
 | POST | `/editions/{id}/publish` `/close`；PUT `/editions/{id}/approval-mode` | 状态与审核模式配置 |
 | GET/POST | `/editions/{id}/events`；PATCH/DELETE `/events/{id}`；POST `/events/{id}/enable|disable` | 赛项（`event:*`，v1.1） |
 | GET/POST | `/editions/{id}/groups`；PATCH/DELETE `/groups/{id}`；POST `/groups/{id}/enable|disable` | 组别（`group:*`） |
@@ -173,6 +176,8 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | GET | `/public/editions/{id}/roster?event=&group=` | 通过名单公示页（`AllowAny`；判定顺序见 02 §4.7） |
 | POST | `/editions/{id}/roster/publish` `/unpublish` | 发布/下架公示名单（发布用 `roster:publish`，下架用 `roster:unpublish`，v1.1） |
 | PATCH | `/editions/{id}/roster-publication` | 设置公示档位与字段白名单（`roster:publish`） |
+
+创建届次接受 `season_id`、`year`（1–9999）、`edition_no`（1–9999）、`name`、`venue` 及 `enroll_start`、`enroll_end`、`start_date`、`end_date`。四项时间要么均携带 UTC 偏移，要么均使用无偏移的本地时间并显式提交 `time_zone: "Asia/Shanghai"`，后端拒绝历史时区切换时不存在或有歧义的时间。报名开始 < 报名结束 ≤ 比赛开始 < 比赛结束；赛事或赛季已归档时拒绝。返回 201 和私有草稿，默认单级审核、不创建开放组合、不发布。
 
 ### 报名与审核
 

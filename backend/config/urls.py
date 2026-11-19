@@ -27,6 +27,14 @@ urlpatterns = [
     path("api/v1/me", accounts.MeView.as_view()),
     path("api/v1/me/preferences", accounts.PreferencesView.as_view()),
     path("api/v1/competitions", competitions.CompetitionRegistryView.as_view()),
+    path(
+        "api/v1/competitions/<int:pk>/edition-seasons",
+        competitions.EditionSeasonListView.as_view(),
+    ),
+    path(
+        "api/v1/competitions/<int:pk>/editions",
+        competitions.EditionRegistryView.as_view(),
+    ),
     path("api/v1/me/notifications", notifications.InboxView.as_view()),
     path(
         "api/v1/me/notifications/<int:pk>/read", notifications.ReadNoticeView.as_view()

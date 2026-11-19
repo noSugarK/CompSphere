@@ -1,3 +1,10 @@
+from datetime import UTC
+from zoneinfo import ZoneInfo
+
+from django.utils.dateparse import parse_datetime
+from django.utils.timezone import is_aware
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from core.serializers import StrictSerializer
@@ -30,6 +37,78 @@ class ManagedSeason(Season):
     start_date = serializers.DateField(source="starts_on")
     end_date = serializers.DateField(source="ends_on")
     is_default = serializers.BooleanField()
+
+
+@extend_schema_field(OpenApiTypes.STR)
+class EditionTimeField(serializers.DateTimeField):
+    def to_internal_value(self, value):
+        if isinstance(value, str) and "T" in value:
+            try:
+                instant = parse_datetime(value)
+            except ValueError:
+                instant = None
+            if instant is not None:
+                return instant
+        raise serializers.ValidationError("Provide an ISO date and time.")
+
+
+class EditionDraft(StrictSerializer):
+    season_id = serializers.IntegerField(min_value=1)
+    edition_no = serializers.IntegerField(min_value=1, max_value=9999)
+    year = serializers.IntegerField(min_value=1, max_value=9999)
+    name = serializers.CharField(max_length=128)
+    venue = serializers.CharField(max_length=255)
+    time_zone = serializers.ChoiceField(choices=["Asia/Shanghai"], required=False)
+    enroll_start = EditionTimeField()
+    enroll_end = EditionTimeField()
+    start_date = EditionTimeField()
+    end_date = EditionTimeField()
+
+    def validate(self, attrs):
+        zone = attrs.pop("time_zone", None)
+        for field in ("enroll_start", "enroll_end", "start_date", "end_date"):
+            instant = attrs[field]
+            if is_aware(instant) == (zone is not None):
+                raise serializers.ValidationError(
+                    {field: ["Use an explicit offset or a local time with time_zone."]}
+                )
+            if zone is not None:
+                instant = instant.replace(tzinfo=ZoneInfo(zone), fold=0)
+                if instant.utcoffset() != instant.replace(fold=1).utcoffset():
+                    raise serializers.ValidationError(
+                        {field: ["Local time is ambiguous or does not exist."]}
+                    )
+            try:
+                attrs[field] = instant.astimezone(UTC)
+            except OverflowError as exc:
+                raise serializers.ValidationError(
+                    {field: ["Date and time is out of range."]}
+                ) from exc
+        if (
+            not attrs["enroll_start"]
+            < attrs["enroll_end"]
+            <= attrs["start_date"]
+            < attrs["end_date"]
+        ):
+            raise serializers.ValidationError(
+                {"end_date": ["Registration and event dates are out of order."]}
+            )
+        return attrs
+
+
+class ManagedEdition(StrictSerializer):
+    id = serializers.IntegerField(min_value=1)
+    competition_id = serializers.IntegerField(min_value=1)
+    season_id = serializers.IntegerField(min_value=1)
+    edition_no = serializers.IntegerField(min_value=1)
+    year = serializers.IntegerField(min_value=1)
+    name = serializers.CharField(max_length=128)
+    venue = serializers.CharField(allow_blank=True)
+    status = serializers.ChoiceField(choices=["draft", "published", "closed"])
+    enroll_start = serializers.DateTimeField()
+    enroll_end = serializers.DateTimeField()
+    start_date = serializers.DateTimeField()
+    end_date = serializers.DateTimeField()
 
 
 class Offering(serializers.Serializer):

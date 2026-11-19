@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.audit.models import AuditLog
-from apps.competitions.models import Competition, Season
+from apps.competitions.models import Competition, Edition, Season
 from apps.events.models import Offering
 from apps.groups.models import Group
 from apps.notifications.models import AsyncOutbox, RegistrationNotice
@@ -142,6 +142,90 @@ def test_competition_registry_creates_private_draft_and_enforces_scope(
     assert organizer.post(endpoint, payload, format="json").status_code == 403
     public = APIClient().get("/api/v1/public/competitions").data["data"]["items"]
     assert draft["id"] not in {item["id"] for item in public}
+
+
+@pytest.mark.django_db
+def test_edition_creation_is_scoped_and_requires_ordered_offset_times(
+    dataset, actor_client
+):
+    existing = dataset["edition"]
+    endpoint = f"/api/v1/competitions/{existing.competition_id}/editions"
+    payload = {
+        "season_id": existing.season_id,
+        "year": 2027,
+        "edition_no": 2,
+        "name": "Synthetic next edition",
+        "venue": "Synthetic venue",
+        "enroll_start": "2027-01-01T09:00:00+08:00",
+        "enroll_end": "2027-01-15T09:00:00+08:00",
+        "start_date": "2027-02-01T09:00:00+08:00",
+        "end_date": "2027-02-01T17:00:00+08:00",
+    }
+    organizer_user = dataset["accounts"]["organizer"]
+    organizer = actor_client(organizer_user)
+    student = actor_client(dataset["accounts"]["student"])
+    assert student.get(endpoint).status_code == 404
+    assert student.post(endpoint, payload, format="json").status_code == 403
+    assert [item["id"] for item in organizer.get(endpoint).data["data"]["items"]] == [
+        existing.id
+    ]
+    assert organizer.post(endpoint, payload, format="json").status_code == 403
+
+    grant = UserRole.objects.create(
+        user=organizer_user,
+        role=Role.objects.get(code="competition_admin"),
+        scope_type="competition",
+        scope_id=existing.competition_id,
+    )
+    for fields in (
+        {"start_date": "2027-02-01T09:00:00"},
+        {"enroll_end": "2027-02-01T09:00:01+08:00"},
+        {"status": "published"},
+    ):
+        assert (
+            organizer.post(endpoint, {**payload, **fields}, format="json").status_code
+            == 400
+        )
+    other = Competition.objects.create(
+        public_code="CROSS-SCOPE", name="Other competition"
+    )
+    assert (
+        organizer.post(
+            f"/api/v1/competitions/{other.id}/editions", payload, format="json"
+        ).status_code
+        == 403
+    )
+
+    created = organizer.post(endpoint, payload, format="json")
+    assert created.status_code == 201, created.data
+    draft = created.data["data"]
+    assert draft["status"] == "draft" and draft["season_id"] == existing.season_id
+    assert Edition.objects.get(pk=draft["id"]).approval_mode == "single"
+    assert organizer.post(endpoint, payload, format="json").status_code == 409
+    assert organizer.get(endpoint).data["data"]["items"][0] == draft
+    assert APIClient().get(f"/api/v1/public/editions/{draft['id']}").status_code == 404
+    assert AuditLog.objects.filter(
+        action="edition.created", resource_id=str(draft["id"])
+    ).exists()
+    choices = f"/api/v1/competitions/{existing.competition_id}/edition-seasons"
+    assert organizer.get(choices).data["data"]["items"][0]["id"] == existing.season_id
+    local = {**payload, "edition_no": 3, "time_zone": "Asia/Shanghai"}
+    for field in ("enroll_start", "enroll_end", "start_date", "end_date"):
+        local[field] = payload[field].removesuffix("+08:00")
+    assert (
+        organizer.post(
+            endpoint, {**local, "time_zone": "America/New_York"}, format="json"
+        ).status_code
+        == 400
+    )
+    local_created = organizer.post(endpoint, local, format="json")
+    assert local_created.status_code == 201, local_created.data
+    assert local_created.data["data"]["start_date"] == "2027-02-01T01:00:00Z"
+    grant.delete()
+    assert organizer.get(choices).status_code == 403
+    assert [item["id"] for item in organizer.get(endpoint).data["data"]["items"]] == [
+        existing.id
+    ]
 
 
 @pytest.mark.django_db

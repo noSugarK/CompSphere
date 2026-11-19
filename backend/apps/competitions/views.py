@@ -6,8 +6,11 @@ from apps.competitions.models import Competition, Edition, Season
 from apps.competitions.services import (
     activate_season,
     create_competition,
+    create_edition,
     create_season,
+    edition_seasons,
     managed_competitions,
+    managed_editions,
     set_current_season,
 )
 from apps.orgs.models import Organization, OrganizationMember
@@ -171,6 +174,46 @@ class CompetitionRegistryView(BaseView):
             request.user, validated(schema.CompetitionDraft, request)
         )
         return success(request, schema.ManagedCompetition(item).data, status=201)
+
+
+class EditionSeasonListView(BaseView):
+    @extend_schema(
+        parameters=[OpenApiParameter("page", int), OpenApiParameter("page_size", int)],
+        responses=listing("EligibleEditionSeasons", schema.ManagedSeason),
+    )
+    def get(self, request, pk):
+        return success(
+            request,
+            page(
+                request,
+                edition_seasons(request.user, pk),
+                lambda item: schema.ManagedSeason(item).data,
+            ),
+        )
+
+
+class EditionRegistryView(BaseView):
+    @extend_schema(
+        parameters=[OpenApiParameter("page", int), OpenApiParameter("page_size", int)],
+        responses=listing("ManagedEditions", schema.ManagedEdition),
+    )
+    def get(self, request, pk):
+        return success(
+            request,
+            page(
+                request,
+                managed_editions(request.user, pk),
+                lambda item: schema.ManagedEdition(item).data,
+            ),
+        )
+
+    @extend_schema(
+        request=schema.EditionDraft,
+        responses={201: envelope("EditionDraftResponse", schema.ManagedEdition)},
+    )
+    def post(self, request, pk):
+        item = create_edition(request.user, pk, validated(schema.EditionDraft, request))
+        return success(request, schema.ManagedEdition(item).data, status=201)
 
 
 class PublicCompetitionListView(BaseView):

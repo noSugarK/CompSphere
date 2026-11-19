@@ -148,6 +148,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/competitions/{id}/edition-seasons': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['competitions_edition_seasons_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/competitions/{id}/editions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['competitions_editions_retrieve'];
+    put?: never;
+    post: operations['competitions_editions_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/editions/{id}/registrations': {
     parameters: {
       query?: never;
@@ -771,6 +803,25 @@ export interface components {
       venue: string;
       offerings: components['schemas']['Offering'][];
     };
+    EditionDraftRequest: {
+      season_id: number;
+      edition_no: number;
+      year: number;
+      name: string;
+      venue: string;
+      time_zone?: components['schemas']['TimeZoneEnum'];
+      enroll_start: string;
+      enroll_end: string;
+      start_date: string;
+      end_date: string;
+    };
+    EditionDraftResponse: {
+      data: components['schemas']['ManagedEdition'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     EditionRegistrationsPage: {
       items: components['schemas']['Registration'][];
       page: number;
@@ -798,6 +849,19 @@ export interface components {
      * @enum {string}
      */
     EditionStatusEnum: 'draft' | 'published' | 'closed';
+    EligibleEditionSeasonsPage: {
+      items: components['schemas']['ManagedSeason'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    EligibleEditionSeasonsResponse: {
+      data: components['schemas']['EligibleEditionSeasonsPage'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     EmptyRequest: Record<string, never>;
     /**
      * @description * `individual` - individual
@@ -895,6 +959,37 @@ export interface components {
     };
     ManagedCompetitionsResponse: {
       data: components['schemas']['ManagedCompetitionsPage'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    ManagedEdition: {
+      id: number;
+      competition_id: number;
+      season_id: number;
+      edition_no: number;
+      year: number;
+      name: string;
+      venue: string;
+      status: components['schemas']['EditionStatusEnum'];
+      /** Format: date-time */
+      enroll_start: string;
+      /** Format: date-time */
+      enroll_end: string;
+      /** Format: date-time */
+      start_date: string;
+      /** Format: date-time */
+      end_date: string;
+    };
+    ManagedEditionsPage: {
+      items: components['schemas']['ManagedEdition'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    ManagedEditionsResponse: {
+      data: components['schemas']['ManagedEditionsPage'];
       code: number;
       message: string;
       /** Format: uuid */
@@ -1555,6 +1650,11 @@ export interface components {
      * @enum {string}
      */
     ThemeEnum: 'light' | 'dark' | 'system';
+    /**
+     * @description * `Asia/Shanghai` - Asia/Shanghai
+     * @enum {string}
+     */
+    TimeZoneEnum: 'Asia/Shanghai';
     TokenPair: {
       access: string;
       expires_in: number;
@@ -1811,6 +1911,79 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CompetitionDraftResponse'];
+        };
+      };
+    };
+  };
+  competitions_edition_seasons_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EligibleEditionSeasonsResponse'];
+        };
+      };
+    };
+  };
+  competitions_editions_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ManagedEditionsResponse'];
+        };
+      };
+    };
+  };
+  competitions_editions_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EditionDraftRequest'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EditionDraftResponse'];
         };
       };
     };

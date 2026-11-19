@@ -31,9 +31,13 @@ def grants(user):
     ]
 
 
-def has_perm(user, permission, *, org_id=None, edition=None, own=False):
+def has_perm(
+    user, permission, *, org_id=None, edition=None, competition_id=None, own=False
+):
     if not user or not user.is_active:
         return False
+    if edition is not None:
+        competition_id = edition.competition_id
     for g in grants(user):
         if permission not in g["permissions"]:
             continue
@@ -45,8 +49,8 @@ def has_perm(user, permission, *, org_id=None, edition=None, own=False):
             return True
         elif (
             g["scope_type"] == "competition"
-            and edition
-            and g["scope_id"] == edition.competition_id
+            and competition_id is not None
+            and g["scope_id"] == competition_id
         ):
             return True
         elif g["scope_type"] == "org" and org_id:
