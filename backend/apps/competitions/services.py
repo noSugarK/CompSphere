@@ -234,6 +234,74 @@ def publish_competition(actor, competition_id):
 
 
 @transaction.atomic
+def update_competition(actor, competition_id, data):
+    """Edit catalog fields only; status, code and editions are untouched."""
+    require_perm(actor, "competition:update", competition_id=competition_id)
+    item = Competition.objects.select_for_update().get(
+        pk=competition_id, is_deleted=False
+    )
+    if item.status == "archived":
+        raise BusinessError(40902, "Archived competitions are read-only")
+    if not data:
+        return item
+    for field, value in data.items():
+        setattr(item, field, value)
+    item.save(update_fields=[*data, "updated_at"])
+    audit(actor, "competition.updated", "competition", item.id)
+    return item
+
+
+@transaction.atomic
+def archive_competition(actor, competition_id):
+    """03 §2 published→archived：需无进行中的报名或待审。"""
+    require_perm(actor, "competition:archive", competition_id=competition_id)
+    item = Competition.objects.select_for_update().get(
+        pk=competition_id, is_deleted=False
+    )
+    transition(item, "archive", {("published", "archive"): "archived"})
+    editions = item.editions.filter(is_deleted=False)
+    now = timezone.now()
+    if editions.filter(status="published", enroll_end__gt=now).exists():
+        raise BusinessError(40902, "Registration is still open in this competition")
+    if Registration.objects.filter(
+        edition__competition=item, status="pending_review", is_deleted=False
+    ).exists():
+        raise BusinessError(40902, "Registrations are still awaiting review")
+    item.save(update_fields=["status", "updated_at"])
+    audit(actor, "competition.archived", "competition", item.id)
+    return item
+
+
+@transaction.atomic
+def unarchive_competition(actor, competition_id, reason):
+    """03 §2 unarchive 仅平台管理员应急通道，理由必填入审计。"""
+    if not any(
+        grant["scope_type"] == "global"
+        and grant["role"] == "platform_admin"
+        and "competition:archive" in grant["permissions"]
+        for grant in grants(actor)
+    ):
+        error = BusinessError(
+            40301, "Only the platform can restore an archived competition", 403
+        )
+        error.denied_permission = "competition:unarchive"  # type: ignore[attr-defined]
+        raise error
+    item = Competition.objects.select_for_update().get(
+        pk=competition_id, is_deleted=False
+    )
+    transition(item, "unarchive", {("archived", "unarchive"): "published"})
+    item.save(update_fields=["status", "updated_at"])
+    audit(
+        actor,
+        "competition.unarchived",
+        "competition",
+        item.id,
+        detail={"reason": reason},
+    )
+    return item
+
+
+@transaction.atomic
 def create_edition(actor, competition_id, data):
     """Store a draft under an authorized parent; configuration does not publish it."""
     require_perm(actor, "edition:create", competition_id=competition_id)

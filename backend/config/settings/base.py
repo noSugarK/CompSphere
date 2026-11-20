@@ -91,6 +91,7 @@ SPECTACULAR_SETTINGS = {
         "ConfigurationStateEnum": ["enabled", "disabled"],
         "SelectedSchoolLevelEnum": ["ES", "MS", "HS", "U"],
         "EditionStatusEnum": ["draft", "published", "closed"],
+        "ManagedCompetitionStatusEnum": ["draft", "published", "archived"],
         "SeasonStatusEnum": ["draft", "active", "archived"],
         "RegistrationStatusEnum": REGISTRATION_STATES,
         "ReviewActionEnum": ["approve", "reject", "return"],

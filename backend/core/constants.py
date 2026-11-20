@@ -54,6 +54,16 @@ def default_roster_publish_fields():
 MEMBER_PUBLIC_FIELDS = frozenset({"real_name", "role", "school_level", "grade"})
 # 仅 registration:read 作用域内可追加,且只到末四位为止。
 MEMBER_DOCUMENT_FIELDS = ("document_type", "document_country", "document_last4")
+# 04 §competitions category/level 取值；文档、serializer 与前端选择器共用单一来源。
+COMPETITION_CATEGORIES = (
+    "subject",
+    "technology",
+    "entrepreneurship",
+    "sports",
+    "arts",
+    "other",
+)
+COMPETITION_LEVELS = ("school", "province", "national", "international")
 CONFIGURATION_STATES = ("enabled", "disabled")
 CONFIGURATION_TRANSITIONS = {
     ("enabled", "disable"): "disabled",

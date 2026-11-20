@@ -411,7 +411,7 @@
         },
         "/api/v1/competitions": {
             "get": {
-                "operationId": "competitions_retrieve",
+                "operationId": "competitions_list",
                 "parameters": [
                     {
                         "in": "query",
@@ -475,6 +475,127 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/CompetitionDraftResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/competitions/{id}": {
+            "get": {
+                "operationId": "competitions_details",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "competitions"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionDetailResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "competitions_partial_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "competitions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedCompetitionUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionUpdateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/competitions/{id}/archive": {
+            "post": {
+                "operationId": "competitions_archive_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "competitions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionArchiveResponse"
                                 }
                             }
                         },
@@ -660,6 +781,51 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/CompetitionPublishResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/competitions/{id}/unarchive": {
+            "post": {
+                "operationId": "competitions_unarchive_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "competitions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CompetitionUnarchiveRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompetitionUnarchiveResponse"
                                 }
                             }
                         },
@@ -3656,6 +3822,50 @@
                 }
             }
         },
+        "/api/v1/seasons/{id}": {
+            "patch": {
+                "operationId": "seasons_partial_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "seasons"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedSeasonDetailsRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SeasonUpdateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/seasons/{id}/activate": {
             "post": {
                 "operationId": "seasons_activate_create",
@@ -3692,6 +3902,50 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SeasonActivateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/seasons/{id}/archive": {
+            "post": {
+                "operationId": "seasons_archive_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "seasons"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SeasonArchiveResponse"
                                 }
                             }
                         },
@@ -4897,6 +5151,18 @@
                 ],
                 "additionalProperties": false
             },
+            "CategoryEnum": {
+                "enum": [
+                    "subject",
+                    "technology",
+                    "entrepreneurship",
+                    "sports",
+                    "arts",
+                    "other"
+                ],
+                "type": "string",
+                "description": "* `subject` - subject\n* `technology` - technology\n* `entrepreneurship` - entrepreneurship\n* `sports` - sports\n* `arts` - arts\n* `other` - other"
+            },
             "Competition": {
                 "type": "object",
                 "properties": {
@@ -4931,6 +5197,58 @@
                     "public_code",
                     "status",
                     "summary"
+                ]
+            },
+            "CompetitionArchiveResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedCompetitionDetail"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "CompetitionDetailResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedCompetitionDetail"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
                 ]
             },
             "CompetitionDraftRequest": {
@@ -5010,6 +5328,72 @@
                 ],
                 "type": "string",
                 "description": "* `published` - published"
+            },
+            "CompetitionUnarchiveRequest": {
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                    }
+                },
+                "required": [
+                    "reason"
+                ],
+                "additionalProperties": false
+            },
+            "CompetitionUnarchiveResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedCompetitionDetail"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "CompetitionUpdateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedCompetitionDetail"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
             },
             "CompetitionsPage": {
                 "type": "object",
@@ -6484,6 +6868,16 @@
                 "type": "string",
                 "description": "* `submitted` - Submitted\n* `approved` - Approved\n* `rejected` - Rejected\n* `returned` - Returned"
             },
+            "LevelEnum": {
+                "enum": [
+                    "school",
+                    "province",
+                    "national",
+                    "international"
+                ],
+                "type": "string",
+                "description": "* `school` - school\n* `province` - province\n* `national` - national\n* `international` - international"
+            },
             "LicenseActionEnum": {
                 "enum": [
                     "approve",
@@ -6681,6 +7075,62 @@
                 },
                 "required": [
                     "id",
+                    "name",
+                    "public_code",
+                    "status",
+                    "summary"
+                ],
+                "additionalProperties": false
+            },
+            "ManagedCompetitionDetail": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "public_code": {
+                        "type": "string",
+                        "maxLength": 32
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 128
+                    },
+                    "summary": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ManagedCompetitionStatusEnum"
+                    },
+                    "category": {
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CategoryEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    },
+                    "level": {
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/LevelEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "category",
+                    "id",
+                    "level",
                     "name",
                     "public_code",
                     "status",
@@ -7968,6 +8418,43 @@
                 },
                 "additionalProperties": false
             },
+            "PatchedCompetitionUpdateRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                    },
+                    "summary": {
+                        "type": "string",
+                        "maxLength": 2000
+                    },
+                    "category": {
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CategoryEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    },
+                    "level": {
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/LevelEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
             "PatchedEditionDetailsRequest": {
                 "type": "object",
                 "properties": {
@@ -8178,6 +8665,25 @@
                             "maxLength": 32
                         },
                         "maxItems": 10
+                    }
+                },
+                "additionalProperties": false
+            },
+            "PatchedSeasonDetailsRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "format": "date"
                     }
                 },
                 "additionalProperties": false
@@ -9547,6 +10053,32 @@
                     "request_id"
                 ]
             },
+            "SeasonArchiveResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedSeason"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
             "SeasonDraftRequest": {
                 "type": "object",
                 "properties": {
@@ -9812,6 +10344,32 @@
                 ],
                 "type": "string",
                 "description": "* `draft` - draft\n* `active` - active\n* `archived` - archived"
+            },
+            "SeasonUpdateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedSeason"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
             },
             "SelectedSchoolLevelEnum": {
                 "enum": [

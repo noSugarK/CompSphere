@@ -7,6 +7,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from core.constants import COMPETITION_CATEGORIES, COMPETITION_LEVELS
 from core.serializers import StrictSerializer
 
 
@@ -223,6 +224,28 @@ class ManagedCompetition(StrictSerializer):
     name = serializers.CharField(max_length=128)
     summary = serializers.CharField(allow_blank=True)
     status = serializers.ChoiceField(choices=["draft", "published", "archived"])
+
+
+class ManagedCompetitionDetail(ManagedCompetition):
+    category = serializers.ChoiceField(
+        choices=list(COMPETITION_CATEGORIES), allow_null=True
+    )
+    level = serializers.ChoiceField(choices=list(COMPETITION_LEVELS), allow_null=True)
+
+
+class CompetitionUpdate(StrictSerializer):
+    name = serializers.CharField(max_length=128, required=False)
+    summary = serializers.CharField(max_length=2000, allow_blank=True, required=False)
+    category = serializers.ChoiceField(
+        choices=list(COMPETITION_CATEGORIES), allow_null=True, required=False
+    )
+    level = serializers.ChoiceField(
+        choices=list(COMPETITION_LEVELS), allow_null=True, required=False
+    )
+
+
+class CompetitionUnarchive(StrictSerializer):
+    reason = serializers.CharField(max_length=2000)
 
 
 class Organization(serializers.Serializer):

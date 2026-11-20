@@ -5,6 +5,7 @@ from apps.competitions import serializers as schema
 from apps.competitions.models import Competition, Season
 from apps.competitions.services import (
     activate_season,
+    archive_competition,
     archive_season,
     configuration_edition,
     create_competition,
@@ -18,6 +19,8 @@ from apps.competitions.services import (
     publish_edition,
     published_editions,
     set_current_season,
+    unarchive_competition,
+    update_competition,
     update_edition_details,
     update_season,
 )
@@ -150,6 +153,7 @@ class SeasonSetCurrentView(BaseView):
 
 class CompetitionRegistryView(BaseView):
     @extend_schema(
+        operation_id="competitions_list",
         parameters=[OpenApiParameter("page", int), OpenApiParameter("page_size", int)],
         responses=listing("ManagedCompetitions", schema.ManagedCompetition),
     )
@@ -174,6 +178,57 @@ class CompetitionRegistryView(BaseView):
             request.user, validated(schema.CompetitionDraft, request)
         )
         return success(request, schema.ManagedCompetition(item).data, status=201)
+
+
+class CompetitionDetailView(BaseView):
+    @extend_schema(
+        operation_id="competitions_details",
+        responses=envelope(
+            "CompetitionDetailResponse", schema.ManagedCompetitionDetail
+        ),
+    )
+    def get(self, request, pk):
+        item = managed_competitions(request.user).get(pk=pk)
+        return success(request, schema.ManagedCompetitionDetail(item).data)
+
+    @extend_schema(
+        operation_id="competitions_partial_update",
+        request=schema.CompetitionUpdate,
+        responses=envelope(
+            "CompetitionUpdateResponse", schema.ManagedCompetitionDetail
+        ),
+    )
+    def patch(self, request, pk):
+        serializer = schema.CompetitionUpdate(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        item = update_competition(request.user, pk, serializer.validated_data)
+        return success(request, schema.ManagedCompetitionDetail(item).data)
+
+
+class CompetitionArchiveView(BaseView):
+    @extend_schema(
+        request=EmptySerializer,
+        responses=envelope(
+            "CompetitionArchiveResponse", schema.ManagedCompetitionDetail
+        ),
+    )
+    def post(self, request, pk):
+        validated(EmptySerializer, request)
+        item = archive_competition(request.user, pk)
+        return success(request, schema.ManagedCompetitionDetail(item).data)
+
+
+class CompetitionUnarchiveView(BaseView):
+    @extend_schema(
+        request=schema.CompetitionUnarchive,
+        responses=envelope(
+            "CompetitionUnarchiveResponse", schema.ManagedCompetitionDetail
+        ),
+    )
+    def post(self, request, pk):
+        data = validated(schema.CompetitionUnarchive, request)
+        item = unarchive_competition(request.user, pk, data["reason"])
+        return success(request, schema.ManagedCompetitionDetail(item).data)
 
 
 class EditionSeasonListView(BaseView):

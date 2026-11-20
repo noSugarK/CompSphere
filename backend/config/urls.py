@@ -34,6 +34,18 @@ urlpatterns = [
     path("api/v1/me/preferences", accounts.PreferencesView.as_view()),
     path("api/v1/competitions", competitions.CompetitionRegistryView.as_view()),
     path(
+        "api/v1/competitions/<int:pk>",
+        competitions.CompetitionDetailView.as_view(),
+    ),
+    path(
+        "api/v1/competitions/<int:pk>/archive",
+        competitions.CompetitionArchiveView.as_view(),
+    ),
+    path(
+        "api/v1/competitions/<int:pk>/unarchive",
+        competitions.CompetitionUnarchiveView.as_view(),
+    ),
+    path(
         "api/v1/competitions/<int:pk>/publish",
         competitions.CompetitionPublishView.as_view(),
     ),
