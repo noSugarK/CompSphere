@@ -636,6 +636,39 @@ export type Award = components['schemas']['Award'];
 export type AwardRecord = components['schemas']['AwardRecord'];
 export type AwardRoster = components['schemas']['AwardRoster'];
 export type RosterPublication = components['schemas']['EditionInfo'];
+export const offeringCountsSchema = z
+  .object({
+    event_name: text,
+    group_name: text,
+    submitted: z.number().int().nonnegative(),
+    approved: z.number().int().nonnegative(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['OfferingCounts']>;
+export const dashboardSchema = z
+  .object({
+    registrations: z.number().int().nonnegative(),
+    approved: z.number().int().nonnegative(),
+    approval_rate: z.number().nullable(),
+    awarded: z.number().int().nonnegative(),
+    by_offering: z.array(offeringCountsSchema),
+    users: z.number().int().nonnegative().optional(),
+    organizations: z.number().int().nonnegative().optional(),
+    competitions: z.number().int().nonnegative().optional(),
+    editions: z.number().int().nonnegative().optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['Dashboard']>;
+export const auditLogSchema = z
+  .object({
+    id: idSchema,
+    actor_id: nullableId,
+    action: text,
+    resource: text,
+    resource_id: text,
+    created_at: z.string().datetime({ offset: true }),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['AuditLog']>;
+export type Dashboard = components['schemas']['Dashboard'];
+export type AuditLogEntry = components['schemas']['AuditLog'];
 export type PublicRoster = components['schemas']['PublicRoster'];
 export type PublicRosterEntry = components['schemas']['PublicRosterEntry'];
 export type Me = components['schemas']['Me'];

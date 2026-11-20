@@ -5,6 +5,83 @@
         "version": "0.1.0"
     },
     "paths": {
+        "/api/v1/audit-logs": {
+            "get": {
+                "operationId": "audit_logs_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "actor",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 10
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 10
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "page_size",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "resource",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 32
+                        }
+                    }
+                ],
+                "tags": [
+                    "audit-logs"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditLogsResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/auth/csrf": {
             "get": {
                 "operationId": "auth_csrf_retrieve",
@@ -3380,6 +3457,31 @@
                 }
             }
         },
+        "/api/v1/stats/dashboard": {
+            "get": {
+                "operationId": "stats_dashboard_retrieve",
+                "tags": [
+                    "stats"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DashboardResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/team-change-requests": {
             "get": {
                 "operationId": "team_change_requests_list",
@@ -3854,6 +3956,102 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/ApprovalRecordsPage"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "AuditLog": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "actor_id": {
+                        "type": "integer",
+                        "nullable": true,
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "action": {
+                        "type": "string"
+                    },
+                    "resource": {
+                        "type": "string"
+                    },
+                    "resource_id": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "action",
+                    "actor_id",
+                    "created_at",
+                    "id",
+                    "resource",
+                    "resource_id"
+                ],
+                "additionalProperties": false
+            },
+            "AuditLogsPage": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AuditLog"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "maximum": 100,
+                        "minimum": 1
+                    },
+                    "total": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                    }
+                },
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total"
+                ]
+            },
+            "AuditLogsResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/AuditLogsPage"
                     },
                     "code": {
                         "type": "integer",
@@ -4643,6 +4841,91 @@
                             }
                         ],
                         "nullable": true
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "Dashboard": {
+                "type": "object",
+                "properties": {
+                    "registrations": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "approved": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "approval_rate": {
+                        "type": "number",
+                        "format": "double",
+                        "nullable": true
+                    },
+                    "awarded": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "by_offering": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OfferingCounts"
+                        }
+                    },
+                    "users": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "organizations": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "competitions": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "editions": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    }
+                },
+                "required": [
+                    "approval_rate",
+                    "approved",
+                    "awarded",
+                    "by_offering",
+                    "registrations"
+                ],
+                "additionalProperties": false
+            },
+            "DashboardResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Dashboard"
                     },
                     "code": {
                         "type": "integer",
@@ -6558,6 +6841,34 @@
                     "required_materials",
                     "school_level"
                 ]
+            },
+            "OfferingCounts": {
+                "type": "object",
+                "properties": {
+                    "event_name": {
+                        "type": "string"
+                    },
+                    "group_name": {
+                        "type": "string"
+                    },
+                    "submitted": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "approved": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    }
+                },
+                "required": [
+                    "approved",
+                    "event_name",
+                    "group_name",
+                    "submitted"
+                ],
+                "additionalProperties": false
             },
             "OfferingDraftRequest": {
                 "type": "object",

@@ -49,6 +49,22 @@ export const router = createRouter({
       meta: { title: 'awards', auth: true, permissions: ['award:read'] },
     },
     {
+      path: '/console',
+      name: 'dashboard',
+      component: () => import('../views/DashboardView.vue'),
+      meta: {
+        title: 'dashboard',
+        auth: true,
+        permissions: ['stats:read_platform', 'stats:read_competition'],
+      },
+    },
+    {
+      path: '/audit-logs',
+      name: 'auditLogs',
+      component: () => import('../views/AuditLogsView.vue'),
+      meta: { title: 'auditLogs', auth: true, permissions: ['audit:read'] },
+    },
+    {
       path: '/editions/:id/roster',
       name: 'publicRoster',
       component: () => import('../views/PublicRosterView.vue'),

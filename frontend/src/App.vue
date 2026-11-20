@@ -63,7 +63,10 @@ const inAdmin = computed(
     ['competitionRegistry', 'editionRegistry', 'editionConfig', 'seasonManagement'].includes(
       String(route.name),
     ) ||
-    (isManager.value && ['requests', 'licenses', 'reviews'].includes(String(route.name))),
+    (isManager.value &&
+      ['requests', 'licenses', 'reviews', 'awards', 'dashboard', 'auditLogs'].includes(
+        String(route.name),
+      )),
 );
 const links = computed(() =>
   [
@@ -101,6 +104,12 @@ const links = computed(() =>
       ),
     },
     { name: 'reviews', path: '/reviews', visible: session.hasAny('approval:review_single') },
+    {
+      name: 'dashboard',
+      path: '/console',
+      visible: ['stats:read_platform', 'stats:read_competition'].some(session.hasAny),
+    },
+    { name: 'auditLogs', path: '/audit-logs', visible: session.hasAny('audit:read') },
   ].filter((link) => link.visible),
 );
 async function preferences(change: 'locale' | 'theme') {

@@ -11,9 +11,11 @@ import {
   awardPatchSchema,
   awardRosterSchema,
   awardSchema,
+  auditLogSchema,
   bulkReviewResultSchema,
   competitionDraftSchema,
   competitionSchema,
+  dashboardSchema,
   draftFieldsSchema,
   editionDetailsSchema,
   editionDraftSchema,
@@ -455,5 +457,16 @@ export const api = {
       `/public/editions/${idSchema.parse(edition)}/roster${suffix}`,
       publicRosterSchema,
     );
+  },
+  dashboard: () => request('GET', '/stats/dashboard', dashboardSchema),
+  auditLogs: (
+    filters: { actor?: number; resource?: string; date_from?: string; date_to?: string },
+    page = 1,
+  ) => {
+    const query = new URLSearchParams({ page: String(page) });
+    for (const [name, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== '') query.set(name, String(value));
+    }
+    return request('GET', `/audit-logs?${query}`, pageSchema(auditLogSchema));
   },
 };
