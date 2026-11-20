@@ -4,11 +4,15 @@ import { useI18n } from 'vue-i18n';
 import { Plus } from '@element-plus/icons-vue';
 import { ElMessageBox } from 'element-plus';
 import { api } from '../api';
-import type { ManagedCompetition } from '../api/schemas';
+import type { ManagedCompetition, ManagedCompetitionDetail } from '../api/schemas';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import StatusTag from '../components/StatusTag.vue';
 import { useSession } from '../stores/session';
-import { hasCompetitionPermission, mayCreateCompetition } from '../utils/permissions';
+import {
+  hasCompetitionPermission,
+  mayCreateCompetition,
+  mayUnarchiveCompetition,
+} from '../utils/permissions';
 
 const { t } = useI18n();
 const session = useSession();
@@ -27,7 +31,31 @@ const created = ref('');
 const publishedName = ref('');
 const publishingId = ref<number>();
 const publishError = ref<unknown>(null);
+const editOpen = ref(false);
+const editingId = ref<number>();
+const editLoading = ref(false);
+const editSaving = ref(false);
+const editError = ref<unknown>(null);
+const editForm = reactive({ name: '', summary: '', category: '', level: '' });
+const archivedName = ref('');
+const restoredName = ref('');
+const editSavedName = ref('');
+const archiveBusy = ref<number>();
 const form = reactive({ name: '', summary: '' });
+const categoryOptions = [
+  ['subject', 'categorySubject'],
+  ['technology', 'categoryTechnology'],
+  ['entrepreneurship', 'categoryEntrepreneurship'],
+  ['sports', 'categorySports'],
+  ['arts', 'categoryArts'],
+  ['other', 'categoryOther'],
+] as const;
+const levelOptions = [
+  ['school', 'levelSchool'],
+  ['province', 'levelProvince'],
+  ['national', 'levelNational'],
+  ['international', 'levelInternational'],
+] as const;
 
 async function load() {
   loading.value = true;
@@ -106,6 +134,138 @@ async function publish(item: ManagedCompetition) {
   }
 }
 
+function mergeDetail(detail: ManagedCompetitionDetail) {
+  items.value = items.value.map((item) =>
+    item.id === detail.id
+      ? {
+          id: detail.id,
+          public_code: detail.public_code,
+          name: detail.name,
+          summary: detail.summary,
+          status: detail.status,
+        }
+      : item,
+  );
+}
+
+async function startEdit(item: ManagedCompetition) {
+  if (editingId.value) return;
+  editingId.value = item.id;
+  editOpen.value = true;
+  editLoading.value = true;
+  editError.value = null;
+  editSavedName.value = '';
+  Object.assign(editForm, { name: item.name, summary: item.summary, category: '', level: '' });
+  try {
+    const detail = await api.competitionDetail(item.id);
+    Object.assign(editForm, {
+      name: detail.name,
+      summary: detail.summary,
+      category: detail.category ?? '',
+      level: detail.level ?? '',
+    });
+  } catch (error) {
+    editError.value = error;
+  } finally {
+    editLoading.value = false;
+    editingId.value = undefined;
+  }
+}
+
+async function saveEdit() {
+  if (editSaving.value || editingId.value === undefined || editLoading.value) return;
+  if (!editForm.name.trim()) return;
+  editSaving.value = true;
+  editError.value = null;
+  try {
+    const detail = await api.updateCompetition(editingId.value, {
+      name: editForm.name.trim(),
+      summary: editForm.summary.trim(),
+      category: (editForm.category || null) as ManagedCompetitionDetail['category'],
+      level: (editForm.level || null) as ManagedCompetitionDetail['level'],
+    });
+    mergeDetail(detail);
+    editOpen.value = false;
+    created.value = '';
+    publishedName.value = '';
+    archivedName.value = '';
+    restoredName.value = '';
+    editSavedName.value = detail.name;
+  } catch (error) {
+    editError.value = error;
+  } finally {
+    editSaving.value = false;
+  }
+}
+
+async function archive(item: ManagedCompetition) {
+  if (archiveBusy.value) return;
+  try {
+    await ElMessageBox.confirm(
+      t('competitionArchiveConfirm', { name: item.name }),
+      t('competitionArchive'),
+      {
+        confirmButtonText: t('competitionArchive'),
+        cancelButtonText: t('cancel'),
+        type: 'warning',
+      },
+    );
+  } catch {
+    return;
+  }
+  archiveBusy.value = item.id;
+  publishError.value = null;
+  try {
+    const detail = await api.archiveCompetition(item.id);
+    mergeDetail(detail);
+    archivedName.value = detail.name;
+    created.value = '';
+    publishedName.value = '';
+    restoredName.value = '';
+    editSavedName.value = '';
+  } catch (error) {
+    publishError.value = error;
+  } finally {
+    archiveBusy.value = undefined;
+  }
+}
+
+async function unarchive(item: ManagedCompetition) {
+  if (archiveBusy.value) return;
+  let reason: string;
+  try {
+    const answer = await ElMessageBox.prompt(
+      t('competitionUnarchivePrompt', { name: item.name }),
+      t('competitionUnarchive'),
+      {
+        confirmButtonText: t('competitionUnarchive'),
+        cancelButtonText: t('cancel'),
+        inputValidator: (value) =>
+          value && value.trim() ? true : t('competitionUnarchiveRequired'),
+      },
+    );
+    reason = String(answer.value ?? '').trim();
+  } catch {
+    return;
+  }
+  if (!reason) return;
+  archiveBusy.value = item.id;
+  publishError.value = null;
+  try {
+    const detail = await api.unarchiveCompetition(item.id, reason);
+    mergeDetail(detail);
+    restoredName.value = detail.name;
+    created.value = '';
+    publishedName.value = '';
+    archivedName.value = '';
+    editSavedName.value = '';
+  } catch (error) {
+    publishError.value = error;
+  } finally {
+    archiveBusy.value = undefined;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -125,7 +285,10 @@ onMounted(load);
   </div>
   <div role="status" class="registry-feedback">
     <p v-if="created">{{ t('competitionCreated', { name: created }) }}</p>
+    <p v-if="editSavedName">{{ t('competitionUpdated', { name: editSavedName }) }}</p>
     <p v-if="publishedName">{{ t('publication.competitionDone', { name: publishedName }) }}</p>
+    <p v-if="archivedName">{{ t('competitionArchived', { name: archivedName }) }}</p>
+    <p v-if="restoredName">{{ t('competitionUnarchived', { name: restoredName }) }}</p>
   </div>
   <div class="content-panel">
     <ErrorNotice v-if="publishError" :error="publishError" />
@@ -162,6 +325,45 @@ onMounted(load);
                 :aria-label="t('publication.competitionLabel', { name: item.name })"
                 @click="publish(item)"
                 >{{ t('publication.competitionAction') }}</el-button
+              >
+              <el-button
+                v-if="
+                  item.status !== 'archived' &&
+                  hasCompetitionPermission(session.me, 'competition:update', item.id)
+                "
+                link
+                type="primary"
+                :disabled="Boolean(archiveBusy)"
+                :aria-label="t('competitionEdit')"
+                @click="startEdit(item)"
+                >{{ t('competitionEdit') }}</el-button
+              >
+              <el-button
+                v-if="
+                  item.status === 'published' &&
+                  hasCompetitionPermission(session.me, 'competition:archive', item.id)
+                "
+                link
+                type="danger"
+                :loading="archiveBusy === item.id"
+                :disabled="Boolean(publishingId || archiveBusy)"
+                :aria-label="t('competitionArchive')"
+                @click="archive(item)"
+                >{{ t('competitionArchive') }}</el-button
+              >
+              <el-button
+                v-if="
+                  item.status === 'archived' &&
+                  mayUnarchiveCompetition(session.me) &&
+                  hasCompetitionPermission(session.me, 'competition:archive', item.id)
+                "
+                link
+                type="primary"
+                :loading="archiveBusy === item.id"
+                :disabled="Boolean(archiveBusy)"
+                :aria-label="t('competitionUnarchive')"
+                @click="unarchive(item)"
+                >{{ t('competitionUnarchive') }}</el-button
               >
             </div>
           </td>
@@ -221,6 +423,67 @@ onMounted(load);
       <div class="registry-actions">
         <el-button :disabled="saving" @click="open = false">{{ t('cancel') }}</el-button>
         <el-button type="primary" native-type="submit" :loading="saving">{{ t('save') }}</el-button>
+      </div>
+    </el-form>
+  </el-dialog>
+  <el-dialog
+    v-model="editOpen"
+    :title="t('competitionEdit')"
+    width="min(560px, calc(100% - 32px))"
+    :show-close="!editSaving"
+    :close-on-click-modal="false"
+    :close-on-press-escape="!editSaving"
+  >
+    <p v-if="editLoading">{{ t('loading') }}</p>
+    <ErrorNotice v-else-if="editError" :error="editError" />
+    <el-form v-else label-position="top" @submit.prevent="saveEdit">
+      <el-form-item
+        :label="t('competitionName')"
+        required
+        :error="!editForm.name.trim() ? t('competitionNameRequired') : ''"
+      >
+        <el-input v-model="editForm.name" :maxlength="128" :disabled="editSaving" required />
+      </el-form-item>
+      <el-form-item :label="t('competitionSummary')">
+        <el-input
+          v-model="editForm.summary"
+          type="textarea"
+          :rows="3"
+          :maxlength="2000"
+          :disabled="editSaving"
+        />
+      </el-form-item>
+      <el-form-item :label="t('competitionCategory')">
+        <el-select v-model="editForm.category" :disabled="editSaving" clearable>
+          <el-option :value="''" :label="t('categoryUnset')" />
+          <el-option
+            v-for="[value, label] in categoryOptions"
+            :key="value"
+            :value="value"
+            :label="t(label)"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item :label="t('competitionLevel')">
+        <el-select v-model="editForm.level" :disabled="editSaving" clearable>
+          <el-option :value="''" :label="t('categoryUnset')" />
+          <el-option
+            v-for="[value, label] in levelOptions"
+            :key="value"
+            :value="value"
+            :label="t(label)"
+          />
+        </el-select>
+      </el-form-item>
+      <div class="registry-actions">
+        <el-button :disabled="editSaving" @click="editOpen = false">{{ t('cancel') }}</el-button>
+        <el-button
+          type="primary"
+          native-type="submit"
+          :loading="editSaving"
+          :disabled="editLoading"
+          >{{ t('save') }}</el-button
+        >
       </div>
     </el-form>
   </el-dialog>
