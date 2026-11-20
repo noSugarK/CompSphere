@@ -3,7 +3,6 @@ import json
 
 from drf_spectacular.utils import extend_schema
 
-from apps.accounts.models import User
 from apps.orgs.models import OrganizationMember
 from apps.profiles import serializers as schema
 from apps.profiles.models import Profile
@@ -19,8 +18,6 @@ from apps.profiles.services import (
     withdraw_change_request,
 )
 from core.api import BaseView, success, validated
-from core.exceptions import BusinessError
-from core.models import IdempotencyRecord
 from core.schema import envelope
 from core.serializers import EmptySerializer
 
@@ -62,31 +59,14 @@ class StudentAccountListView(BaseView):
     )
     def post(self, request, pk):
         payload = validated(schema.StudentAccountDraft, request)
-        key = request.headers.get("Idempotency-Key")
-        if not key:
-            raise BusinessError(40001, "An Idempotency-Key is required", 400)
         digest = hashlib.sha256(
             json.dumps(payload, sort_keys=True, default=str).encode()
         ).hexdigest()
-        record, created = IdempotencyRecord.objects.get_or_create(
-            actor=request.user,
-            key=key,
-            action=f"provision:org:{pk}",
-            defaults={"request_hash": digest},
+        # 幂等记录与账号同事务，失败不留半成品键（registrations 同模式）。
+        user, password = provision_student(
+            request.user, pk, payload, request.headers.get("Idempotency-Key"), digest
         )
-        if not created:
-            if record.request_hash != digest:
-                raise BusinessError(
-                    40905, "Idempotency key was used for different parameters"
-                )
-            if record.result is None:
-                raise BusinessError(40905, "The original request is still running")
-            # 重试只回到账号事实，原始临时密码不再出现。
-            user = User.objects.get(pk=record.result["user_id"])
-            return _no_store(success(request, _account(user), 201))
-        user, password = provision_student(request.user, pk, payload)
-        record.result = {"user_id": user.id}
-        record.save(update_fields=["result"])
+        # 重放已成功的请求时不再交付临时密码。
         return _no_store(success(request, _account(user, password), 201))
 
 

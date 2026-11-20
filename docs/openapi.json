@@ -7698,11 +7698,25 @@
                     "grade": {
                         "type": "string",
                         "nullable": true
+                    },
+                    "member_type": {
+                        "type": "string"
+                    },
+                    "is_primary": {
+                        "type": "boolean"
+                    },
+                    "affiliation_version": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
                     }
                 },
                 "required": [
+                    "affiliation_version",
                     "grade",
                     "id",
+                    "is_primary",
+                    "member_type",
                     "person_type",
                     "real_name",
                     "school_level",

@@ -73,17 +73,17 @@ def test_provision_creates_document_bound_first_login_account(dataset, actor_cli
     assert logged_in.status_code == 200, logged_in.data
     assert logged_in.data["data"]["access"]
     # 已绑定证件不得静默接管账号。
-    again = provision(manager, dataset["school"].id, ID_A, key="dup")
+    again = provision(manager, dataset["school"].id, ID_A, key="dup-key-1")
     assert again.data["code"] == 40904
 
 
 @pytest.mark.django_db
 def test_provision_retry_never_redelivers_password(dataset, actor_client):
     manager = actor_client(dataset["accounts"]["manager"])
-    first = provision(manager, dataset["school"].id, ID_A, key="idem")
+    first = provision(manager, dataset["school"].id, ID_A, key="idempotency-key-1")
     assert first.status_code == 201
     assert first.data["data"]["temporary_password"]
-    retry = provision(manager, dataset["school"].id, ID_A, key="idem")
+    retry = provision(manager, dataset["school"].id, ID_A, key="idempotency-key-1")
     # 06 §76：重试创建请求不能返回原密码，只回放账号事实。
     assert retry.status_code == 201, retry.data
     assert "temporary_password" not in retry.data["data"]
@@ -91,9 +91,23 @@ def test_provision_retry_never_redelivers_password(dataset, actor_client):
 
 
 @pytest.mark.django_db
+def test_failed_provision_does_not_poison_idempotency_key(dataset, actor_client):
+    manager = actor_client(dataset["accounts"]["manager"])
+    failed = provision(
+        manager, dataset["school"].id, "110101200101010019", key="same-key-1"
+    )
+    assert failed.data["code"] == 42206  # 校验位错误，账号未创建
+    assert not User.objects.filter(profile__document_last4="0019").exists()
+    ok = provision(manager, dataset["school"].id, ID_A, key="same-key-1")
+    assert ok.status_code == 201, ok.data
+
+
+@pytest.mark.django_db
 def test_provision_validates_document_and_scope(dataset, actor_client):
     manager = actor_client(dataset["accounts"]["manager"])
-    bad = provision(manager, dataset["school"].id, "110101200001010011", key="bad")
+    bad = provision(
+        manager, dataset["school"].id, "110101200001010011", key="bad-doc-key"
+    )
     assert bad.data["code"] == 42206  # 身份证校验位错误
     short_passport = manager.post(
         f"/api/v1/orgs/{dataset['school'].id}/student-accounts",
@@ -104,13 +118,15 @@ def test_provision_validates_document_and_scope(dataset, actor_client):
             "document_number": "AB",
         },
         format="json",
-        HTTP_IDEMPOTENCY_KEY="short-passport",
+        HTTP_IDEMPOTENCY_KEY="short-passport-key",
     )
     assert short_passport.data["code"] == 42206
-    foreign = provision(manager, dataset["other_school"].id, ID_A, key="foreign")
+    foreign = provision(
+        manager, dataset["other_school"].id, ID_A, key="foreign-org-key"
+    )
     assert foreign.data["code"] in (40301, 40401)
     student = actor_client(dataset["accounts"]["student"])
-    denied = provision(student, dataset["school"].id, ID_B, key="denied")
+    denied = provision(student, dataset["school"].id, ID_B, key="denied-role-key")
     assert denied.data["code"] == 40301
     assert not User.objects.filter(profile__document_last4=ID_B[-4:]).exists()
 
@@ -153,7 +169,10 @@ def test_identity_change_approve_switches_binding_and_revokes_session(
     assert student.token_version == token_before + 1  # 旧会话失效
     # 批准释放旧号：同证件可再代建。
     assert (
-        provision(manager, dataset["school"].id, ID_A, key="release").status_code == 201
+        provision(
+            manager, dataset["school"].id, ID_A, key="release-old-key"
+        ).status_code
+        == 201
     )
 
 
@@ -161,7 +180,7 @@ def test_identity_change_approve_switches_binding_and_revokes_session(
 def test_identity_change_conflict_and_single_pending(dataset, actor_client):
     manager = actor_client(dataset["accounts"]["manager"])
     created = provision(manager, dataset["school"].id, ID_A).data["data"]
-    provision(manager, dataset["school"].id, ID_TAKEN, key="taken")
+    provision(manager, dataset["school"].id, ID_TAKEN, key="taken-doc-key")
     platform = actor_client(dataset["accounts"]["platform"])
     item = create_request(manager, created["id"], "id_card", "CN", ID_TAKEN).data[
         "data"

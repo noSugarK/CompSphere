@@ -233,3 +233,7 @@ class OrganizationMember(serializers.Serializer):
     person_type = serializers.CharField()
     school_level = serializers.CharField(allow_null=True)
     grade = serializers.CharField(allow_null=True)
+    # 核验重置需要主属关系与归属版本（06 §代建与证件更正）。
+    member_type = serializers.CharField()
+    is_primary = serializers.BooleanField()
+    affiliation_version = serializers.IntegerField()

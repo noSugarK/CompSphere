@@ -327,6 +327,9 @@ class OrganizationMemberListView(BaseView):
                     "person_type": x.user.profile.person_type,
                     "school_level": x.user.profile.school_level,
                     "grade": x.user.profile.grade,
+                    "member_type": x.member_type,
+                    "is_primary": x.is_primary,
+                    "affiliation_version": x.user.affiliation_version,
                 },
             ),
         )

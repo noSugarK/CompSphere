@@ -13,6 +13,7 @@ from apps.rbac.services import has_perm, require_perm
 from core.crypto import encrypt
 from core.documents import bind
 from core.exceptions import BusinessError
+from core.models import IdempotencyRecord
 
 ADMIN_ROLES = ("platform_admin", "competition_admin", "org_admin")
 # 06 §代建与证件更正: 临时密码仅请求体一次性交付，服务器只存哈希。
@@ -47,10 +48,29 @@ def _lock_profile(user_id):
 
 
 @transaction.atomic
-def provision_student(actor, org_id, data):
+def provision_student(actor, org_id, data, key, request_digest):
     """06 POST /orgs/{id}/student-accounts: 单位代建无邮箱学生账户。
-    已存在证件不接管账号；服务器生成 username 与一次性临时密码。"""
+    已存在证件不接管账号；服务器生成 username 与一次性临时密码。
+    幂等记录与工作写入同事务：失败一并回滚，重试不会被半成品键毒化。
+    返回 (user, password)；password 为 None 表示重放已成功请求（不再交付密码）。"""
     require_perm(actor, "user:provision", org_id=org_id)
+    if not isinstance(key, str) or not 8 <= len(key) <= 128:
+        raise BusinessError(40001, "A valid Idempotency-Key is required", 400)
+    record, created = IdempotencyRecord.objects.get_or_create(
+        actor=actor,
+        key=key,
+        action=f"provision:org:{org_id}",
+        defaults={"request_hash": request_digest},
+    )
+    if not created:
+        if record.request_hash != request_digest:
+            raise BusinessError(
+                40905, "Idempotency key was used for different parameters"
+            )
+        saved = record.result
+        if not isinstance(saved, dict) or type(saved.get("user_id")) is not int:
+            raise BusinessError(40906, "The prior operation cannot be replayed")
+        return User.objects.get(pk=saved["user_id"]), None
     org = Organization.objects.filter(
         pk=org_id, is_deleted=False, status="active"
     ).first()
@@ -88,6 +108,9 @@ def provision_student(actor, org_id, data):
     OrganizationMember.objects.create(
         org=org, user=user, member_type="student", is_primary=True
     )
+    # 结果与账号同事务落库；重放路径据此只回放账号事实。
+    record.result = {"user_id": user.id}
+    record.save(update_fields=["result"])
     audit(
         actor,
         "account.provision",
