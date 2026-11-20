@@ -132,6 +132,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/awards/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations['awards_destroy'];
+    options?: never;
+    head?: never;
+    patch: operations['awards_partial_update'];
+    trace?: never;
+  };
   '/api/v1/competitions': {
     parameters: {
       query?: never;
@@ -222,6 +238,22 @@ export interface paths {
     get: operations['editions_available_offerings_retrieve'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/awards': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['editions_awards_retrieve'];
+    put?: never;
+    post: operations['editions_awards_create'];
     delete?: never;
     options?: never;
     head?: never;
@@ -334,6 +366,150 @@ export interface paths {
     get: operations['editions_registrations_retrieve'];
     put?: never;
     post: operations['editions_registrations_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/roster-publication': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['editions_roster_publication_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['editions_roster_publication_partial_update'];
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/roster/approve': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['editions_roster_approve_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/roster/publish': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['editions_roster_publish_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/roster/records': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations['editions_roster_records_update'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/roster/reject': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['editions_roster_reject_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/roster/submit': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['editions_roster_submit_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/roster/unlock': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['editions_roster_unlock_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/roster/unpublish': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['editions_roster_unpublish_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/editions/{id}/rosters': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['editions_rosters_retrieve'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -604,6 +780,22 @@ export interface paths {
       cookie?: never;
     };
     get: operations['public_editions_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/public/editions/{id}/roster': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['public_editions_roster_retrieve'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1056,6 +1248,73 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    Award: {
+      id: number;
+      edition_id: number;
+      offering_id: number | null;
+      rank_level: components['schemas']['RankLevelEnum'];
+      name: string;
+      quota: number | null;
+      sort_order: number;
+    };
+    AwardCreateResponse: {
+      data: components['schemas']['Award'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    AwardDraftRequest: {
+      offering_id?: number | null;
+      rank_level: components['schemas']['RankLevelEnum'];
+      name: string;
+      quota?: number | null;
+      sort_order?: number;
+    };
+    AwardRecord: {
+      registration_id: number;
+      award_id: number;
+      submission_no: number;
+      batch_no: string;
+      team_code: string | null;
+      org_name: string;
+      member_names: string[];
+      award_name: string;
+      rank_level: components['schemas']['RankLevelEnum'];
+    };
+    AwardRecordChangeRequest: {
+      version: number;
+      add?: components['schemas']['AwardRecordTargetRequest'][];
+      remove?: number[];
+    };
+    AwardRecordTargetRequest: {
+      registration_id: number;
+      award_id: number;
+    };
+    AwardRoster: {
+      id: number | null;
+      edition_id: number;
+      offering_id: number | null;
+      event_name: string | null;
+      group_name: string | null;
+      status: components['schemas']['AwardRosterStatusEnum'];
+      version: number;
+      records: components['schemas']['AwardRecord'][];
+    };
+    /**
+     * @description * `editing` - editing
+     *     * `under_approval` - under_approval
+     *     * `confirmed` - confirmed
+     * @enum {string}
+     */
+    AwardRosterStatusEnum: 'editing' | 'under_approval' | 'confirmed';
+    AwardUpdateResponse: {
+      data: components['schemas']['Award'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     BulkRegistrationApprovalResponse: {
       data: components['schemas']['BulkReviewResult'][];
       code: number;
@@ -1234,6 +1493,15 @@ export interface components {
       message: string;
       /** Format: uuid */
       request_id: string;
+    };
+    EditionInfo: {
+      id: number;
+      name: string;
+      status: components['schemas']['EditionStatusEnum'];
+      roster_publication: components['schemas']['RosterPublicationEnum'];
+      roster_publish_fields: string[];
+      /** Format: date-time */
+      roster_published_at: string | null;
     };
     EditionPublicationChecks: {
       active_season: boolean;
@@ -1420,6 +1688,19 @@ export interface components {
     LoginTypeEnum: 'email' | 'document';
     LogoutResponse: {
       data: unknown;
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    ManagedAwardsPage: {
+      items: components['schemas']['Award'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    ManagedAwardsResponse: {
+      data: components['schemas']['ManagedAwardsPage'];
       code: number;
       message: string;
       /** Format: uuid */
@@ -1717,6 +1998,12 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    PatchedAwardPatchRequest: {
+      rank_level?: components['schemas']['RankLevelEnum'];
+      name?: string;
+      quota?: number | null;
+      sort_order?: number;
+    };
     PatchedEditionDetailsRequest: {
       name?: string;
       venue?: string;
@@ -1762,6 +2049,10 @@ export interface components {
       form_data?: components['schemas']['FormDataRequest'];
       consents?: components['schemas']['ConsentsRequest'];
     };
+    PatchedRosterPublicationPatchRequest: {
+      roster_publication?: components['schemas']['RosterPublicationEnum'];
+      roster_publish_fields?: string[];
+    };
     Preferences: {
       locale: components['schemas']['LocaleEnum'];
       theme: components['schemas']['ThemeEnum'];
@@ -1787,12 +2078,42 @@ export interface components {
       user_id: number;
       role: components['schemas']['RoleEnum'];
     };
+    PublicRoster: {
+      edition_id: number;
+      edition_name: string;
+      publish_fields: string[];
+      entries: components['schemas']['PublicRosterEntry'][];
+    };
+    PublicRosterEntry: {
+      team_code?: string | null;
+      org_name?: string;
+      event?: string;
+      group?: string;
+      member_names?: string[];
+      award?: string;
+    };
+    PublicRosterResponse: {
+      data: components['schemas']['PublicRoster'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     /**
      * @description * `register` - register
      *     * `reset_password` - reset_password
      * @enum {string}
      */
     PurposeEnum: 'register' | 'reset_password';
+    /**
+     * @description * `first` - first
+     *     * `second` - second
+     *     * `third` - third
+     *     * `excellence` - excellence
+     *     * `custom` - custom
+     * @enum {string}
+     */
+    RankLevelEnum: 'first' | 'second' | 'third' | 'excellence' | 'custom';
     ReadNoticeResponse: {
       data: components['schemas']['RegistrationNotice'];
       code: number;
@@ -2037,6 +2358,59 @@ export interface components {
      * @enum {string}
      */
     RoleEnum: 'captain' | 'member';
+    RosterDecisionRequest: {
+      version: number;
+      comment?: string;
+    };
+    RosterDecisionResponse: {
+      data: components['schemas']['AwardRoster'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    /**
+     * @description * `open` - open
+     *     * `login` - login
+     *     * `none` - none
+     * @enum {string}
+     */
+    RosterPublicationEnum: 'open' | 'login' | 'none';
+    RosterPublicationResponse: {
+      data: components['schemas']['EditionInfo'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    RosterPublicationState: {
+      data: components['schemas']['EditionInfo'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    RosterPublishResponse: {
+      data: components['schemas']['EditionInfo'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    RosterRecordsResponse: {
+      data: components['schemas']['AwardRoster'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    RostersResponse: {
+      data: components['schemas']['AwardRoster'][];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     /**
      * @description * `global` - global
      *     * `org` - org
@@ -2554,6 +2928,51 @@ export interface operations {
       };
     };
   };
+  awards_destroy: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No response body */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  awards_partial_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['PatchedAwardPatchRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AwardUpdateResponse'];
+        };
+      };
+    };
+  };
   competitions_retrieve: {
     parameters: {
       query?: {
@@ -2764,6 +3183,55 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['AvailableOfferingsResponse'];
+        };
+      };
+    };
+  };
+  editions_awards_retrieve: {
+    parameters: {
+      query?: {
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ManagedAwardsResponse'];
+        };
+      };
+    };
+  };
+  editions_awards_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AwardDraftRequest'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AwardCreateResponse'];
         };
       };
     };
@@ -3027,6 +3495,260 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RegistrationCreateResponse'];
+        };
+      };
+    };
+  };
+  editions_roster_publication_retrieve: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RosterPublicationState'];
+        };
+      };
+    };
+  };
+  editions_roster_publication_partial_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['PatchedRosterPublicationPatchRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RosterPublicationResponse'];
+        };
+      };
+    };
+  };
+  editions_roster_approve_create: {
+    parameters: {
+      query?: {
+        offering_id?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RosterDecisionRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RosterDecisionResponse'];
+        };
+      };
+    };
+  };
+  editions_roster_publish_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RosterPublishResponse'];
+        };
+      };
+    };
+  };
+  editions_roster_records_update: {
+    parameters: {
+      query?: {
+        offering_id?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AwardRecordChangeRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RosterRecordsResponse'];
+        };
+      };
+    };
+  };
+  editions_roster_reject_create: {
+    parameters: {
+      query?: {
+        offering_id?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RosterDecisionRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RosterDecisionResponse'];
+        };
+      };
+    };
+  };
+  editions_roster_submit_create: {
+    parameters: {
+      query?: {
+        offering_id?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RosterDecisionRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RosterDecisionResponse'];
+        };
+      };
+    };
+  };
+  editions_roster_unlock_create: {
+    parameters: {
+      query?: {
+        offering_id?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RosterDecisionRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RosterDecisionResponse'];
+        };
+      };
+    };
+  };
+  editions_roster_unpublish_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RosterPublishResponse'];
+        };
+      };
+    };
+  };
+  editions_rosters_retrieve: {
+    parameters: {
+      query?: {
+        offering_id?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RostersResponse'];
         };
       };
     };
@@ -3481,6 +4203,30 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['EditionResponse'];
+        };
+      };
+    };
+  };
+  public_editions_roster_retrieve: {
+    parameters: {
+      query?: {
+        event?: number;
+        group?: number;
+      };
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicRosterResponse'];
         };
       };
     };
