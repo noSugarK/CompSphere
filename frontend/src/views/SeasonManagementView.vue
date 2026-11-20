@@ -18,7 +18,11 @@ const total = ref(0);
 const loading = ref(true);
 const busy = ref(false);
 const open = ref(false);
+const editOpen = ref(false);
+const editing = ref<ManagedSeason>();
+const editForm = reactive({ name: '', start_date: '', end_date: '' });
 const updated = ref('');
+const feedback = ref('');
 const loadError = ref<unknown>(null);
 const actionError = ref<unknown>(null);
 const dateError = ref(false);
@@ -56,6 +60,7 @@ async function apply(action: () => Promise<ManagedSeason>) {
     const result = await action();
     updated.value = result.name;
     open.value = false;
+    editOpen.value = false;
     await load();
   } catch (error) {
     actionError.value = error;
@@ -94,6 +99,49 @@ async function setCurrent(item: ManagedSeason) {
   await apply(() => api.setCurrentSeason(item.id));
 }
 
+function startEdit(item: ManagedSeason) {
+  editing.value = item;
+  Object.assign(editForm, {
+    name: item.name,
+    start_date: item.start_date,
+    end_date: item.end_date,
+  });
+  actionError.value = null;
+  dateError.value = false;
+  editOpen.value = true;
+}
+
+async function saveEdit() {
+  if (!editing.value || busy.value) return;
+  if (editForm.start_date > editForm.end_date) {
+    dateError.value = true;
+    return;
+  }
+  const target = editing.value;
+  await apply(async () => {
+    const body: Record<string, string> = {};
+    if (editForm.name !== target.name) body.name = editForm.name;
+    if (editForm.start_date !== target.start_date) body.start_date = editForm.start_date;
+    if (editForm.end_date !== target.end_date) body.end_date = editForm.end_date;
+    return api.updateSeason(target.id, body);
+  });
+}
+
+async function archive(item: ManagedSeason) {
+  try {
+    await ElMessageBox.confirm(t('seasonArchiveConfirm', { name: item.name }), t('seasonArchive'), {
+      confirmButtonText: t('seasonArchive'),
+      cancelButtonText: t('cancel'),
+      type: 'warning',
+    });
+  } catch {
+    return;
+  }
+  await apply(() => api.archiveSeason(item.id));
+  updated.value = '';
+  feedback.value = t('seasonArchived', { name: item.name });
+}
+
 onMounted(load);
 </script>
 
@@ -114,6 +162,7 @@ onMounted(load);
   </div>
   <div role="status">
     <p v-if="updated">{{ t('seasonSaved', { name: updated }) }}</p>
+    <p v-if="feedback">{{ feedback }}</p>
   </div>
   <ErrorNotice v-if="!open && actionError" :error="actionError" />
   <div class="content-panel">
@@ -145,6 +194,18 @@ onMounted(load);
             :disabled="busy"
             @click="setCurrent(item)"
             >{{ t('seasonSetCurrent') }}</el-button
+          >
+          <el-button
+            v-if="item.status !== 'archived' && session.hasAny('season:update')"
+            :disabled="busy"
+            @click="startEdit(item)"
+            >{{ t('seasonEdit') }}</el-button
+          >
+          <el-button
+            v-if="item.status === 'active' && !item.is_default && session.hasAny('season:archive')"
+            :disabled="busy"
+            @click="archive(item)"
+            >{{ t('seasonArchive') }}</el-button
           >
         </div>
       </li>
@@ -214,6 +275,50 @@ onMounted(load);
       </el-form-item>
       <div class="season-actions">
         <el-button :disabled="busy" @click="open = false">{{ t('cancel') }}</el-button>
+        <el-button type="primary" native-type="submit" :loading="busy">{{ t('save') }}</el-button>
+      </div>
+    </el-form>
+  </el-dialog>
+  <el-dialog
+    v-model="editOpen"
+    :title="t('seasonEdit')"
+    width="min(560px, calc(100% - 32px))"
+    :show-close="!busy"
+    :close-on-click-modal="false"
+    :close-on-press-escape="!busy"
+  >
+    <ErrorNotice v-if="actionError" :error="actionError" />
+    <el-form label-position="top" @submit.prevent="saveEdit">
+      <el-form-item :label="t('seasonCode')">
+        <el-input :model-value="editing?.code ?? ''" disabled />
+      </el-form-item>
+      <el-form-item :label="t('seasonName')" required>
+        <el-input v-model.trim="editForm.name" :disabled="busy" :maxlength="64" required />
+      </el-form-item>
+      <el-form-item :label="t('seasonStart')" required>
+        <el-input
+          v-model="editForm.start_date"
+          :disabled="busy"
+          type="date"
+          required
+          @input="dateError = false"
+        />
+      </el-form-item>
+      <el-form-item
+        :label="t('seasonEnd')"
+        required
+        :error="dateError ? t('seasonDatesInvalid') : ''"
+      >
+        <el-input
+          v-model="editForm.end_date"
+          :disabled="busy"
+          type="date"
+          required
+          @input="dateError = false"
+        />
+      </el-form-item>
+      <div class="season-actions">
+        <el-button :disabled="busy" @click="editOpen = false">{{ t('cancel') }}</el-button>
         <el-button type="primary" native-type="submit" :loading="busy">{{ t('save') }}</el-button>
       </div>
     </el-form>
