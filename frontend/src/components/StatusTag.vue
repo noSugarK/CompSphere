@@ -4,11 +4,11 @@ import { useI18n } from 'vue-i18n';
 const props = defineProps<{ status: string }>();
 const { t } = useI18n();
 const type = computed(() =>
-  ['approved', 'active'].includes(props.status)
+  ['approved', 'active', 'confirmed'].includes(props.status)
     ? 'success'
     : ['rejected', 'revoked'].includes(props.status)
       ? 'danger'
-      : ['submitted', 'pending_review', 'returned'].includes(props.status)
+      : ['submitted', 'pending_review', 'returned', 'under_approval'].includes(props.status)
         ? 'warning'
         : 'info',
 );

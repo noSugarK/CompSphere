@@ -267,6 +267,12 @@ onMounted(load);
       <p v-if="edition">
         <StatusTag :status="edition.status" />
         {{ t('editionIdentity', { year: edition.year, number: edition.edition_no }) }}
+        <RouterLink
+          v-if="hasEventGrant('award:read')"
+          :to="{ name: 'awards', params: { id: editionId } }"
+          class="awards-entry"
+          >{{ t('awards') }}</RouterLink
+        >
       </p>
     </div>
   </div>

@@ -7,6 +7,10 @@ import {
   verificationRequestSchema,
 } from './authSchemas';
 import {
+  awardDraftSchema,
+  awardPatchSchema,
+  awardRosterSchema,
+  awardSchema,
   bulkReviewResultSchema,
   competitionDraftSchema,
   competitionSchema,
@@ -35,6 +39,7 @@ import {
   orgSchema,
   pageSchema,
   preferencesSchema,
+  publicRosterSchema,
   registrationNoticeSchema,
   registrationSchema,
   registrationSubmissionSchema,
@@ -42,6 +47,10 @@ import {
   reviewQueueOptionSchema,
   type ReviewQueueFilters,
   type ReviewQueueOptionQuery,
+  rosterDecisionSchema,
+  rosterPublicationPatchSchema,
+  rosterPublicationSchema,
+  rosterRecordChangeSchema,
   seasonRegistrationSchema,
   seasonDraftSchema,
   seasonSchema,
@@ -368,5 +377,83 @@ export const api = {
       throw new ApiError(50201);
     }
     return results;
+  },
+  listAwards: (edition: number) =>
+    request(
+      'GET',
+      `/editions/${idSchema.parse(edition)}/awards?page_size=100`,
+      pageSchema(awardSchema),
+    ),
+  createAward: (edition: number, body: unknown) =>
+    request(
+      'POST',
+      `/editions/${idSchema.parse(edition)}/awards`,
+      awardSchema,
+      awardDraftSchema.parse(body),
+    ),
+  updateAward: (id: number, body: unknown) =>
+    request('PATCH', `/awards/${idSchema.parse(id)}`, awardSchema, awardPatchSchema.parse(body)),
+  deleteAward: (id: number) => request('DELETE', `/awards/${idSchema.parse(id)}`, z.null()),
+  listRosters: (edition: number, offering?: number | null) =>
+    request(
+      'GET',
+      `/editions/${idSchema.parse(edition)}/rosters${
+        offering == null ? '' : `?offering_id=${idSchema.parse(offering)}`
+      }`,
+      z.array(awardRosterSchema),
+    ),
+  changeRosterRecords: (edition: number, offering: number | null, body: unknown) =>
+    request(
+      'PUT',
+      `/editions/${idSchema.parse(edition)}/roster/records${
+        offering == null ? '' : `?offering_id=${idSchema.parse(offering)}`
+      }`,
+      awardRosterSchema,
+      rosterRecordChangeSchema.parse(body),
+    ),
+  decideRoster: (
+    edition: number,
+    offering: number | null,
+    action: 'submit' | 'approve' | 'reject' | 'unlock',
+    body: unknown,
+  ) =>
+    request(
+      'POST',
+      `/editions/${idSchema.parse(edition)}/roster/${action}${
+        offering == null ? '' : `?offering_id=${idSchema.parse(offering)}`
+      }`,
+      awardRosterSchema,
+      rosterDecisionSchema.parse(body),
+    ),
+  rosterPublication: (edition: number) =>
+    request(
+      'GET',
+      `/editions/${idSchema.parse(edition)}/roster-publication`,
+      rosterPublicationSchema,
+    ),
+  setRosterPublication: (edition: number, body: unknown) =>
+    request(
+      'PATCH',
+      `/editions/${idSchema.parse(edition)}/roster-publication`,
+      rosterPublicationSchema,
+      rosterPublicationPatchSchema.parse(body),
+    ),
+  publishRoster: (edition: number, action: 'publish' | 'unpublish') =>
+    request(
+      'POST',
+      `/editions/${idSchema.parse(edition)}/roster/${action}`,
+      rosterPublicationSchema,
+      {},
+    ),
+  publicRoster: (edition: number, filters: { event?: number; group?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (filters.event) query.set('event', String(filters.event));
+    if (filters.group) query.set('group', String(filters.group));
+    const suffix = query.size ? `?${query}` : '';
+    return request(
+      'GET',
+      `/public/editions/${idSchema.parse(edition)}/roster${suffix}`,
+      publicRosterSchema,
+    );
   },
 };

@@ -527,6 +527,117 @@ export const aiOutputSchema = z.union([
     })
     .strict(),
 ]);
+const rankLevel = z.enum(['first', 'second', 'third', 'excellence', 'custom']);
+const rosterStatus = z.enum(['editing', 'under_approval', 'confirmed']);
+export const awardSchema = z
+  .object({
+    id: idSchema,
+    edition_id: idSchema,
+    offering_id: nullableId,
+    rank_level: rankLevel,
+    name: text,
+    quota: z.number().int().positive().nullable(),
+    sort_order: z.number().int().nonnegative(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['Award']>;
+export const awardDraftSchema = z
+  .object({
+    offering_id: nullableId.optional(),
+    rank_level: rankLevel,
+    name: text.min(1).max(64),
+    quota: z.number().int().positive().nullable().optional(),
+    sort_order: z.number().int().nonnegative().optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['AwardDraftRequest']>;
+export const awardPatchSchema = z
+  .object({
+    rank_level: rankLevel.optional(),
+    name: text.min(1).max(64).optional(),
+    quota: z.number().int().positive().nullable().optional(),
+    sort_order: z.number().int().nonnegative().optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['PatchedAwardPatchRequest']>;
+export const awardRecordSchema = z
+  .object({
+    registration_id: idSchema,
+    award_id: idSchema,
+    submission_no: z.number().int().positive(),
+    batch_no: text,
+    team_code: text.nullable(),
+    org_name: text,
+    member_names: z.array(text),
+    award_name: text,
+    rank_level: rankLevel,
+  })
+  .strict() satisfies z.ZodType<components['schemas']['AwardRecord']>;
+export const awardRosterSchema = z
+  .object({
+    id: nullableId,
+    edition_id: idSchema,
+    offering_id: nullableId,
+    event_name: text.nullable(),
+    group_name: text.nullable(),
+    status: rosterStatus,
+    version: z.number().int().positive(),
+    records: z.array(awardRecordSchema),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['AwardRoster']>;
+export const rosterRecordChangeSchema = z
+  .object({
+    version: z.number().int().positive(),
+    add: z
+      .array(z.object({ registration_id: idSchema, award_id: idSchema }).strict())
+      .max(200)
+      .optional(),
+    remove: z.array(idSchema).max(200).optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['AwardRecordChangeRequest']>;
+export const rosterDecisionSchema = z
+  .object({
+    version: z.number().int().positive(),
+    comment: text.max(2000).optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['RosterDecisionRequest']>;
+export const rosterPublicationPatchSchema = z
+  .object({
+    roster_publication: z.enum(['open', 'login', 'none']),
+    roster_publish_fields: z.array(text.min(1).max(32)).max(10),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['PatchedRosterPublicationPatchRequest']>;
+export const rosterPublicationSchema = z
+  .object({
+    id: idSchema,
+    name: text,
+    status: z.enum(['draft', 'published', 'closed']),
+    roster_publication: z.enum(['open', 'login', 'none']),
+    roster_publish_fields: z.array(text),
+    roster_published_at: z.string().datetime({ offset: true }).nullable(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['EditionInfo']>;
+export const publicRosterEntrySchema = z
+  .object({
+    team_code: text.nullable().optional(),
+    org_name: text.optional(),
+    event: text.optional(),
+    group: text.optional(),
+    member_names: z.array(text).optional(),
+    award: text.optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['PublicRosterEntry']>;
+export const publicRosterSchema = z
+  .object({
+    edition_id: idSchema,
+    edition_name: text,
+    publish_fields: z.array(text),
+    entries: z.array(publicRosterEntrySchema),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['PublicRoster']>;
+export type Award = components['schemas']['Award'];
+export type AwardRecord = components['schemas']['AwardRecord'];
+export type AwardRoster = components['schemas']['AwardRoster'];
+export type RosterPublication = components['schemas']['EditionInfo'];
+export type PublicRoster = components['schemas']['PublicRoster'];
+export type PublicRosterEntry = components['schemas']['PublicRosterEntry'];
 export type Me = components['schemas']['Me'];
 export type Team = components['schemas']['Team'];
 export type Edition = components['schemas']['Edition'];

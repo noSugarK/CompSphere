@@ -10,6 +10,8 @@ import {
   loginSchema,
   meSchema,
   pageSchema,
+  publicRosterEntrySchema,
+  publicRosterSchema,
   reviewedMemberSchema,
   seasonDraftSchema,
   seasonSchema,
@@ -37,6 +39,14 @@ const actor = meSchema.parse({
   theme: 'system',
 });
 describe('untrusted JSON boundaries', () => {
+  it('rejects sensitive keys in a public roster payload', () => {
+    const base = { edition_id: 1, edition_name: 'e', publish_fields: ['team_code'], entries: [] };
+    expect(publicRosterSchema.safeParse(base).success).toBe(true);
+    expect(publicRosterSchema.safeParse({ ...base, contact_phone: '1' }).success).toBe(false);
+    expect(
+      publicRosterEntrySchema.safeParse({ team_code: 'A', document_number: '1' }).success,
+    ).toBe(false);
+  });
   it('keeps reviewed member fields capped at document last 4', () => {
     const base = { user_id: 1, real_name: 'a', role: 'member', school_level: null, grade: null };
     expect(reviewedMemberSchema.safeParse({ ...base, document_last4: '0027' }).success).toBe(true);

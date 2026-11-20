@@ -43,6 +43,18 @@ export const router = createRouter({
       meta: { title: 'details' },
     },
     {
+      path: '/awards/:id',
+      name: 'awards',
+      component: () => import('../views/AwardsView.vue'),
+      meta: { title: 'awards', auth: true, permissions: ['award:read'] },
+    },
+    {
+      path: '/editions/:id/roster',
+      name: 'publicRoster',
+      component: () => import('../views/PublicRosterView.vue'),
+      meta: { title: 'publicRoster' },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
