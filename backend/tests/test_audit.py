@@ -82,22 +82,28 @@ def test_permission_denials_are_logged(dataset, actor_client):
     edition = dataset["edition"]
     student = actor_client(dataset["accounts"]["student"])
     # 视图级 required_perm 拒绝（ScopedRolePermission）。
-    assert student.post(
-        "/api/v1/registrations/bulk-approval",
-        {
-            "action": "approve",
-            "comment": "",
-            "items": [{"registration_id": 1, "submission_no": 1}],
-        },
-        format="json",
-    ).data["code"] == 40301
+    assert (
+        student.post(
+            "/api/v1/registrations/bulk-approval",
+            {
+                "action": "approve",
+                "comment": "",
+                "items": [{"registration_id": 1, "submission_no": 1}],
+            },
+            format="json",
+        ).data["code"]
+        == 40301
+    )
     # 服务级 require_perm 拒绝（作用域不匹配）。
     manager = actor_client(dataset["accounts"]["manager"])
-    assert manager.post(
-        f"/api/v1/editions/{edition.id}/awards",
-        {"rank_level": "first", "name": "x"},
-        format="json",
-    ).data["code"] == 40301
+    assert (
+        manager.post(
+            f"/api/v1/editions/{edition.id}/awards",
+            {"rank_level": "first", "name": "x"},
+            format="json",
+        ).data["code"]
+        == 40301
+    )
     denied = AuditLog.objects.filter(action="rbac.denied").order_by("id")
     assert [row.resource_id for row in denied] == [
         "approval:review_single",
