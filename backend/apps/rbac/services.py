@@ -76,7 +76,10 @@ def has_perm(
 
 def require_perm(user, permission, **scope):
     if not has_perm(user, permission, **scope):
-        raise BusinessError(40301, "Permission denied", 403)
+        # rbac.denied 由异常处理器统一落库：service 事务回滚时也必须留下记录。
+        error = BusinessError(40301, "Permission denied", 403)
+        error.denied_permission = permission  # type: ignore[attr-defined]
+        raise error
 
 
 def org_filter(user, permission, field="org_id"):
@@ -122,9 +125,13 @@ class ScopedRolePermission(BasePermission):
         if not request.user or not request.user.is_active:
             return False
         required = getattr(view, "required_perm", None)
-        return not required or any(
+        if required and not any(
             required in g["permissions"] for g in grants(request.user)
-        )
+        ):
+            # 由 exception_handler 统一落 rbac.denied，避免随业务事务回滚。
+            request.denied_permission = required  # type: ignore[attr-defined]
+            return False
+        return True
 
 
 def prevent_self_review(actor, submitted_by_id, member_ids=()):

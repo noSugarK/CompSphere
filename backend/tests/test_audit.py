@@ -73,3 +73,35 @@ def test_audit_filters_by_actor_resource_and_date(dataset, actor_client):
     future = organizer.get(url, {"date_from": "2099-01-01"}).data["data"]
     assert future["total"] == 0
     assert organizer.get(url, {"date_from": "not-a-date"}).data["code"] == 40001
+
+
+@pytest.mark.django_db
+def test_permission_denials_are_logged(dataset, actor_client):
+    from apps.audit.models import AuditLog
+
+    edition = dataset["edition"]
+    student = actor_client(dataset["accounts"]["student"])
+    # 视图级 required_perm 拒绝（ScopedRolePermission）。
+    assert student.post(
+        "/api/v1/registrations/bulk-approval",
+        {
+            "action": "approve",
+            "comment": "",
+            "items": [{"registration_id": 1, "submission_no": 1}],
+        },
+        format="json",
+    ).data["code"] == 40301
+    # 服务级 require_perm 拒绝（作用域不匹配）。
+    manager = actor_client(dataset["accounts"]["manager"])
+    assert manager.post(
+        f"/api/v1/editions/{edition.id}/awards",
+        {"rank_level": "first", "name": "x"},
+        format="json",
+    ).data["code"] == 40301
+    denied = AuditLog.objects.filter(action="rbac.denied").order_by("id")
+    assert [row.resource_id for row in denied] == [
+        "approval:review_single",
+        "award:config",
+    ]
+    assert denied[0].scope["route"] == "/api/v1/registrations/bulk-approval"
+    assert denied[1].scope["route"] == f"/api/v1/editions/{edition.id}/awards"

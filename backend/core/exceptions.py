@@ -99,4 +99,25 @@ def exception_handler(exc, context):
             if isinstance(detail, dict)
             else {"non_field_errors": [str(x) for x in detail]}
         )
-    return Response(body, status=response.status_code, headers=response.headers)
+    response = Response(body, status=response.status_code, headers=response.headers)
+    _log_denial(exc, request, response)
+    return response
+
+
+def _log_denial(exc, request, response):
+    """DEVELOPMENT.md §2.4 rbac.denied：403 排障主入口。写在这里而不是
+    service 内，业务事务回滚后拒绝记录才不会被一起抹掉。"""
+    permission = getattr(exc, "denied_permission", None) or (
+        getattr(request, "denied_permission", None) if request else None
+    )
+    if response.status_code != 403 or not permission or request is None:
+        return
+    from apps.audit.models import AuditLog
+
+    AuditLog.objects.create(
+        actor=getattr(request, "user", None),
+        action="rbac.denied",
+        resource="permission",
+        resource_id=str(permission),
+        scope={"route": getattr(request, "path", "")},
+    )
