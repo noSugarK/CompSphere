@@ -329,6 +329,9 @@ export const orgMemberSchema = z
     person_type: text,
     school_level: schoolLevel.nullable(),
     grade: text.nullable(),
+    member_type: text,
+    is_primary: z.boolean(),
+    affiliation_version: z.number().int().nonnegative(),
   })
   .strict();
 export const proposalSchema = z
@@ -669,6 +672,88 @@ export const auditLogSchema = z
   .strict() satisfies z.ZodType<components['schemas']['AuditLog']>;
 export type Dashboard = components['schemas']['Dashboard'];
 export type AuditLogEntry = components['schemas']['AuditLog'];
+const documentType = z.enum(['id_card', 'passport']);
+export const studentAccountSchema = z
+  .object({
+    id: idSchema,
+    username: text,
+    email: text.nullable(),
+    status: text,
+    must_change_password: z.boolean(),
+    initial_password_expires_at: z.string().datetime({ offset: true }).nullable(),
+    document_type: text,
+    document_country: text,
+    document_last4: text,
+    real_name: text,
+    org_id: idSchema,
+    temporary_password: text.optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['StudentAccount']>;
+export const studentDraftSchema = z
+  .object({
+    real_name: text.trim().min(1).max(64),
+    document_type: documentType,
+    document_country: text.regex(/^[A-Z]{2}$/),
+    document_number: text.min(5).max(32),
+    phone: text.max(20).optional(),
+    student_no: text.max(64).optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['StudentAccountDraftRequest']>;
+export const passwordResetSchema = z
+  .object({
+    primary_membership_id: idSchema,
+    affiliation_version: z.number().int().nonnegative(),
+    reason: text.trim().min(1).max(1000),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['StudentPasswordResetRequest']>;
+export const passwordResetResultSchema = z
+  .object({
+    id: idSchema,
+    username: text,
+    must_change_password: z.boolean(),
+    initial_password_expires_at: z.string().datetime({ offset: true }).nullable(),
+    temporary_password: text,
+  })
+  .strict() satisfies z.ZodType<components['schemas']['StudentPasswordResetResult']>;
+export const identityChangeSchema = z
+  .object({
+    id: idSchema,
+    user_id: idSchema,
+    status: z.enum(['draft', 'submitted', 'approved', 'returned', 'rejected', 'withdrawn']),
+    base_identity_version: z.number().int().nonnegative(),
+    new_document_type: text,
+    new_document_country: text,
+    new_document_last4: text,
+    has_old_document: z.boolean(),
+    submitted_by: idSchema,
+    reviewer_id: nullableId,
+    comment: text,
+    reviewed_at: text.nullable(),
+    created_at: text,
+  })
+  .strict() satisfies z.ZodType<components['schemas']['IdentityChangeRequest']>;
+export const identityChangeDraftSchema = z
+  .object({
+    user_id: idSchema.optional(),
+    document_type: documentType,
+    document_country: text.regex(/^[A-Z]{2}$/),
+    document_number: text.min(5).max(32),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['IdentityChangeDraftRequest']>;
+export const identityChangeReviewSchema = z
+  .object({
+    action: z.enum(['approve', 'return', 'reject']),
+    comment: text.max(2000),
+    version: z.number().int().nonnegative(),
+  })
+  .strict()
+  .refine((v) => v.action === 'approve' || v.comment.trim().length > 0) satisfies z.ZodType<
+  components['schemas']['IdentityChangeReviewRequest']
+>;
+export type StudentAccount = components['schemas']['StudentAccount'];
+export type IdentityChange = components['schemas']['IdentityChangeRequest'];
+export type Organization = z.infer<typeof orgSchema>;
+export type OrgMember = z.infer<typeof orgMemberSchema>;
 export type PublicRoster = components['schemas']['PublicRoster'];
 export type PublicRosterEntry = components['schemas']['PublicRosterEntry'];
 export type Me = components['schemas']['Me'];

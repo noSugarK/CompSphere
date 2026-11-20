@@ -111,6 +111,21 @@ export const router = createRouter({
       },
     },
     {
+      path: '/students',
+      name: 'students',
+      component: () => import('../views/StudentsView.vue'),
+      meta: {
+        title: 'students',
+        auth: true,
+        permissions: [
+          'user:provision',
+          'user:reset_student_password',
+          'profile:review_identity_change',
+          'org:manage_members',
+        ],
+      },
+    },
+    {
       path: '/season-licenses',
       name: 'licenses',
       component: () => import('../views/LicensesView.vue'),

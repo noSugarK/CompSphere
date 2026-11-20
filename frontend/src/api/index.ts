@@ -26,6 +26,9 @@ import {
   eventTypeSummarySchema,
   groupDraftSchema,
   idSchema,
+  identityChangeDraftSchema,
+  identityChangeReviewSchema,
+  identityChangeSchema,
   loginSchema,
   managedCompetitionSchema,
   managedEditionSchema,
@@ -40,6 +43,8 @@ import {
   offeringSchema,
   orgSchema,
   pageSchema,
+  passwordResetResultSchema,
+  passwordResetSchema,
   preferencesSchema,
   publicRosterSchema,
   registrationNoticeSchema,
@@ -56,6 +61,8 @@ import {
   seasonRegistrationSchema,
   seasonDraftSchema,
   seasonSchema,
+  studentAccountSchema,
+  studentDraftSchema,
   teamCreateSchema,
   teamRequestSchema,
   teamSchema,
@@ -64,6 +71,8 @@ import {
 import type { components } from './generated';
 
 const positiveVersion = z.object({ version: z.number().int().positive() }).strict();
+// 幂等键由调用方在同一表单提交的所有重试间保持不变，服务端限长 128。
+const text128 = (value: string) => z.string().min(8).max(128).parse(value);
 function queryString(parameters: ReviewQueueFilters | ReviewQueueOptionQuery) {
   const query = new URLSearchParams();
   for (const [name, value] of Object.entries(parameters)) {
@@ -469,4 +478,55 @@ export const api = {
     }
     return request('GET', `/audit-logs?${query}`, pageSchema(auditLogSchema));
   },
+  provisionStudent: (org: number, body: unknown, key: string) =>
+    request(
+      'POST',
+      `/orgs/${idSchema.parse(org)}/student-accounts`,
+      studentAccountSchema,
+      studentDraftSchema.parse(body),
+      { 'Idempotency-Key': text128(key) },
+    ),
+  resetStudentPassword: (user: number, body: unknown) =>
+    request(
+      'POST',
+      `/users/${idSchema.parse(user)}/reset-student-password`,
+      passwordResetResultSchema,
+      passwordResetSchema.parse(body),
+    ),
+  identityChanges: () => request('GET', '/identity-change-requests', z.array(identityChangeSchema)),
+  createIdentityChange: (body: unknown) =>
+    request(
+      'POST',
+      '/identity-change-requests',
+      identityChangeSchema,
+      identityChangeDraftSchema.parse(body),
+    ),
+  updateIdentityChange: (id: number, body: unknown) =>
+    request(
+      'PATCH',
+      `/identity-change-requests/${idSchema.parse(id)}`,
+      identityChangeSchema,
+      identityChangeDraftSchema.parse(body),
+    ),
+  submitIdentityChange: (id: number) =>
+    request(
+      'POST',
+      `/identity-change-requests/${idSchema.parse(id)}/submit`,
+      identityChangeSchema,
+      {},
+    ),
+  cancelIdentityChange: (id: number, copyDraft = false) =>
+    request(
+      'POST',
+      `/identity-change-requests/${idSchema.parse(id)}/cancel-and-edit${copyDraft ? '?copy_draft=true' : ''}`,
+      identityChangeSchema,
+      {},
+    ),
+  reviewIdentityChange: (id: number, body: unknown) =>
+    request(
+      'POST',
+      `/identity-change-requests/${idSchema.parse(id)}/review`,
+      identityChangeSchema,
+      identityChangeReviewSchema.parse(body),
+    ),
 };

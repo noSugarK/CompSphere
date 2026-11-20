@@ -7,6 +7,7 @@ import {
   editionDraftSchema,
   envelopeSchema,
   idSchema,
+  identityChangeSchema,
   loginSchema,
   meSchema,
   pageSchema,
@@ -15,6 +16,7 @@ import {
   reviewedMemberSchema,
   seasonDraftSchema,
   seasonSchema,
+  studentAccountSchema,
 } from '../src/api/schemas';
 import {
   mayCreateCompetition,
@@ -39,6 +41,43 @@ const actor = meSchema.parse({
   theme: 'system',
 });
 describe('untrusted JSON boundaries', () => {
+  it('keeps student and identity responses to the last four characters', () => {
+    const account = {
+      id: 1,
+      username: 'u_1',
+      email: null,
+      status: 'active',
+      must_change_password: true,
+      initial_password_expires_at: null,
+      document_type: 'id_card',
+      document_country: 'CN',
+      document_last4: '0010',
+      real_name: 'a',
+      org_id: 1,
+    };
+    expect(studentAccountSchema.safeParse(account).success).toBe(true);
+    expect(
+      studentAccountSchema.safeParse({ ...account, document_number: '1'.repeat(18) }).success,
+    ).toBe(false);
+    expect(
+      identityChangeSchema.safeParse({
+        id: 1,
+        user_id: 1,
+        status: 'draft',
+        base_identity_version: 0,
+        new_document_type: 'id_card',
+        new_document_country: 'CN',
+        new_document_last4: '0010',
+        has_old_document: false,
+        submitted_by: 1,
+        reviewer_id: null,
+        comment: '',
+        reviewed_at: null,
+        created_at: 'x',
+        new_document_number: 'secret',
+      }).success,
+    ).toBe(false);
+  });
   it('rejects sensitive keys in a public roster payload', () => {
     const base = { edition_id: 1, edition_name: 'e', publish_fields: ['team_code'], entries: [] };
     expect(publicRosterSchema.safeParse(base).success).toBe(true);

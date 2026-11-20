@@ -64,7 +64,7 @@ const inAdmin = computed(
       String(route.name),
     ) ||
     (isManager.value &&
-      ['requests', 'licenses', 'reviews', 'awards', 'dashboard', 'auditLogs'].includes(
+      ['requests', 'licenses', 'reviews', 'awards', 'dashboard', 'auditLogs', 'students'].includes(
         String(route.name),
       )),
 );
@@ -104,6 +104,16 @@ const links = computed(() =>
       ),
     },
     { name: 'reviews', path: '/reviews', visible: session.hasAny('approval:review_single') },
+    {
+      name: 'students',
+      path: '/students',
+      visible: [
+        'user:provision',
+        'user:reset_student_password',
+        'profile:review_identity_change',
+        'org:manage_members',
+      ].some(session.hasAny),
+    },
     {
       name: 'dashboard',
       path: '/console',
