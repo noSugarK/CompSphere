@@ -171,9 +171,41 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get: operations['competitions_retrieve'];
+    get: operations['competitions_list'];
     put?: never;
     post: operations['competitions_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/competitions/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['competitions_details'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['competitions_partial_update'];
+    trace?: never;
+  };
+  '/api/v1/competitions/{id}/archive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['competitions_archive_create'];
     delete?: never;
     options?: never;
     head?: never;
@@ -222,6 +254,22 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations['competitions_publish_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/competitions/{id}/unarchive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['competitions_unarchive_create'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1124,6 +1172,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/seasons/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['seasons_partial_update'];
+    trace?: never;
+  };
   '/api/v1/seasons/{id}/activate': {
     parameters: {
       query?: never;
@@ -1134,6 +1198,22 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations['seasons_activate_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/seasons/{id}/archive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['seasons_archive_create'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1504,6 +1584,16 @@ export interface components {
       registration_id: number;
       submission_no: number;
     };
+    /**
+     * @description * `subject` - subject
+     *     * `technology` - technology
+     *     * `entrepreneurship` - entrepreneurship
+     *     * `sports` - sports
+     *     * `arts` - arts
+     *     * `other` - other
+     * @enum {string}
+     */
+    CategoryEnum: 'subject' | 'technology' | 'entrepreneurship' | 'sports' | 'arts' | 'other';
     Competition: {
       id: number;
       public_code: string;
@@ -1511,6 +1601,20 @@ export interface components {
       summary: string;
       status: components['schemas']['CompetitionStatusEnum'];
       editions: components['schemas']['Edition'][];
+    };
+    CompetitionArchiveResponse: {
+      data: components['schemas']['ManagedCompetitionDetail'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    CompetitionDetailResponse: {
+      data: components['schemas']['ManagedCompetitionDetail'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
     };
     CompetitionDraftRequest: {
       name: string;
@@ -1535,6 +1639,23 @@ export interface components {
      * @enum {string}
      */
     CompetitionStatusEnum: 'published';
+    CompetitionUnarchiveRequest: {
+      reason: string;
+    };
+    CompetitionUnarchiveResponse: {
+      data: components['schemas']['ManagedCompetitionDetail'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    CompetitionUpdateResponse: {
+      data: components['schemas']['ManagedCompetitionDetail'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     CompetitionsPage: {
       items: components['schemas']['Competition'][];
       page: number;
@@ -1924,6 +2045,14 @@ export interface components {
      */
     KindEnum: 'submitted' | 'approved' | 'rejected' | 'returned';
     /**
+     * @description * `school` - school
+     *     * `province` - province
+     *     * `national` - national
+     *     * `international` - international
+     * @enum {string}
+     */
+    LevelEnum: 'school' | 'province' | 'national' | 'international';
+    /**
      * @description * `approve` - approve
      *     * `reject` - reject
      * @enum {string}
@@ -1983,6 +2112,15 @@ export interface components {
       name: string;
       summary: string;
       status: components['schemas']['ManagedCompetitionStatusEnum'];
+    };
+    ManagedCompetitionDetail: {
+      id: number;
+      public_code: string;
+      name: string;
+      summary: string;
+      status: components['schemas']['ManagedCompetitionStatusEnum'];
+      category: (components['schemas']['CategoryEnum'] | components['schemas']['NullEnum']) | null;
+      level: (components['schemas']['LevelEnum'] | components['schemas']['NullEnum']) | null;
     };
     /**
      * @description * `draft` - draft
@@ -2284,6 +2422,12 @@ export interface components {
       quota?: number | null;
       sort_order?: number;
     };
+    PatchedCompetitionUpdateRequest: {
+      name?: string;
+      summary?: string;
+      category?: (components['schemas']['CategoryEnum'] | components['schemas']['NullEnum']) | null;
+      level?: (components['schemas']['LevelEnum'] | components['schemas']['NullEnum']) | null;
+    };
     PatchedEditionDetailsRequest: {
       name?: string;
       venue?: string;
@@ -2338,6 +2482,13 @@ export interface components {
     PatchedRosterPublicationPatchRequest: {
       roster_publication?: components['schemas']['RosterPublicationEnum'];
       roster_publish_fields?: string[];
+    };
+    PatchedSeasonDetailsRequest: {
+      name?: string;
+      /** Format: date */
+      start_date?: string;
+      /** Format: date */
+      end_date?: string;
     };
     Preferences: {
       locale: components['schemas']['LocaleEnum'];
@@ -2721,6 +2872,13 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    SeasonArchiveResponse: {
+      data: components['schemas']['ManagedSeason'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     SeasonDraftRequest: {
       code: string;
       name: string;
@@ -2799,6 +2957,13 @@ export interface components {
      * @enum {string}
      */
     SeasonStatusEnum: 'draft' | 'active' | 'archived';
+    SeasonUpdateResponse: {
+      data: components['schemas']['ManagedSeason'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     /**
      * @description * `ES` - ES
      *     * `MS` - MS
@@ -3324,7 +3489,7 @@ export interface operations {
       };
     };
   };
-  competitions_retrieve: {
+  competitions_list: {
     parameters: {
       query?: {
         page?: number;
@@ -3365,6 +3530,77 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CompetitionDraftResponse'];
+        };
+      };
+    };
+  };
+  competitions_details: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CompetitionDetailResponse'];
+        };
+      };
+    };
+  };
+  competitions_partial_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['PatchedCompetitionUpdateRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CompetitionUpdateResponse'];
+        };
+      };
+    };
+  };
+  competitions_archive_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CompetitionArchiveResponse'];
         };
       };
     };
@@ -3463,6 +3699,31 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CompetitionPublishResponse'];
+        };
+      };
+    };
+  };
+  competitions_unarchive_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CompetitionUnarchiveRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CompetitionUnarchiveResponse'];
         };
       };
     };
@@ -5142,6 +5403,31 @@ export interface operations {
       };
     };
   };
+  seasons_partial_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['PatchedSeasonDetailsRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SeasonUpdateResponse'];
+        };
+      };
+    };
+  };
   seasons_activate_create: {
     parameters: {
       query?: never;
@@ -5163,6 +5449,31 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SeasonActivateResponse'];
+        };
+      };
+    };
+  };
+  seasons_archive_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SeasonArchiveResponse'];
         };
       };
     };
