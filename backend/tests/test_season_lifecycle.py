@@ -108,7 +108,10 @@ def test_season_archive_requires_closed_editions_and_no_pending_review(
         status="pending_review",
     )
     assert platform.post(f"{url}/archive", {}, format="json").status_code == 409
-    Registration.objects.update(status="approved")
+    # clear the pending review; PG requires approved rows to pin a round
+    Registration.objects.update(
+        status="approved", approved_submission_no=1, current_submission_no=1
+    )
     assert (
         platform.post(f"{url}/archive", {}, format="json").data["data"]["status"]
         == "archived"

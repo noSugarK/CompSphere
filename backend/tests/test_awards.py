@@ -1,3 +1,4 @@
+from django.db import connection
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -170,22 +171,7 @@ def test_roster_entry_requires_current_approved_round(
     ).data["data"]["id"]
     registration = Registration.objects.get(pk=approved_registration)
 
-    # approved but a newer round has been submitted -> approved != current
-    registration.current_submission_no = 2
-    registration.save(update_fields=["current_submission_no"])
-    stale_round = roster_put(
-        organizer,
-        edition.id,
-        offering.id,
-        {
-            "version": 1,
-            "add": [{"registration_id": registration.id, "award_id": award_id}],
-        },
-    )
-    assert stale_round.data["code"] == 40902
-
     # not approved at all
-    registration.current_submission_no = 1
     registration.status = "pending_review"
     registration.approved_submission_no = None
     registration.save()
@@ -200,6 +186,25 @@ def test_roster_entry_requires_current_approved_round(
     )
     assert not_approved.data["code"] == 40902
     assert not registration.awards.filter(is_deleted=False).exists()
+
+    # approved but a newer round has been submitted -> approved != current.
+    # This state is purely defensive: the PG check constraint
+    # approved_submission_matches_current forbids it and the submit flow
+    # clears approved_submission_no, so it can only be forced on SQLite.
+    if connection.vendor != "postgresql":
+        Registration.objects.filter(pk=registration.pk).update(
+            status="approved", approved_submission_no=1, current_submission_no=2
+        )
+        stale_round = roster_put(
+            organizer,
+            edition.id,
+            offering.id,
+            {
+                "version": 1,
+                "add": [{"registration_id": registration.id, "award_id": award_id}],
+            },
+        )
+        assert stale_round.data["code"] == 40902
 
 
 def test_award_quota_soft_limit(
