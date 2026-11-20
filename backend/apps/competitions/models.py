@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
+from core.constants import default_roster_publish_fields
 from core.models import BusinessModel
 
 
@@ -62,7 +63,7 @@ class Edition(BusinessModel):
     team_entry_mode = models.CharField(max_length=16, default="open")
     team_access_version = models.PositiveIntegerField(default=1)
     roster_publication = models.CharField(max_length=16, default="open")
-    roster_publish_fields = models.JSONField(default=list)
+    roster_publish_fields = models.JSONField(default=default_roster_publish_fields)
     roster_published_at = models.DateTimeField(null=True)
 
     class Meta:

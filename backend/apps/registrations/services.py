@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.audit.services import audit
+from apps.awards.models import AwardRecord
 from apps.competitions.services import published_editions
 from apps.events.models import Offering
 from apps.notifications.models import RegistrationNotice
@@ -861,6 +862,13 @@ def review_registration(actor, pk, data, *, pending_only=False):
         require_perm(
             actor, "approval:reject_approved", org_id=item.org_id, edition=item.edition
         )
+        # 03 §4：名单已提交/已确认时先走解锁流程，防止结果与通过名单背离。
+        if AwardRecord.objects.filter(
+            registration=item,
+            is_deleted=False,
+            roster__status__in=("under_approval", "confirmed"),
+        ).exists():
+            raise BusinessError(40902, "Registration belongs to a locked award roster")
     before = item.status
     transitions = {
         ("pending_review", "approve"): "approved",

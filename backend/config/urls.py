@@ -3,6 +3,7 @@ from django.urls import path
 from drf_spectacular.views import SpectacularAPIView
 
 from apps.accounts import views as accounts
+from apps.awards import views as awards
 from apps.competitions import views as competitions
 from apps.events import views as events
 from apps.groups import views as groups
@@ -174,4 +175,37 @@ urlpatterns = [
         "api/v1/registrations/<int:pk>/submissions/<int:number>",
         registrations.SubmissionDetailView.as_view(),
     ),
+    path("api/v1/editions/<int:pk>/awards", awards.EditionAwardListView.as_view()),
+    path("api/v1/awards/<int:pk>", awards.AwardDetailView.as_view()),
+    path("api/v1/editions/<int:pk>/rosters", awards.EditionRosterListView.as_view()),
+    path("api/v1/editions/<int:pk>/roster/records", awards.RosterRecordsView.as_view()),
+    path(
+        "api/v1/editions/<int:pk>/roster/submit",
+        awards.RosterDecisionView.as_view(action="submit"),
+    ),
+    path(
+        "api/v1/editions/<int:pk>/roster/approve",
+        awards.RosterDecisionView.as_view(action="approve"),
+    ),
+    path(
+        "api/v1/editions/<int:pk>/roster/reject",
+        awards.RosterDecisionView.as_view(action="reject"),
+    ),
+    path(
+        "api/v1/editions/<int:pk>/roster/unlock",
+        awards.RosterDecisionView.as_view(action="unlock"),
+    ),
+    path(
+        "api/v1/editions/<int:pk>/roster-publication",
+        awards.RosterPublicationView.as_view(),
+    ),
+    path(
+        "api/v1/editions/<int:pk>/roster/publish",
+        awards.RosterPublishView.as_view(action="publish"),
+    ),
+    path(
+        "api/v1/editions/<int:pk>/roster/unpublish",
+        awards.RosterPublishView.as_view(action="unpublish"),
+    ),
+    path("api/v1/public/editions/<int:pk>/roster", awards.PublicRosterView.as_view()),
 ]

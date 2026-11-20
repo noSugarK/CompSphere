@@ -262,6 +262,76 @@
                 }
             }
         },
+        "/api/v1/awards/{id}": {
+            "patch": {
+                "operationId": "awards_partial_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "awards"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAwardPatchRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AwardUpdateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "awards_destroy",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "awards"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
         "/api/v1/competitions": {
             "get": {
                 "operationId": "competitions_retrieve",
@@ -646,6 +716,98 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AvailableOfferingsResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/awards": {
+            "get": {
+                "operationId": "editions_awards_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "page_size",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ManagedAwardsResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "editions_awards_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AwardDraftRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AwardCreateResponse"
                                 }
                             }
                         },
@@ -1128,6 +1290,473 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/RegistrationCreateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/roster-publication": {
+            "get": {
+                "operationId": "editions_roster_publication_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RosterPublicationState"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "editions_roster_publication_partial_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedRosterPublicationPatchRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RosterPublicationResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/roster/approve": {
+            "post": {
+                "operationId": "editions_roster_approve_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "offering_id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RosterDecisionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RosterDecisionResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/roster/publish": {
+            "post": {
+                "operationId": "editions_roster_publish_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RosterPublishResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/roster/records": {
+            "put": {
+                "operationId": "editions_roster_records_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "offering_id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AwardRecordChangeRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RosterRecordsResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/roster/reject": {
+            "post": {
+                "operationId": "editions_roster_reject_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "offering_id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RosterDecisionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RosterDecisionResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/roster/submit": {
+            "post": {
+                "operationId": "editions_roster_submit_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "offering_id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RosterDecisionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RosterDecisionResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/roster/unlock": {
+            "post": {
+                "operationId": "editions_roster_unlock_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "offering_id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RosterDecisionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RosterDecisionResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/roster/unpublish": {
+            "post": {
+                "operationId": "editions_roster_unpublish_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RosterPublishResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/editions/{id}/rosters": {
+            "get": {
+                "operationId": "editions_rosters_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "offering_id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "editions"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RostersResponse"
                                 }
                             }
                         },
@@ -1868,6 +2497,56 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/EditionResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/public/editions/{id}/roster": {
+            "get": {
+                "operationId": "public_editions_roster_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "event",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "group",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "public"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PublicRosterResponse"
                                 }
                             }
                         },
@@ -3254,6 +3933,309 @@
                     "request_id"
                 ]
             },
+            "Award": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "edition_id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "offering_id": {
+                        "type": "integer",
+                        "nullable": true,
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "rank_level": {
+                        "$ref": "#/components/schemas/RankLevelEnum"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "quota": {
+                        "type": "integer",
+                        "nullable": true,
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "sort_order": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    }
+                },
+                "required": [
+                    "edition_id",
+                    "id",
+                    "name",
+                    "offering_id",
+                    "quota",
+                    "rank_level",
+                    "sort_order"
+                ],
+                "additionalProperties": false
+            },
+            "AwardCreateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Award"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "AwardDraftRequest": {
+                "type": "object",
+                "properties": {
+                    "offering_id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "nullable": true,
+                        "maximum": 9007199254740991
+                    },
+                    "rank_level": {
+                        "$ref": "#/components/schemas/RankLevelEnum"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "quota": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 1,
+                        "nullable": true
+                    },
+                    "sort_order": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "name",
+                    "rank_level"
+                ],
+                "additionalProperties": false
+            },
+            "AwardRecord": {
+                "type": "object",
+                "properties": {
+                    "registration_id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "award_id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "submission_no": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "batch_no": {
+                        "type": "string"
+                    },
+                    "team_code": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "org_name": {
+                        "type": "string"
+                    },
+                    "member_names": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "award_name": {
+                        "type": "string"
+                    },
+                    "rank_level": {
+                        "$ref": "#/components/schemas/RankLevelEnum"
+                    }
+                },
+                "required": [
+                    "award_id",
+                    "award_name",
+                    "batch_no",
+                    "member_names",
+                    "org_name",
+                    "rank_level",
+                    "registration_id",
+                    "submission_no",
+                    "team_code"
+                ],
+                "additionalProperties": false
+            },
+            "AwardRecordChangeRequest": {
+                "type": "object",
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "add": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AwardRecordTargetRequest"
+                        },
+                        "maxItems": 200
+                    },
+                    "remove": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                        },
+                        "maxItems": 200
+                    }
+                },
+                "required": [
+                    "version"
+                ],
+                "additionalProperties": false
+            },
+            "AwardRecordTargetRequest": {
+                "type": "object",
+                "properties": {
+                    "registration_id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "award_id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    }
+                },
+                "required": [
+                    "award_id",
+                    "registration_id"
+                ],
+                "additionalProperties": false
+            },
+            "AwardRoster": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "nullable": true,
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "edition_id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "offering_id": {
+                        "type": "integer",
+                        "nullable": true,
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "event_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "group_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/AwardRosterStatusEnum"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "records": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AwardRecord"
+                        }
+                    }
+                },
+                "required": [
+                    "edition_id",
+                    "event_name",
+                    "group_name",
+                    "id",
+                    "offering_id",
+                    "records",
+                    "status",
+                    "version"
+                ],
+                "additionalProperties": false
+            },
+            "AwardRosterStatusEnum": {
+                "enum": [
+                    "editing",
+                    "under_approval",
+                    "confirmed"
+                ],
+                "type": "string",
+                "description": "* `editing` - editing\n* `under_approval` - under_approval\n* `confirmed` - confirmed"
+            },
+            "AwardUpdateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Award"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
             "BulkRegistrationApprovalResponse": {
                 "type": "object",
                 "properties": {
@@ -3956,6 +4938,46 @@
                     "request_id"
                 ]
             },
+            "EditionInfo": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/EditionStatusEnum"
+                    },
+                    "roster_publication": {
+                        "$ref": "#/components/schemas/RosterPublicationEnum"
+                    },
+                    "roster_publish_fields": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 32
+                        }
+                    },
+                    "roster_published_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "roster_publication",
+                    "roster_publish_fields",
+                    "roster_published_at",
+                    "status"
+                ],
+                "additionalProperties": false
+            },
             "EditionPublicationChecks": {
                 "type": "object",
                 "properties": {
@@ -4593,6 +5615,64 @@
                 "properties": {
                     "data": {
                         "nullable": true
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "ManagedAwardsPage": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Award"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "maximum": 100,
+                        "minimum": 1
+                    },
+                    "total": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                    }
+                },
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total"
+                ]
+            },
+            "ManagedAwardsResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/ManagedAwardsPage"
                     },
                     "code": {
                         "type": "integer",
@@ -5859,6 +6939,31 @@
                     "request_id"
                 ]
             },
+            "PatchedAwardPatchRequest": {
+                "type": "object",
+                "properties": {
+                    "rank_level": {
+                        "$ref": "#/components/schemas/RankLevelEnum"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "quota": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 1,
+                        "nullable": true
+                    },
+                    "sort_order": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0
+                    }
+                },
+                "additionalProperties": false
+            },
             "PatchedEditionDetailsRequest": {
                 "type": "object",
                 "properties": {
@@ -6031,6 +7136,24 @@
                 },
                 "additionalProperties": false
             },
+            "PatchedRosterPublicationPatchRequest": {
+                "type": "object",
+                "properties": {
+                    "roster_publication": {
+                        "$ref": "#/components/schemas/RosterPublicationEnum"
+                    },
+                    "roster_publish_fields": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 32
+                        },
+                        "maxItems": 10
+                    }
+                },
+                "additionalProperties": false
+            },
             "Preferences": {
                 "type": "object",
                 "properties": {
@@ -6133,6 +7256,93 @@
                 ],
                 "additionalProperties": false
             },
+            "PublicRoster": {
+                "type": "object",
+                "properties": {
+                    "edition_id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "edition_name": {
+                        "type": "string"
+                    },
+                    "publish_fields": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 32
+                        }
+                    },
+                    "entries": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PublicRosterEntry"
+                        }
+                    }
+                },
+                "required": [
+                    "edition_id",
+                    "edition_name",
+                    "entries",
+                    "publish_fields"
+                ],
+                "additionalProperties": false
+            },
+            "PublicRosterEntry": {
+                "type": "object",
+                "properties": {
+                    "team_code": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "org_name": {
+                        "type": "string"
+                    },
+                    "event": {
+                        "type": "string"
+                    },
+                    "group": {
+                        "type": "string"
+                    },
+                    "member_names": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "award": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "PublicRosterResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/PublicRoster"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
             "PurposeEnum": {
                 "enum": [
                     "register",
@@ -6140,6 +7350,17 @@
                 ],
                 "type": "string",
                 "description": "* `register` - register\n* `reset_password` - reset_password"
+            },
+            "RankLevelEnum": {
+                "enum": [
+                    "first",
+                    "second",
+                    "third",
+                    "excellence",
+                    "custom"
+                ],
+                "type": "string",
+                "description": "* `first` - first\n* `second` - second\n* `third` - third\n* `excellence` - excellence\n* `custom` - custom"
             },
             "ReadNoticeResponse": {
                 "type": "object",
@@ -7044,6 +8265,192 @@
                 ],
                 "type": "string",
                 "description": "* `captain` - captain\n* `member` - member"
+            },
+            "RosterDecisionRequest": {
+                "type": "object",
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "comment": {
+                        "type": "string",
+                        "maxLength": 2000
+                    }
+                },
+                "required": [
+                    "version"
+                ],
+                "additionalProperties": false
+            },
+            "RosterDecisionResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/AwardRoster"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "RosterPublicationEnum": {
+                "enum": [
+                    "open",
+                    "login",
+                    "none"
+                ],
+                "type": "string",
+                "description": "* `open` - open\n* `login` - login\n* `none` - none"
+            },
+            "RosterPublicationResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/EditionInfo"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "RosterPublicationState": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/EditionInfo"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "RosterPublishResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/EditionInfo"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "RosterRecordsResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/AwardRoster"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "RostersResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AwardRoster"
+                        }
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
             },
             "ScopeTypeEnum": {
                 "enum": [

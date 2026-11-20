@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.competitions",
     "apps.events",
     "apps.groups",
+    "apps.awards",
     "apps.registrations",
     "apps.audit",
     "apps.notifications",

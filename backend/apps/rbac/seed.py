@@ -94,6 +94,7 @@ EVENT_ADMIN = [
     "award:manage_roster",
     "award:submit_roster",
     "award:approve_roster",
+    "award:lock_roster",
     "notice:publish",
     "audit:read",
 ]
