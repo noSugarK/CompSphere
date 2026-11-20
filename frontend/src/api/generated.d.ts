@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+  '/api/v1/audit-logs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['audit_logs_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/auth/csrf': {
     parameters: {
       query?: never;
@@ -1060,6 +1076,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stats/dashboard': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['stats_dashboard_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/team-change-requests': {
     parameters: {
       query?: never;
@@ -1230,6 +1262,28 @@ export interface components {
     };
     ApprovalRecordsResponse: {
       data: components['schemas']['ApprovalRecordsPage'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    AuditLog: {
+      id: number;
+      actor_id: number | null;
+      action: string;
+      resource: string;
+      resource_id: string;
+      /** Format: date-time */
+      created_at: string;
+    };
+    AuditLogsPage: {
+      items: components['schemas']['AuditLog'][];
+      page: number;
+      page_size: number;
+      total: number;
+    };
+    AuditLogsResponse: {
+      data: components['schemas']['AuditLogsPage'];
       code: number;
       message: string;
       /** Format: uuid */
@@ -1418,6 +1472,25 @@ export interface components {
     };
     CurrentSeasonResponse: {
       data: components['schemas']['Season'] | null;
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    Dashboard: {
+      registrations: number;
+      approved: number;
+      /** Format: double */
+      approval_rate: number | null;
+      awarded: number;
+      by_offering: components['schemas']['OfferingCounts'][];
+      users?: number;
+      organizations?: number;
+      competitions?: number;
+      editions?: number;
+    };
+    DashboardResponse: {
+      data: components['schemas']['Dashboard'];
       code: number;
       message: string;
       /** Format: uuid */
@@ -1908,6 +1981,12 @@ export interface components {
       quota: number | null;
       required_materials: string[];
       is_enabled: boolean;
+    };
+    OfferingCounts: {
+      event_name: string;
+      group_name: string;
+      submitted: number;
+      approved: number;
     };
     OfferingDraftRequest: {
       event_id: number;
@@ -2748,6 +2827,32 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  audit_logs_retrieve: {
+    parameters: {
+      query?: {
+        actor?: number;
+        date_from?: string;
+        date_to?: string;
+        page?: number;
+        page_size?: number;
+        resource?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuditLogsResponse'];
+        };
+      };
+    };
+  };
   auth_csrf_retrieve: {
     parameters: {
       query?: never;
@@ -4668,6 +4773,25 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CurrentSeasonResponse'];
+        };
+      };
+    };
+  };
+  stats_dashboard_retrieve: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DashboardResponse'];
         };
       };
     };
