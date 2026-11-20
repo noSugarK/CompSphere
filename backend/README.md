@@ -62,7 +62,7 @@ SITE_BASE_URL必须是实际前端origin，例如http://127.0.0.1:5174；刷新/
 .venv/Scripts/python.exe manage.py spectacular --format openapi-json --file ../docs/openapi.json --validate --fail-on-warn
 ```
 
-TEST_DATABASE_URL让pytest创建独立PG测试库，账号需有创建测试库权限；不要指向真实资料库。默认SQLite跳过PG行锁/触发器专项。已在隔离PG16.15实际迁移并验证API/越权/冻结投影/JSON/AI/CSRF及并发双提交，数量以最终运行输出为准。OpenAPI由后端导出供前端生成类型，不直接编辑生成文件。
+TEST_DATABASE_URL让pytest创建独立PG测试库，账号需有创建测试库权限；不要指向真实资料库。默认SQLite跳过PG行锁/触发器专项，PG专属完整性约束（0002_postgresql_integrity，含approved轮次CHECK与提交引用延迟FK）也仅在PG下生效，本地新增直接构造registration行数据的用例需同时考虑。main推送由application-checks CI在临时PostgreSQL 16运行全套。已在隔离PG16.15实际迁移并验证API/越权/冻结投影/JSON/AI/CSRF及并发双提交，数量以最终运行输出为准。OpenAPI由后端导出供前端生成类型，不直接编辑生成文件。
 
 ## 未完成项
 
