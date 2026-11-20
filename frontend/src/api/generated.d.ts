@@ -628,6 +628,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/identity-change-requests': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['identity_change_requests_list'];
+    put?: never;
+    post: operations['identity_change_requests_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/identity-change-requests/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['identity_change_requests_retrieve'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['identity_change_requests_update'];
+    trace?: never;
+  };
+  '/api/v1/identity-change-requests/{id}/cancel-and-edit': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['identity_change_requests_cancel'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/identity-change-requests/{id}/review': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['identity_change_requests_review'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/identity-change-requests/{id}/submit': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['identity_change_requests_submit'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/me': {
     parameters: {
       query?: never;
@@ -766,6 +846,22 @@ export interface paths {
     get: operations['orgs_members_retrieve'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/orgs/{id}/student-accounts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['orgs_student_accounts_create'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1230,6 +1326,22 @@ export interface paths {
     get: operations['teams_retrieve'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/users/{id}/reset-student-password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['users_reset_student_password_create'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1717,6 +1829,92 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
+    IdentityChangeCancelResponse: {
+      data: components['schemas']['IdentityChangeRequest'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    IdentityChangeCreateResponse: {
+      data: components['schemas']['IdentityChangeRequest'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    IdentityChangeDetailResponse: {
+      data: components['schemas']['IdentityChangeRequest'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    IdentityChangeDraftRequest: {
+      user_id?: number;
+      document_type: components['schemas']['DocumentTypeEnum'];
+      document_country: string;
+      document_number: string;
+    };
+    IdentityChangeListResponse: {
+      data: components['schemas']['IdentityChangeRequest'][];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    IdentityChangeRequest: {
+      id: number;
+      user_id: number;
+      status: components['schemas']['IdentityChangeStatusEnum'];
+      base_identity_version: number;
+      new_document_type: string;
+      new_document_country: string;
+      new_document_last4: string;
+      has_old_document: boolean;
+      submitted_by: number;
+      reviewer_id: number | null;
+      comment: string;
+      reviewed_at: string | null;
+      created_at: string;
+    };
+    IdentityChangeReviewRequest: {
+      action: components['schemas']['ReviewActionEnum'];
+      comment: string;
+      version: number;
+    };
+    IdentityChangeReviewResponse: {
+      data: components['schemas']['IdentityChangeRequest'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    /**
+     * @description * `draft` - draft
+     *     * `submitted` - submitted
+     *     * `approved` - approved
+     *     * `returned` - returned
+     *     * `rejected` - rejected
+     *     * `withdrawn` - withdrawn
+     * @enum {string}
+     */
+    IdentityChangeStatusEnum:
+      'draft' | 'submitted' | 'approved' | 'returned' | 'rejected' | 'withdrawn';
+    IdentityChangeSubmitResponse: {
+      data: components['schemas']['IdentityChangeRequest'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    IdentityChangeUpdateResponse: {
+      data: components['schemas']['IdentityChangeRequest'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
     /**
      * @description * `submitted` - Submitted
      *     * `approved` - Approved
@@ -2026,6 +2224,9 @@ export interface components {
       person_type: string;
       school_level: string | null;
       grade: string | null;
+      member_type: string;
+      is_primary: boolean;
+      affiliation_version: number;
     };
     OrganizationMembersPage: {
       items: components['schemas']['OrganizationMember'][];
@@ -2106,6 +2307,12 @@ export interface components {
         | null;
       enrollment_type?: components['schemas']['EnrollmentTypeEnum'];
       grade_limits?: string[];
+    };
+    PatchedIdentityChangeDraftRequest: {
+      user_id?: number;
+      document_type?: components['schemas']['DocumentTypeEnum'];
+      document_country?: string;
+      document_number?: string;
     };
     PatchedOfferingOverridesRequest: {
       time_zone?: components['schemas']['TimeZoneEnum'];
@@ -2600,6 +2807,56 @@ export interface components {
      * @enum {string}
      */
     SelectedSchoolLevelEnum: 'ES' | 'MS' | 'HS' | 'U';
+    StudentAccount: {
+      id: number;
+      username: string;
+      email: string | null;
+      status: string;
+      must_change_password: boolean;
+      /** Format: date-time */
+      initial_password_expires_at: string | null;
+      document_type: string;
+      document_country: string;
+      document_last4: string;
+      real_name: string;
+      org_id: number;
+      temporary_password?: string;
+    };
+    StudentAccountDraftRequest: {
+      real_name: string;
+      document_type: components['schemas']['DocumentTypeEnum'];
+      document_country: string;
+      document_number: string;
+      phone?: string;
+      student_no?: string;
+    };
+    StudentAccountResponse: {
+      data: components['schemas']['StudentAccount'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    StudentPasswordResetRequest: {
+      primary_membership_id: number;
+      affiliation_version: number;
+      reason: string;
+    };
+    StudentPasswordResetResponse: {
+      data: components['schemas']['StudentPasswordResetResult'];
+      code: number;
+      message: string;
+      /** Format: uuid */
+      request_id: string;
+    };
+    StudentPasswordResetResult: {
+      id: number;
+      username: string;
+      must_change_password: boolean;
+      /** Format: date-time */
+      initial_password_expires_at: string | null;
+      temporary_password: string;
+    };
     Submission: {
       submission_no: number;
       offering_id: number;
@@ -2658,7 +2915,7 @@ export interface components {
       request_kind: components['schemas']['RequestKindEnum'];
       team_id: number | null;
       org_id: number;
-      status: components['schemas']['TeamChangeStatusEnum'];
+      status: components['schemas']['IdentityChangeStatusEnum'];
       submitted_by: number;
       base_revision_id: number | null;
       base_membership_version: number;
@@ -2679,17 +2936,6 @@ export interface components {
       /** Format: uuid */
       request_id: string;
     };
-    /**
-     * @description * `draft` - draft
-     *     * `submitted` - submitted
-     *     * `approved` - approved
-     *     * `returned` - returned
-     *     * `rejected` - rejected
-     *     * `withdrawn` - withdrawn
-     * @enum {string}
-     */
-    TeamChangeStatusEnum:
-      'draft' | 'submitted' | 'approved' | 'returned' | 'rejected' | 'withdrawn';
     TeamProposal: {
       name: string;
       coach_id: number | null;
@@ -4048,6 +4294,169 @@ export interface operations {
       };
     };
   };
+  identity_change_requests_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['IdentityChangeListResponse'];
+        };
+      };
+    };
+  };
+  identity_change_requests_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['IdentityChangeDraftRequest'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['IdentityChangeCreateResponse'];
+        };
+      };
+    };
+  };
+  identity_change_requests_retrieve: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['IdentityChangeDetailResponse'];
+        };
+      };
+    };
+  };
+  identity_change_requests_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['PatchedIdentityChangeDraftRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['IdentityChangeUpdateResponse'];
+        };
+      };
+    };
+  };
+  identity_change_requests_cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['IdentityChangeCancelResponse'];
+        };
+      };
+    };
+  };
+  identity_change_requests_review: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['IdentityChangeReviewRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['IdentityChangeReviewResponse'];
+        };
+      };
+    };
+  };
+  identity_change_requests_submit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['EmptyRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['IdentityChangeSubmitResponse'];
+        };
+      };
+    };
+  };
   me_retrieve: {
     parameters: {
       query?: never;
@@ -4268,6 +4677,31 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['OrganizationMembersResponse'];
+        };
+      };
+    };
+  };
+  orgs_student_accounts_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StudentAccountDraftRequest'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StudentAccountResponse'];
         };
       };
     };
@@ -5037,6 +5471,31 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['TeamResponse'];
+        };
+      };
+    };
+  };
+  users_reset_student_password_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StudentPasswordResetRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StudentPasswordResetResponse'];
         };
       };
     };
