@@ -4,6 +4,8 @@ import pytest
 
 from apps.audit.models import AuditLog
 from apps.competitions.models import Edition, Season
+from apps.events.models import Event, Offering
+from apps.groups.models import Group
 from apps.registrations.models import Registration
 
 
@@ -97,10 +99,22 @@ def test_season_archive_requires_closed_editions_and_no_pending_review(
     draft.status = "closed"
     draft.save(update_fields=["status"])
 
+    # the QA registration must reuse the side edition's own offering chain
+    draft_event = Event.objects.create(
+        edition=draft,
+        code=dataset["offering"].event.code,
+        name="Archive QA event",
+    )
+    draft_group = Group.objects.create(
+        edition=draft, code="HS", name="高中组", enrollment_type="both"
+    )
+    draft_offering = Offering.objects.create(
+        edition=draft, event=draft_event, group=draft_group
+    )
     Registration.objects.create(
         batch_no="QA-ARCHIVE-PENDING",
         edition=draft,
-        offering=dataset["offering"],
+        offering=draft_offering,
         enrollment_kind="individual",
         individual_user=dataset["accounts"]["student"],
         org=dataset["team"].org,
@@ -108,10 +122,8 @@ def test_season_archive_requires_closed_editions_and_no_pending_review(
         status="pending_review",
     )
     assert platform.post(f"{url}/archive", {}, format="json").status_code == 409
-    # clear the pending review; PG requires approved rows to pin a round
-    Registration.objects.update(
-        status="approved", approved_submission_no=1, current_submission_no=1
-    )
+    # clear the pending review; withdrawn keeps PG round-reference FKs idle
+    Registration.objects.update(status="withdrawn")
     assert (
         platform.post(f"{url}/archive", {}, format="json").data["data"]["status"]
         == "archived"

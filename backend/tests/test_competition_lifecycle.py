@@ -96,10 +96,8 @@ def test_competition_archive_blocks_open_registration_and_review(dataset, actor_
         status="pending_review",
     )
     assert platform.post(f"{url}/archive", {}, format="json").status_code == 409
-    # clear the pending review; PG requires approved rows to pin a round
-    Registration.objects.update(
-        status="approved", approved_submission_no=1, current_submission_no=1
-    )
+    # clear the pending review; withdrawn keeps PG round-reference FKs idle
+    Registration.objects.update(status="withdrawn")
     assert (
         platform.post(f"{url}/archive", {}, format="json").data["data"]["status"]
         == "archived"
