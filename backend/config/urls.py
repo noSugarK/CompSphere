@@ -9,6 +9,7 @@ from apps.competitions import views as competitions
 from apps.events import views as events
 from apps.groups import views as groups
 from apps.notifications import views as notifications
+from apps.profiles import views as profiles
 from apps.registrations import views as registrations
 from apps.stats import views as stats
 from apps.teams import views as teams
@@ -212,4 +213,32 @@ urlpatterns = [
     path("api/v1/public/editions/<int:pk>/roster", awards.PublicRosterView.as_view()),
     path("api/v1/stats/dashboard", stats.DashboardView.as_view()),
     path("api/v1/audit-logs", audit.AuditLogListView.as_view()),
+    path(
+        "api/v1/orgs/<int:pk>/student-accounts",
+        profiles.StudentAccountListView.as_view(),
+    ),
+    path(
+        "api/v1/users/<int:pk>/reset-student-password",
+        profiles.StudentPasswordResetView.as_view(),
+    ),
+    path(
+        "api/v1/identity-change-requests",
+        profiles.IdentityChangeRequestView.as_view(),
+    ),
+    path(
+        "api/v1/identity-change-requests/<int:pk>",
+        profiles.IdentityChangeRequestDetailView.as_view(),
+    ),
+    path(
+        "api/v1/identity-change-requests/<int:pk>/submit",
+        profiles.IdentityChangeSubmitView.as_view(),
+    ),
+    path(
+        "api/v1/identity-change-requests/<int:pk>/cancel-and-edit",
+        profiles.IdentityChangeCancelView.as_view(),
+    ),
+    path(
+        "api/v1/identity-change-requests/<int:pk>/review",
+        profiles.IdentityChangeReviewView.as_view(),
+    ),
 ]

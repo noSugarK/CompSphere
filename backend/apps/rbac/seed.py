@@ -40,6 +40,8 @@ ORG_ADMIN = [
     "profile:read",
     "profile:update",
     "profile:review",
+    "profile:request_identity_change",
+    "profile:review_identity_change",
     "org:read",
     "org:update",
     "org:manage_members",

@@ -102,6 +102,14 @@ SPECTACULAR_SETTINGS = {
             "withdraw",
             "cancel_review",
         ],
+        "IdentityChangeStatusEnum": [
+            "draft",
+            "submitted",
+            "approved",
+            "returned",
+            "rejected",
+            "withdrawn",
+        ],
     },
 }
 REFRESH_COOKIE_SECURE = True

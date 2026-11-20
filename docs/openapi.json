@@ -2158,6 +2158,274 @@
                 }
             }
         },
+        "/api/v1/identity-change-requests": {
+            "get": {
+                "operationId": "identity_change_requests_list",
+                "tags": [
+                    "identity-change-requests"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IdentityChangeListResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "identity_change_requests_create",
+                "tags": [
+                    "identity-change-requests"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IdentityChangeDraftRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IdentityChangeCreateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/identity-change-requests/{id}": {
+            "get": {
+                "operationId": "identity_change_requests_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "identity-change-requests"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IdentityChangeDetailResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "identity_change_requests_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "identity-change-requests"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedIdentityChangeDraftRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IdentityChangeUpdateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/identity-change-requests/{id}/cancel-and-edit": {
+            "post": {
+                "operationId": "identity_change_requests_cancel",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "identity-change-requests"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IdentityChangeCancelResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/identity-change-requests/{id}/review": {
+            "post": {
+                "operationId": "identity_change_requests_review",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "identity-change-requests"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IdentityChangeReviewRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IdentityChangeReviewResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/identity-change-requests/{id}/submit": {
+            "post": {
+                "operationId": "identity_change_requests_submit",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "identity-change-requests"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmptyRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IdentityChangeSubmitResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/me": {
             "get": {
                 "operationId": "me_retrieve",
@@ -2512,6 +2780,51 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/OrganizationMembersResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/orgs/{id}/student-accounts": {
+            "post": {
+                "operationId": "orgs_student_accounts_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "orgs"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StudentAccountDraftRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StudentAccountResponse"
                                 }
                             }
                         },
@@ -3863,6 +4176,51 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/TeamResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}/reset-student-password": {
+            "post": {
+                "operationId": "users_reset_student_password_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "users"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StudentPasswordResetRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StudentPasswordResetResponse"
                                 }
                             }
                         },
@@ -5795,6 +6153,327 @@
                     "request_id"
                 ]
             },
+            "IdentityChangeCancelResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/IdentityChangeRequest"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "IdentityChangeCreateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/IdentityChangeRequest"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "IdentityChangeDetailResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/IdentityChangeRequest"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "IdentityChangeDraftRequest": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "document_type": {
+                        "$ref": "#/components/schemas/DocumentTypeEnum"
+                    },
+                    "document_country": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2
+                    },
+                    "document_number": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 32
+                    }
+                },
+                "required": [
+                    "document_country",
+                    "document_number",
+                    "document_type"
+                ],
+                "additionalProperties": false
+            },
+            "IdentityChangeListResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/IdentityChangeRequest"
+                        }
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "IdentityChangeRequest": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/IdentityChangeStatusEnum"
+                    },
+                    "base_identity_version": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "new_document_type": {
+                        "type": "string"
+                    },
+                    "new_document_country": {
+                        "type": "string"
+                    },
+                    "new_document_last4": {
+                        "type": "string"
+                    },
+                    "has_old_document": {
+                        "type": "boolean"
+                    },
+                    "submitted_by": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "reviewer_id": {
+                        "type": "integer",
+                        "nullable": true,
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "comment": {
+                        "type": "string"
+                    },
+                    "reviewed_at": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "base_identity_version",
+                    "comment",
+                    "created_at",
+                    "has_old_document",
+                    "id",
+                    "new_document_country",
+                    "new_document_last4",
+                    "new_document_type",
+                    "reviewed_at",
+                    "reviewer_id",
+                    "status",
+                    "submitted_by",
+                    "user_id"
+                ],
+                "additionalProperties": false
+            },
+            "IdentityChangeReviewRequest": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "$ref": "#/components/schemas/ReviewActionEnum"
+                    },
+                    "comment": {
+                        "type": "string",
+                        "maxLength": 2000
+                    },
+                    "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                    }
+                },
+                "required": [
+                    "action",
+                    "comment",
+                    "version"
+                ],
+                "additionalProperties": false
+            },
+            "IdentityChangeReviewResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/IdentityChangeRequest"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "IdentityChangeStatusEnum": {
+                "enum": [
+                    "draft",
+                    "submitted",
+                    "approved",
+                    "returned",
+                    "rejected",
+                    "withdrawn"
+                ],
+                "type": "string",
+                "description": "* `draft` - draft\n* `submitted` - submitted\n* `approved` - approved\n* `returned` - returned\n* `rejected` - rejected\n* `withdrawn` - withdrawn"
+            },
+            "IdentityChangeSubmitResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/IdentityChangeRequest"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "IdentityChangeUpdateResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/IdentityChangeRequest"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
             "KindEnum": {
                 "enum": [
                     "submitted",
@@ -7366,6 +8045,30 @@
                             "maxLength": 32
                         },
                         "maxItems": 32
+                    }
+                },
+                "additionalProperties": false
+            },
+            "PatchedIdentityChangeDraftRequest": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "document_type": {
+                        "$ref": "#/components/schemas/DocumentTypeEnum"
+                    },
+                    "document_country": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2
+                    },
+                    "document_number": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 32
                     }
                 },
                 "additionalProperties": false
@@ -9106,6 +9809,216 @@
                 "type": "string",
                 "description": "* `ES` - ES\n* `MS` - MS\n* `HS` - HS\n* `U` - U"
             },
+            "StudentAccount": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "must_change_password": {
+                        "type": "boolean"
+                    },
+                    "initial_password_expires_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "document_type": {
+                        "type": "string"
+                    },
+                    "document_country": {
+                        "type": "string"
+                    },
+                    "document_last4": {
+                        "type": "string"
+                    },
+                    "real_name": {
+                        "type": "string"
+                    },
+                    "org_id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "temporary_password": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "document_country",
+                    "document_last4",
+                    "document_type",
+                    "email",
+                    "id",
+                    "initial_password_expires_at",
+                    "must_change_password",
+                    "org_id",
+                    "real_name",
+                    "status",
+                    "username"
+                ],
+                "additionalProperties": false
+            },
+            "StudentAccountDraftRequest": {
+                "type": "object",
+                "properties": {
+                    "real_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "document_type": {
+                        "$ref": "#/components/schemas/DocumentTypeEnum"
+                    },
+                    "document_country": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2
+                    },
+                    "document_number": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 32
+                    },
+                    "phone": {
+                        "type": "string",
+                        "maxLength": 20
+                    },
+                    "student_no": {
+                        "type": "string",
+                        "maxLength": 64
+                    }
+                },
+                "required": [
+                    "document_country",
+                    "document_number",
+                    "document_type",
+                    "real_name"
+                ],
+                "additionalProperties": false
+            },
+            "StudentAccountResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/StudentAccount"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "StudentPasswordResetRequest": {
+                "type": "object",
+                "properties": {
+                    "primary_membership_id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "affiliation_version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                    },
+                    "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                    }
+                },
+                "required": [
+                    "affiliation_version",
+                    "primary_membership_id",
+                    "reason"
+                ],
+                "additionalProperties": false
+            },
+            "StudentPasswordResetResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/StudentPasswordResetResult"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "code",
+                    "data",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "StudentPasswordResetResult": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "must_change_password": {
+                        "type": "boolean"
+                    },
+                    "initial_password_expires_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "temporary_password": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "initial_password_expires_at",
+                    "must_change_password",
+                    "temporary_password",
+                    "username"
+                ],
+                "additionalProperties": false
+            },
             "Submission": {
                 "type": "object",
                 "properties": {
@@ -9370,7 +10283,7 @@
                         "minimum": -9007199254740991
                     },
                     "status": {
-                        "$ref": "#/components/schemas/TeamChangeStatusEnum"
+                        "$ref": "#/components/schemas/IdentityChangeStatusEnum"
                     },
                     "submitted_by": {
                         "type": "integer",
@@ -9472,18 +10385,6 @@
                     "message",
                     "request_id"
                 ]
-            },
-            "TeamChangeStatusEnum": {
-                "enum": [
-                    "draft",
-                    "submitted",
-                    "approved",
-                    "returned",
-                    "rejected",
-                    "withdrawn"
-                ],
-                "type": "string",
-                "description": "* `draft` - draft\n* `submitted` - submitted\n* `approved` - approved\n* `returned` - returned\n* `rejected` - rejected\n* `withdrawn` - withdrawn"
             },
             "TeamProposal": {
                 "type": "object",
