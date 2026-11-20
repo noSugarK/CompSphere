@@ -91,6 +91,11 @@ urlpatterns = [
     ),
     path("api/v1/editions/<int:pk>/publish", competitions.EditionPublishView.as_view()),
     path("api/v1/seasons", competitions.SeasonRegistryView.as_view()),
+    path("api/v1/seasons/<int:pk>", competitions.SeasonDetailView.as_view()),
+    path(
+        "api/v1/seasons/<int:pk>/archive",
+        competitions.SeasonArchiveView.as_view(),
+    ),
     path("api/v1/seasons/<int:pk>/activate", competitions.SeasonActivateView.as_view()),
     path(
         "api/v1/seasons/<int:pk>/set-current",

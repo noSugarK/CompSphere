@@ -5,6 +5,7 @@ from apps.competitions import serializers as schema
 from apps.competitions.models import Competition, Season
 from apps.competitions.services import (
     activate_season,
+    archive_season,
     configuration_edition,
     create_competition,
     create_edition,
@@ -18,6 +19,7 @@ from apps.competitions.services import (
     published_editions,
     set_current_season,
     update_edition_details,
+    update_season,
 )
 from apps.orgs.models import Organization, OrganizationMember
 from apps.rbac.services import org_filter, require_perm
@@ -96,6 +98,30 @@ class SeasonRegistryView(BaseView):
     def post(self, request):
         item = create_season(request.user, validated(schema.SeasonDraft, request))
         return success(request, schema.ManagedSeason(item).data, status=201)
+
+
+class SeasonDetailView(BaseView):
+    @extend_schema(
+        request=schema.SeasonDetails,
+        responses=envelope("SeasonUpdateResponse", schema.ManagedSeason),
+    )
+    def patch(self, request, pk):
+        serializer = schema.SeasonDetails(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        item = update_season(request.user, pk, serializer.validated_data)
+        return success(request, schema.ManagedSeason(item).data)
+
+
+class SeasonArchiveView(BaseView):
+    @extend_schema(
+        request=EmptySerializer,
+        responses=envelope("SeasonArchiveResponse", schema.ManagedSeason),
+    )
+    def post(self, request, pk):
+        validated(EmptySerializer, request)
+        return success(
+            request, schema.ManagedSeason(archive_season(request.user, pk)).data
+        )
 
 
 class SeasonActivateView(BaseView):

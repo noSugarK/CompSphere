@@ -39,6 +39,12 @@ class ManagedSeason(Season):
     is_default = serializers.BooleanField()
 
 
+class SeasonDetails(StrictSerializer):
+    name = serializers.CharField(max_length=64, required=False)
+    start_date = serializers.DateField(source="starts_on", required=False)
+    end_date = serializers.DateField(source="ends_on", required=False)
+
+
 @extend_schema_field(OpenApiTypes.STR)
 class EditionTimeField(serializers.DateTimeField):
     def to_internal_value(self, value):

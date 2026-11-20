@@ -6,6 +6,7 @@ from django.utils import timezone
 from apps.audit.services import audit
 from apps.competitions.models import Competition, Edition, Season
 from apps.rbac.services import grants, has_perm, require_perm
+from apps.registrations.models import Registration
 from core.exceptions import BusinessError
 from core.state import transition
 
@@ -254,6 +255,50 @@ def create_edition(actor, competition_id, data):
         item.id,
         scope={"competition_id": competition.id, "season_id": season.id},
     )
+    return item
+
+
+@transaction.atomic
+def update_season(actor, season_id, data):
+    """Rename or retune a season; the stable code and status stay untouched."""
+    require_perm(actor, "season:update")
+    item = Season.objects.select_for_update().get(pk=season_id)
+    if item.status == "archived":
+        raise BusinessError(40902, "Archived seasons are read-only")
+    if not data:
+        return item
+    for field, value in data.items():
+        setattr(item, field, value)
+    if item.starts_on > item.ends_on:
+        raise BusinessError(42203, "Season end date precedes start date", 422)
+    item.save(update_fields=[*data])
+    audit(actor, "season.updated", "season", item.id)
+    return item
+
+
+@transaction.atomic
+def archive_season(actor, season_id):
+    """03 §1.5 draft→active→archived；归档前无未完成场次和待审报名，
+    当前赛季必须先切换才能归档；归档保留许可与绑定历史。"""
+    require_perm(actor, "season:archive")
+    item = Season.objects.select_for_update().get(pk=season_id)
+    transition(item, "archive", {("active", "archive"): "archived"})
+    if item.is_default:
+        raise BusinessError(40902, "The current season cannot be archived")
+    if (
+        Edition.objects.filter(season=item, is_deleted=False)
+        .exclude(status="closed")
+        .exists()
+    ):
+        raise BusinessError(
+            40902, "Close or delete every edition before archiving the season"
+        )
+    if Registration.objects.filter(
+        edition__season=item, status="pending_review", is_deleted=False
+    ).exists():
+        raise BusinessError(40902, "Registrations are still awaiting review")
+    item.save(update_fields=["status"])
+    audit(actor, "season.archived", "season", item.id)
     return item
 
 
