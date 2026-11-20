@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "apps.events",
     "apps.groups",
     "apps.awards",
+    "apps.stats",
     "apps.registrations",
     "apps.audit",
     "apps.notifications",

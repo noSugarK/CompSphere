@@ -95,6 +95,7 @@ EVENT_ADMIN = [
     "award:submit_roster",
     "award:approve_roster",
     "award:lock_roster",
+    "stats:read_competition",
     "notice:publish",
     "audit:read",
 ]
@@ -112,6 +113,7 @@ REVIEWER = [
     "approval:reject_approved",
 ]
 PLATFORM_EXTRA = [
+    "stats:read_platform",
     "team:review_create",
     "team:review_season_registration",
     "team:review_transfer",

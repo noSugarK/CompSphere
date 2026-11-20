@@ -40,3 +40,28 @@ def draft_payload(dataset):
         "consents": {"document_usage": True},
         "submit": False,
     }
+
+
+@pytest.fixture
+def approved_registration(actor_client, dataset, draft_payload):
+    """One team registration pushed through submit -> approve by the normal flow."""
+    student = actor_client(dataset["accounts"]["student"])
+    created = student.post(
+        f"/api/v1/editions/{dataset['edition'].id}/registrations",
+        {**draft_payload, "submit": False},
+        format="json",
+    ).data["data"]
+    student.post(
+        f"/api/v1/registrations/{created['id']}/submit",
+        {"version": created["version"]},
+        format="json",
+        HTTP_IDEMPOTENCY_KEY="seed-submit",
+    )
+    organizer = actor_client(dataset["accounts"]["organizer"])
+    approved = organizer.post(
+        f"/api/v1/registrations/{created['id']}/approval",
+        {"action": "approve", "comment": "", "submission_no": 1},
+        format="json",
+    )
+    assert approved.status_code == 200, approved.data
+    return created["id"]

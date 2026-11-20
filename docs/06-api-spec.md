@@ -238,7 +238,9 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 
 `GET /me/notifications?page=&page_size=` 分页列出登录账号收到的报名消息，最新在前。每条包含 `id`、`registration_id`、`submission_no`、`kind`（`submitted` / `approved` / `rejected` / `returned`）、`created_at` 与可空 `read_at`；不返回报名资料或审核意见。`POST /me/notifications/{id}/read` 接受空对象，返回更新后的消息，重复请求保留第一次已读时间；不可见或不存在返回 40401。已关闭届次或已删除报名的消息不展示，查看原报名仍需通过报名接口的权限检查。
 
-规划接口：`/notices` CRUD+publish；`/stats/dashboard`（P0 计数）与 `/stats/registrations?dim=group|org`（P1 图表）；`/audit-logs?actor=&resource=&date=`（`audit:read`）；`/roles` `/permissions`（`system:manage_roles`）。
+`GET /stats/dashboard`（`stats:read_platform` 平台 / `stats:read_competition` scoped，P0 计数）：只统计已提交轮次，返回报名数、通过数、通过率（已通过/已出结果，无结果为 null）、获奖队伍数及按赛项×组别分解；平台盘子的用户/单位/赛事/届次计数仅在 `stats:read_platform` 输出，作用域读者不可见。`GET /audit-logs?actor=&resource=&date_from=&date_to=`（`audit:read`，P0）分页返回授权范围内的操作事件，按写入时的 `scope` 键（org/competition/edition）过滤，最新在前；未带 scope 键的系统事件仅平台可见，`resource`/日期为格式校验后的可选过滤。
+
+规划接口：`/notices` CRUD+publish；`/stats/registrations?dim=group|org`（P1 图表）；`/roles` `/permissions`（`system:manage_roles`）。
 
 报名版本规则：GET /registrations/{id} 的审核资料来自 current_submission_no 对应不可变提交；可编辑工作副本仅向有编辑权的人返回。PATCH 不修改旧提交。resubmit 在同一报名编号下新增轮次，rejected/org_rejected 也允许该动作；所有校验按当前时间窗、队伍版本与准入执行。审核请求须带 submission_no，过期 40906。
 
