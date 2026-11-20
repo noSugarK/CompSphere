@@ -148,7 +148,7 @@ v1.1 变更：错误码表补 42205-42208 与 40904、新增发码与公示接�
 
 GET /seasons/current 返回当前赛季；POST /seasons/{id}/set-current 仅 season:set_current（平台），目标须 active，无当前则返回未开放状态。GET /public/competitions 只列当前赛季公开赛事，普通 season_id/season=all 参数拒绝，不修改全局当前值。管理历史接口独立按范围接收 season_id。POST/PATCH /seasons 与 activate/archive 仅平台权限；已有提交的场次不可改挂赛季，归档须无未完成赛事和待审报名。切换不复制队伍许可、不迁移历史或自动归档旧赛季。
 
-已接入的赛季管理接口：`GET /seasons?page=&page_size=` 仅平台分页查看全部状态；`POST /seasons` 接收 `code`（1–32 位大写英文字母、数字或连字符，首位须字母或数字）、`name`（1–64 字符）、`start_date` 和 `end_date`（ISO 日期，起日不晚于止日），返回 201 草稿。`POST /seasons/{id}/activate` 和 `POST /seasons/{id}/set-current` 接受空对象，均返回 `id/code/name/start_date/end_date/status/is_default`；激活不自动选为当前，重复设置同一当前赛季无额外副作用。编辑及安全归档待接入。
+已接入的赛季管理接口：`GET /seasons?page=&page_size=` 仅平台分页查看全部状态；`POST /seasons` 接收 `code`（1–32 位大写英文字母、数字或连字符，首位须字母或数字）、`name`（1–64 字符）、`start_date` 和 `end_date`（ISO 日期，起日不晚于止日），返回 201 草稿。`POST /seasons/{id}/activate` 和 `POST /seasons/{id}/set-current` 接受空对象，均返回 `id/code/name/start_date/end_date/status/is_default`；激活不自动选为当前，重复设置同一当前赛季无额外副作用。`PATCH /seasons/{id}`（season:update）可部分修改 `name/start_date/end_date`，稳定 `code` 与状态不因此变更，归档后只读且日期逆序返回 42203；`POST /seasons/{id}/archive`（season:archive，空对象）仅 active→archived，当前赛季、存在未关闭场次或待审报名时拒绝 40902；归档保留许可与赛季绑定历史。跨赛事同赛季资格验收仍待真实赛事回放。
 
 GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resubmit：team:request_season_registration + 本单位范围；resubmit 复制关联新申请。POST /{id}/review（approve/reject）与 /revoke 仅 team:review_season_registration（平台，非自审，理由必填）；首次创建审核原子创建队伍及许可。提交/重提校验当前 active 赛季，审批通过校验原报名赛季 active 和对应许可，均不以赛事 allowlist 替代许可。
 
@@ -156,8 +156,10 @@ GET/POST /team-season-registrations、GET /{id}、POST /{id}/submit|cancel|resub
 | --- | --- | --- |
 | GET | `/competitions?page=&page_size=` | 管理目录：平台读取全部未删除赛事；拥有赛事作用域 `competition:read` 的账号只读该赛事，届次、单位和个人授权不向上扩大。 |
 | POST | `/competitions` | 仅平台 `competition:create`。字段 `name`（1–128 字符）、`summary`（可空字符串，最多 2000 字符）；201 返回 `id/public_code/name/summary/status`，服务端生成编号并固定 `draft`，不建届次、不授权、不发布。 |
-| GET/PATCH | `/competitions/{id}` | `competition:*`（详情及编辑待接入） |
-| POST | `/competitions/{id}/publish` | `competition:publish`，空对象；至少一个草稿或已发布届次通过发布清单才可发布赛事，不修改届次状态。归档待实现。 |
+| GET/PATCH | `/competitions/{id}` | 详情及编辑已接入：GET 需作用域 `competition:read`；PATCH（`competition:update`）可部分修改 `name/summary/category/level`，category 取值 subject/technology/entrepreneurship/sports/arts/other，level 取值 school/province/national/international，两者可传 null 清除；封面附件与主办/承办/协办单位仍待接入，已归档赛事只读（40902）。 |
+| POST | `/competitions/{id}/archive` | `competition:archive`，空对象；published→archived，存在报名窗口仍开放的已发布届次或待审报名时 40902。归档后门户不再展示，新建届次被阻止。 |
+| POST | `/competitions/{id}/unarchive` | 仅平台全局 `competition:archive`（03 §2 应急通道）；body `reason` 必填并入审计；archived→published。 |
+| POST | `/competitions/{id}/publish` | `competition:publish`，空对象；至少一个草稿或已发布届次通过发布清单才可发布赛事，不修改届次状态。 |
 | PUT | `/competitions/{id}/units` | 主办/承办/协办设置（`competition:manage_units`） |
 | GET/POST | `/competitions/{id}/admins`；DELETE `/admins/{user_id}` | `competition:manage_admins` + user:assign_role；仅平台，查询以外操作不得由赛事管理员直接授权 |
 | GET | `/competitions/{id}/editions?page=&page_size=` | 平台与具备 `edition:read` 的赛事级账号可分页查看该赛事全部届次；届次授权只返回其直接获授的届次。无可授权范围时 404。 |
