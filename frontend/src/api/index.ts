@@ -15,6 +15,9 @@ import {
   bulkReviewResultSchema,
   competitionDraftSchema,
   competitionSchema,
+  competitionUpdateSchema,
+  managedCompetitionDetailSchema,
+  seasonUpdateSchema,
   dashboardSchema,
   draftFieldsSchema,
   editionDetailsSchema,
@@ -134,6 +137,15 @@ export const api = {
     request('GET', `/seasons?page=${page}`, pageSchema(managedSeasonSchema)),
   createSeason: (body: unknown) =>
     request('POST', '/seasons', managedSeasonSchema, seasonDraftSchema.parse(body)),
+  updateSeason: (id: number, body: unknown) =>
+    request(
+      'PATCH',
+      `/seasons/${idSchema.parse(id)}`,
+      managedSeasonSchema,
+      seasonUpdateSchema.parse(body),
+    ),
+  archiveSeason: (id: number) =>
+    request('POST', `/seasons/${idSchema.parse(id)}/archive`, managedSeasonSchema, {}),
   activateSeason: (id: number) =>
     request('POST', `/seasons/${idSchema.parse(id)}/activate`, managedSeasonSchema, {}),
   setCurrentSeason: (id: number) =>
@@ -144,6 +156,32 @@ export const api = {
     request('GET', `/competitions?page=${page}`, pageSchema(managedCompetitionSchema)),
   createCompetition: (body: unknown) =>
     request('POST', '/competitions', managedCompetitionSchema, competitionDraftSchema.parse(body)),
+  competitionDetail: (id: number) =>
+    request('GET', `/competitions/${idSchema.parse(id)}`, managedCompetitionDetailSchema),
+  updateCompetition: (id: number, body: unknown) =>
+    request(
+      'PATCH',
+      `/competitions/${idSchema.parse(id)}`,
+      managedCompetitionDetailSchema,
+      competitionUpdateSchema.parse(body),
+    ),
+  archiveCompetition: (id: number) =>
+    request(
+      'POST',
+      `/competitions/${idSchema.parse(id)}/archive`,
+      managedCompetitionDetailSchema,
+      {},
+    ),
+  unarchiveCompetition: (id: number, reason: string) =>
+    request(
+      'POST',
+      `/competitions/${idSchema.parse(id)}/unarchive`,
+      managedCompetitionDetailSchema,
+      z
+        .object({ reason: z.string().trim().min(1).max(2000) })
+        .strict()
+        .parse({ reason }),
+    ),
   managedEditions: (competition: number, page = 1) =>
     request(
       'GET',

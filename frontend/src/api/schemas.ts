@@ -76,6 +76,13 @@ export const managedSeasonSchema = seasonSchema.extend({
   code: text.min(1).max(32),
   is_default: z.boolean(),
 }) satisfies z.ZodType<components['schemas']['ManagedSeason']>;
+export const seasonUpdateSchema = z
+  .object({
+    name: text.trim().min(1).max(64).optional(),
+    start_date: text.date().optional(),
+    end_date: text.date().optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['PatchedSeasonDetailsRequest']>;
 export const seasonDraftSchema = z
   .object({
     code: text.trim().regex(/^[A-Z0-9][A-Z0-9-]{0,31}$/),
@@ -255,6 +262,28 @@ export const managedCompetitionSchema = z
 export const competitionDraftSchema = z
   .object({ name: text.trim().min(1).max(128), summary: text.trim().max(2000) })
   .strict() satisfies z.ZodType<components['schemas']['CompetitionDraftRequest']>;
+export const competitionCategorySchema = z.enum([
+  'subject',
+  'technology',
+  'entrepreneurship',
+  'sports',
+  'arts',
+  'other',
+]);
+export const competitionLevelSchema = z.enum(['school', 'province', 'national', 'international']);
+export const managedCompetitionDetailSchema = managedCompetitionSchema.extend({
+  category: competitionCategorySchema.nullable(),
+  level: competitionLevelSchema.nullable(),
+}) satisfies z.ZodType<components['schemas']['ManagedCompetitionDetail']>;
+export const competitionUpdateSchema = z
+  .object({
+    name: text.trim().min(1).max(128).optional(),
+    summary: text.trim().max(2000).optional(),
+    category: competitionCategorySchema.nullable().optional(),
+    level: competitionLevelSchema.nullable().optional(),
+  })
+  .strict() satisfies z.ZodType<components['schemas']['PatchedCompetitionUpdateRequest']>;
+export type ManagedCompetitionDetail = components['schemas']['ManagedCompetitionDetail'];
 export type ManagedCompetition = components['schemas']['ManagedCompetition'];
 export const memberSchema = z
   .object({

@@ -23,8 +23,14 @@ import {
   mayCreateEdition,
   mayEnter,
   mayRenderPrivate,
+  mayUnarchiveCompetition,
   mayViewCompetitionRegistry,
 } from '../src/utils/permissions';
+import {
+  competitionUpdateSchema,
+  managedCompetitionDetailSchema,
+  seasonUpdateSchema,
+} from '../src/api/schemas';
 
 const actor = meSchema.parse({
   user: { id: 1, username: 'test-user', email: null, must_change_password: false },
@@ -239,6 +245,47 @@ describe('frontend permission gates', () => {
     });
     expect(mayViewCompetitionRegistry(account)).toBe(view);
     expect(mayCreateCompetition(account)).toBe(create);
+  });
+
+  it('scopes competition restore to the global platform role only', () => {
+    const archive = ['competition:read', 'competition:archive'];
+    const scoped = meSchema.parse({
+      ...actor,
+      grants: [
+        { role: 'competition_admin', scope_type: 'competition', scope_id: 1, permissions: archive },
+      ],
+    });
+    const platform = meSchema.parse({
+      ...actor,
+      grants: [
+        { role: 'platform_admin', scope_type: 'global', scope_id: null, permissions: archive },
+      ],
+    });
+    expect(mayUnarchiveCompetition(scoped)).toBe(false);
+    expect(mayUnarchiveCompetition(platform)).toBe(true);
+  });
+
+  it('validates season, competition and archive JSON boundaries', () => {
+    expect(seasonUpdateSchema.parse({ name: 'Next', start_date: '2029-09-01' })).toEqual({
+      name: 'Next',
+      start_date: '2029-09-01',
+    });
+    expect(competitionUpdateSchema.safeParse({ status: 'published' }).success).toBe(false);
+    expect(competitionUpdateSchema.safeParse({ category: 'esports' }).success).toBe(false);
+    expect(competitionUpdateSchema.parse({ category: null, level: 'province' })).toEqual({
+      category: null,
+      level: 'province',
+    });
+    const detail = managedCompetitionDetailSchema.parse({
+      id: 7,
+      public_code: 'CMP-7',
+      name: 'QA',
+      summary: '',
+      status: 'archived',
+      category: null,
+      level: null,
+    });
+    expect(detail.category).toBeNull();
   });
 
   it('does not inherit edition creation up or across a competition', () => {

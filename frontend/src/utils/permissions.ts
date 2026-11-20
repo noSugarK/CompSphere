@@ -50,6 +50,18 @@ export function mayCreateCompetition(me: Me | null) {
   );
 }
 
+// 03 §2：unarchive 仅平台管理员应急通道，与后端全局角色校验对齐。
+export function mayUnarchiveCompetition(me: Me | null) {
+  return (
+    me?.grants.some(
+      (grant) =>
+        grant.role === 'platform_admin' &&
+        grant.scope_type === 'global' &&
+        grant.permissions.includes('competition:archive'),
+    ) ?? false
+  );
+}
+
 export function mayCreateEdition(me: Me | null, competitionId: number) {
   return (
     me?.grants.some(
