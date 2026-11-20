@@ -65,9 +65,9 @@ def test_audit_filters_by_actor_resource_and_date(dataset, actor_client):
     url = "/api/v1/audit-logs"
     by_resource = organizer.get(url, {"resource": "award_roster"}).data["data"]
     assert [i["resource"] for i in by_resource["items"]] == ["award_roster"]
-    by_actor = organizer.get(
-        url, {"actor": dataset["accounts"]["platform"].id}
-    ).data["data"]
+    by_actor = organizer.get(url, {"actor": dataset["accounts"]["platform"].id}).data[
+        "data"
+    ]
     assert [i["resource"] for i in by_actor["items"]] == ["edition"]
     assert organizer.get(url, {"actor": 999999}).data["data"]["total"] == 0
     future = organizer.get(url, {"date_from": "2099-01-01"}).data["data"]

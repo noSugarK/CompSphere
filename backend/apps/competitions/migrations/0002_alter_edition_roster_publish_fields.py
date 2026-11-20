@@ -6,15 +6,16 @@ import core.constants
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('competitions', '0001_initial'),
+        ("competitions", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='edition',
-            name='roster_publish_fields',
-            field=models.JSONField(default=core.constants.default_roster_publish_fields),
+            model_name="edition",
+            name="roster_publish_fields",
+            field=models.JSONField(
+                default=core.constants.default_roster_publish_fields
+            ),
         ),
     ]
